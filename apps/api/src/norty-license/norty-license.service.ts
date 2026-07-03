@@ -45,6 +45,16 @@ export class NortyLicenseService {
     return `${base}-${randomBytes(2).toString("hex")}`;
   }
 
+  /** Código de licença legível (mostrado ao cliente): NV-XXXX-XXXX-XXXX.
+   *  Alfabeto sem caracteres ambíguos (0/O, 1/I). */
+  private licenseCode(): string {
+    const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const b = randomBytes(12);
+    let s = "";
+    for (let i = 0; i < 12; i++) s += A[b[i] % A.length];
+    return `NV-${s.slice(0, 4)}-${s.slice(4, 8)}-${s.slice(8, 12)}`;
+  }
+
   private expiryFor(cycle?: string | null): Date | null {
     const now = Date.now();
     if (cycle === "trial") return new Date(now + 7 * 86400_000);
@@ -70,7 +80,7 @@ export class NortyLicenseService {
     const slug = await this.uniqueSlug(input.customer.fullName);
     const email = (input.customer.email || `${slug}@vision.norty.com.br`).toLowerCase().trim();
     const tempPass = "Nv" + randomBytes(9).toString("base64url").replace(/[^a-zA-Z0-9]/g, "").slice(0, 10) + "9x";
-    const licenseKey = "NV-" + randomBytes(16).toString("hex");
+    const licenseKey = this.licenseCode();
     const accessUrl = orgBaseUrl(slug);
     const expiresAt = this.expiryFor(input.cycle);
 

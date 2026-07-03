@@ -342,10 +342,10 @@ export default async function AppLayout({
           }}
         />
       )}
-      <aside className="scroll-themed sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto border-r border-line bg-surface/70 px-4 py-6 backdrop-blur-md md:block">
+      <aside className="scroll-themed sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto border-r border-line bg-surface/80 px-4 py-6 backdrop-blur-xl md:block">
         <Link
           href="/app"
-          className="mb-8 block transition-opacity hover:opacity-80"
+          className="mb-8 block px-1 transition-opacity hover:opacity-80"
           aria-label="Voltar ao painel"
         >
           {companyLogo ? (

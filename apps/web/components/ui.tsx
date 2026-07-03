@@ -22,21 +22,25 @@ type ButtonVariant = "primary" | "grad" | "outline" | "ghost";
 type ButtonSize = "sm" | "md" | "lg";
 
 const BTN_BASE =
-  "inline-flex items-center justify-center gap-2 rounded-xl font-semibold " +
-  "transition active:scale-[.98] disabled:pointer-events-none disabled:opacity-50 " +
+  "inline-flex select-none items-center justify-center gap-2 rounded-xl font-semibold " +
+  "transition-all duration-150 active:scale-[.98] disabled:pointer-events-none disabled:opacity-50 " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40";
 
 const BTN_VARIANT: Record<ButtonVariant, string> = {
-  primary: "bg-brand text-white hover:opacity-90",
-  grad: "bg-grad-brand text-white shadow-sm hover:opacity-95",
+  primary:
+    "bg-brand text-white shadow-[0_6px_18px_-6px_rgb(var(--brand)/0.6)] " +
+    "hover:bg-brand/90 hover:shadow-[0_10px_24px_-8px_rgb(var(--brand)/0.7)]",
+  grad:
+    "bg-grad-brand text-white shadow-[0_8px_22px_-8px_rgb(var(--brand)/0.7)] " +
+    "hover:brightness-[1.06]",
   outline: "border border-line-strong bg-surface text-fg hover:border-brand/60 hover:text-brand",
   ghost: "text-muted hover:bg-surface-2 hover:text-fg",
 };
 
 const BTN_SIZE: Record<ButtonSize, string> = {
-  sm: "h-8 px-3 text-xs",
+  sm: "h-8 px-3 text-[13px]",
   md: "h-10 px-4 text-sm",
-  lg: "h-12 px-6 text-base",
+  lg: "h-12 px-6 text-[15px]",
 };
 
 export interface ButtonProps

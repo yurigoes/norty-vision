@@ -74,10 +74,16 @@ export function SidebarLink({
       }}
       className={
         active
-          ? "flex items-center justify-between rounded-md border border-brand/40 bg-brand/15 px-3 py-2 font-medium text-fg shadow-sm backdrop-blur-md transition"
-          : "flex items-center justify-between rounded-md border border-transparent px-3 py-2 text-fg transition hover:bg-line"
+          ? "relative flex items-center justify-between rounded-lg border border-transparent bg-brand/10 px-3 py-2 font-semibold text-brand transition"
+          : "flex items-center justify-between rounded-lg border border-transparent px-3 py-2 text-muted transition hover:bg-surface-2 hover:text-fg"
       }
     >
+      {active && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-brand"
+        />
+      )}
       <span className="truncate">{children}</span>
       <CountBadge n={count} />
     </Link>

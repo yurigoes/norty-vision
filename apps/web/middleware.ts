@@ -16,6 +16,8 @@ const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "yugochat.com.br").t
 const RESERVED = new Set([
   "www", "app", "api", "admin", "painel", "mail", "static", "cdn", "assets", "n8n",
   "chat", "chatwoot", "glpi", "evolution", "minio", "s3",
+  // reservados do esquema 1-nível sob norty.com.br (apex/master do Vision + serviços do PRM)
+  "vision", "norty", "sorva", "license", "app-sorva",
 ]);
 // Subdomínios de PRODUTO (ex.: Central de Leads): a raiz não vai pra vitrine
 // genérica de empresa — vai pro login da marca (que já detecta o slug e mostra

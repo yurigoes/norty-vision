@@ -49,9 +49,8 @@ export class NortyLicenseService {
    *  Alfabeto sem caracteres ambíguos (0/O, 1/I). */
   private licenseCode(): string {
     const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-    const b = randomBytes(12);
     let s = "";
-    for (let i = 0; i < 12; i++) s += A[b[i] % A.length];
+    for (const byte of randomBytes(12)) s += A.charAt(byte % A.length);
     return `NV-${s.slice(0, 4)}-${s.slice(4, 8)}-${s.slice(8, 12)}`;
   }
 

@@ -84,7 +84,23 @@ else
 fi
 
 log "grants + extensões (reusa roles yugo_app/yugo_migrator existentes; NÃO mexe nas senhas deles)"
-SU "$NV_DB" -c "GRANT CONNECT, CREATE ON DATABASE $NV_DB TO yugo_app, yugo_migrator" >/dev/null
+# Aplica APENAS a parte de GRANTS do 000_roles.sql (sem CREATE/ALTER ROLE, pra não
+# tocar nas senhas dos roles compartilhados do yugo). Dá CREATE em schema public
+# pro yugo_migrator (senão PG16 nega a criação das tabelas).
+SU "$NV_DB" >/dev/null <<'SQL'
+GRANT CONNECT, CREATE ON DATABASE norty_vision TO yugo_app, yugo_migrator;
+CREATE SCHEMA IF NOT EXISTS app;
+GRANT USAGE ON SCHEMA public, app TO yugo_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO yugo_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO yugo_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO yugo_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO yugo_app;
+GRANT ALL ON SCHEMA public, app TO yugo_migrator;
+GRANT ALL ON ALL TABLES IN SCHEMA public TO yugo_migrator;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO yugo_migrator;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO yugo_migrator;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO yugo_migrator;
+SQL
 [[ -f "$SQL_DIR/001_extensions.sql" ]] && SU "$NV_DB" < "$SQL_DIR/001_extensions.sql" >/dev/null
 
 log "aplicando migrations em $NV_DB (pulando 000_roles.sql pra não tocar nos roles do yugo)"

@@ -39,21 +39,21 @@ export default function PortalOS() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
       <header className="mb-6">
-        <Link href="/c" className="text-sm text-brand hover:underline">← Voltar</Link>
-        <h1 className="mt-1 text-2xl font-semibold">Minhas ordens de serviço</h1>
+        <Link href="/c" className="text-sm font-medium text-brand hover:underline">← Voltar</Link>
+        <h1 className="mt-2 text-2xl font-extrabold tracking-tight">Minhas ordens de serviço</h1>
         <p className="text-sm text-muted">Acompanhe o status do seu conserto/garantia em tempo real.</p>
       </header>
 
       {list === null ? (
         <p className="text-sm text-muted">Carregando…</p>
       ) : list.length === 0 ? (
-        <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-sm text-muted">Nenhuma ordem de serviço.</p>
+        <p className="rounded-2xl border border-line bg-surface p-8 text-center text-sm text-muted">Nenhuma ordem de serviço.</p>
       ) : (
         <div className="space-y-3">
           {list.map((so) => {
             const stepIdx = STEPS.indexOf(so.status);
             return (
-              <div key={so.id} className="rounded-xl border border-line bg-bg/60 p-4">
+              <div key={so.id} className="card">
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <p className="font-mono text-[10px] text-muted">{so.code}</p>
@@ -121,8 +121,8 @@ function RateBox({ so, onRated, open, onToggle }: { so: SO; onRated: () => void;
               <button key={n} onClick={() => setRating(n)} className={n <= rating ? "text-amber-400" : "text-line"}>★</button>
             ))}
           </div>
-          <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2} placeholder="Comentário (opcional)" className="mt-2 w-full rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
-          <button disabled={busy || !rating} onClick={submit} className="mt-2 rounded-lg bg-brand px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50">Enviar avaliação</button>
+          <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2} placeholder="Comentário (opcional)" className="input-base mt-2" />
+          <button disabled={busy || !rating} onClick={submit} className="btn-grad mt-2 px-4 py-1.5">Enviar avaliação</button>
         </div>
       )}
     </div>

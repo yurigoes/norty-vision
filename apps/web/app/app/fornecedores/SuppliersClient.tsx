@@ -178,7 +178,7 @@ export function SuppliersClient({ initial, niche }: { initial: Supplier[]; niche
           ))}
         </div>
         {!showForm && (
-          <button onClick={startCreate} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+          <button onClick={startCreate} className="btn-grad">
             Novo fornecedor
           </button>
         )}
@@ -187,35 +187,35 @@ export function SuppliersClient({ initial, niche }: { initial: Supplier[]; niche
       {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p>}
 
       {showForm && (
-        <section className="space-y-4 rounded-xl border border-brand/40 bg-bg/60 p-5">
+        <section className="space-y-4 rounded-2xl border border-brand/40 bg-surface p-5 shadow-sm">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
             {editing ? `Editar: ${editing.name}` : "Novo fornecedor"}
           </h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Tipo">
-              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as SupplierType })} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm">
+              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as SupplierType })} className="input-base">
                 {visibleTypes.map((t) => <option key={t} value={t}>{TYPE_LABEL[t]}</option>)}
               </select>
             </Field>
             <Field label="Nome">
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="input-base" />
             </Field>
             <Field label="Documento (CPF/CNPJ)">
-              <input value={form.document} onChange={(e) => setForm({ ...form, document: e.target.value })} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+              <input value={form.document} onChange={(e) => setForm({ ...form, document: e.target.value })} className="input-base" />
             </Field>
             {form.type === "medico" && (
               <Field label="CRM">
-                <input value={form.councilNumber} onChange={(e) => setForm({ ...form, councilNumber: e.target.value })} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+                <input value={form.councilNumber} onChange={(e) => setForm({ ...form, councilNumber: e.target.value })} className="input-base" />
               </Field>
             )}
             <Field label="Telefone">
-              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="input-base" />
             </Field>
             <Field label="E-mail">
-              <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+              <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="input-base" />
             </Field>
             <Field label="Chave Pix">
-              <input value={form.pixKey} onChange={(e) => setForm({ ...form, pixKey: e.target.value })} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+              <input value={form.pixKey} onChange={(e) => setForm({ ...form, pixKey: e.target.value })} className="input-base" />
             </Field>
             {form.type === "costureira" && (
               <Field label="Valor por peça (R$)">
@@ -224,7 +224,7 @@ export function SuppliersClient({ initial, niche }: { initial: Supplier[]; niche
                   onChange={(e) => setForm({ ...form, pricePerPieceValue: e.target.value })}
                   placeholder="ex.: 8,00"
                   inputMode="decimal"
-                  className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm"
+                  className="input-base"
                 />
                 <p className="mt-1 text-[10px] text-muted">Multiplicado pelo total de peças do pedido quando ela marcar "Pedido pronto". 0 = sem cálculo automático.</p>
               </Field>
@@ -232,7 +232,7 @@ export function SuppliersClient({ initial, niche }: { initial: Supplier[]; niche
           </div>
 
           {showPayout && (
-            <div className="rounded-lg border border-line bg-bg/40 p-3">
+            <div className="rounded-xl border border-line bg-surface-2 p-3">
               <span className="mb-2 block text-[10px] uppercase text-muted">Repasse por exame</span>
               <div className="flex flex-wrap items-center gap-3">
                 <label className="flex items-center gap-1 text-sm">
@@ -246,7 +246,7 @@ export function SuppliersClient({ initial, niche }: { initial: Supplier[]; niche
                   onChange={(e) => setForm({ ...form, payoutValue: e.target.value })}
                   placeholder={form.payoutMode === "percent" ? "ex.: 30" : "ex.: 50,00"}
                   inputMode="decimal"
-                  className="w-32 rounded border border-line bg-bg/60 px-2 py-1 text-sm"
+                  className="input-base w-32"
                 />
               </div>
             </div>
@@ -258,25 +258,25 @@ export function SuppliersClient({ initial, niche }: { initial: Supplier[]; niche
           </label>
 
           <div className="flex gap-2">
-            <button onClick={save} disabled={busy || !form.name.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
+            <button onClick={save} disabled={busy || !form.name.trim()} className="btn-grad disabled:opacity-50">
               {busy ? "Salvando..." : "Salvar"}
             </button>
-            <button onClick={cancel} className="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand">Cancelar</button>
+            <button onClick={cancel} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">Cancelar</button>
           </div>
         </section>
       )}
 
       {list.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum fornecedor.</p>
+        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhum fornecedor.</p>
       ) : (
         <div className="space-y-2">
           {list.map((s) => (
-            <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg/60 px-4 py-3">
+            <div key={s.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 transition hover:border-brand/40">
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-sm font-medium">
                   {s.name}
-                  <span className="rounded bg-line px-1.5 py-0.5 text-[10px] uppercase text-muted">{TYPE_LABEL[s.type]}</span>
-                  {s.status === "inactive" && <span className="text-[10px] text-red-300">inativo</span>}
+                  <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-[10px] uppercase text-muted">{TYPE_LABEL[s.type]}</span>
+                  {s.status === "inactive" && <span className="text-[10px] text-danger">inativo</span>}
                 </p>
                 <p className="truncate text-xs text-muted">
                   {s.document ?? "sem doc"}
@@ -289,8 +289,8 @@ export function SuppliersClient({ initial, niche }: { initial: Supplier[]; niche
                 </p>
               </div>
               <div className="flex shrink-0 gap-2">
-                <button onClick={() => startEdit(s)} className="rounded border border-line px-3 py-1 text-xs transition hover:border-brand">Editar</button>
-                <button onClick={() => remove(s)} className="rounded border border-line px-3 py-1 text-xs text-red-300 transition hover:border-red-400">Remover</button>
+                <button onClick={() => startEdit(s)} className="rounded-lg border border-line px-3 py-1 text-xs transition hover:border-brand/60">Editar</button>
+                <button onClick={() => remove(s)} className="rounded-lg border border-line px-3 py-1 text-xs text-danger transition hover:border-danger/60">Remover</button>
               </div>
             </div>
           ))}

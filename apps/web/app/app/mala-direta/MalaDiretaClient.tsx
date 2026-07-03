@@ -136,14 +136,14 @@ export function MalaDiretaClient() {
             </div>
             <label className="block">
               <span className="mb-1 block text-[10px] uppercase text-muted">Assunto (e-mail)</span>
-              <input value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+              <input value={subject} onChange={(e) => setSubject(e.target.value)} className="input-base" />
             </label>
           </>
         )}
 
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Mensagem</span>
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8} className="w-full rounded border border-line bg-bg/60 px-2 py-1 font-mono text-xs" />
+          <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8} className="input-base font-mono text-xs" />
           <span className="mt-1 block text-[10px] text-muted">Variáveis: {"{{cliente.nome}}"} {"{{empresa.nome}}"}</span>
         </label>
 
@@ -157,7 +157,7 @@ export function MalaDiretaClient() {
                 <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-line text-[10px] text-muted">sem imagem</div>
               )}
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f); }} />
-              <button onClick={() => fileRef.current?.click()} disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-xs transition hover:border-brand disabled:opacity-50">Enviar imagem</button>
+              <button onClick={() => fileRef.current?.click()} disabled={busy} className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand disabled:opacity-50">Enviar imagem</button>
               {imageUrl && <button onClick={() => setImageUrl("")} className="text-xs text-muted hover:text-red-300">remover</button>}
             </div>
           </div>
@@ -166,7 +166,7 @@ export function MalaDiretaClient() {
         {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{err}</p>}
         {msg && <p className="rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-200">{msg}</p>}
 
-        <button onClick={send} disabled={busy || (!body.trim() && !imageUrl)} className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
+        <button onClick={send} disabled={busy || (!body.trim() && !imageUrl)} className="btn-grad disabled:opacity-50">
           {busy ? "Enviando..." : "Disparar mala direta"}
         </button>
       </div>

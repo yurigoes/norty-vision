@@ -54,22 +54,22 @@ function TrunksTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end"><button onClick={() => setEditing("new")} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">+ Adicionar linha</button></div>
+      <div className="flex justify-end"><button onClick={() => setEditing("new")} className="btn-grad">+ Adicionar linha</button></div>
       {items === null ? <p className="text-sm text-muted">Carregando…</p> :
-        items.length === 0 ? <p className="rounded-xl border border-line p-8 text-center text-muted">Nenhuma linha cadastrada ainda.</p> :
-        <div className="overflow-x-auto rounded-xl border border-line">
+        items.length === 0 ? <p className="rounded-xl border border-line bg-surface p-8 text-center text-muted">Nenhuma linha cadastrada ainda.</p> :
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
           <table className="w-full text-sm">
-            <thead className="bg-bg/60"><tr className="text-left"><th className="px-3 py-2">Nome</th><th className="px-3 py-2">Servidor SIP</th><th className="px-3 py-2">Usuário</th><th className="px-3 py-2">Reg.</th><th className="px-3 py-2"></th></tr></thead>
+            <thead className="border-b border-line bg-surface-2 text-[10px] uppercase tracking-wider text-muted"><tr className="text-left"><th className="px-3 py-2">Nome</th><th className="px-3 py-2">Servidor SIP</th><th className="px-3 py-2">Usuário</th><th className="px-3 py-2">Reg.</th><th className="px-3 py-2"></th></tr></thead>
             <tbody>
               {items.map((t) => (
-                <tr key={t.id} className="border-t border-line">
+                <tr key={t.id} className="border-t border-line transition hover:bg-surface-2">
                   <td className="px-3 py-2 font-medium">{t.name}</td>
                   <td className="px-3 py-2 text-muted">{t.sipHost}</td>
                   <td className="px-3 py-2 text-muted">{t.sipUser}</td>
                   <td className="px-3 py-2">{t.active && t.register ? "✅" : "—"}</td>
                   <td className="px-3 py-2 text-right">
-                    <button onClick={() => setEditing(t)} className="text-xs underline">Editar</button>
-                    <button onClick={() => remove(t)} className="ml-3 text-xs text-red-500 underline">Remover</button>
+                    <button onClick={() => setEditing(t)} className="text-xs font-medium text-brand hover:underline">Editar</button>
+                    <button onClick={() => remove(t)} className="ml-3 text-xs font-medium text-danger hover:underline">Remover</button>
                   </td>
                 </tr>
               ))}
@@ -104,7 +104,7 @@ function TrunkModal({ initial, onClose, onSaved }: { initial: Trunk | null; onCl
   }
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-line bg-bg p-6 shadow-2xl">
+      <div className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl">
         <h2 className="text-lg font-semibold">{initial ? "Editar linha" : "Adicionar linha SIP"}</h2>
         <div className="mt-4 space-y-3 text-sm">
           <Field label="Nome (apelido)" value={name} onChange={setName} placeholder="Ex.: Sobreip Salvador" />
@@ -112,11 +112,11 @@ function TrunkModal({ initial, onClose, onSaved }: { initial: Trunk | null; onCl
           <Field label="Usuário SIP / DID" value={sipUser} onChange={setSipUser} placeholder="Ex.: 7131800845" />
           <Field label={initial ? "Senha SIP (deixe vazio pra não alterar)" : "Senha SIP"} value={sipPass} onChange={setSipPass} type="password" />
           <Field label="Nome na bina (opcional)" value={callerIdName} onChange={setCallerIdName} placeholder="Ex.: Yugochat" />
-          <label className="flex items-center gap-2"><input type="checkbox" checked={register} onChange={(e) => setRegister(e.target.checked)} /> Registrar com a operadora</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={register} onChange={(e) => setRegister(e.target.checked)} className="accent-brand" /> Registrar com a operadora</label>
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm">Cancelar</button>
-          <button onClick={save} disabled={saving} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? "Salvando…" : "Salvar"}</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:border-brand">Cancelar</button>
+          <button onClick={save} disabled={saving} className="btn-grad disabled:opacity-50">{saving ? "Salvando…" : "Salvar"}</button>
         </div>
       </div>
     </div>
@@ -155,22 +155,22 @@ function DidsTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end"><button onClick={() => setEditing("new")} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">+ Adicionar número</button></div>
+      <div className="flex justify-end"><button onClick={() => setEditing("new")} className="btn-grad">+ Adicionar número</button></div>
       {items === null ? <p className="text-sm text-muted">Carregando…</p> :
-        items.length === 0 ? <p className="rounded-xl border border-line p-8 text-center text-muted">Nenhum número cadastrado ainda. Cadastre primeiro uma linha (aba "Linhas SIP").</p> :
-        <div className="overflow-x-auto rounded-xl border border-line">
+        items.length === 0 ? <p className="rounded-xl border border-line bg-surface p-8 text-center text-muted">Nenhum número cadastrado ainda. Cadastre primeiro uma linha (aba "Linhas SIP").</p> :
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
           <table className="w-full text-sm">
-            <thead className="bg-bg/60"><tr className="text-left"><th className="px-3 py-2">Número</th><th className="px-3 py-2">Apelido</th><th className="px-3 py-2">Linha</th><th className="px-3 py-2">Destino</th><th className="px-3 py-2"></th></tr></thead>
+            <thead className="border-b border-line bg-surface-2 text-[10px] uppercase tracking-wider text-muted"><tr className="text-left"><th className="px-3 py-2">Número</th><th className="px-3 py-2">Apelido</th><th className="px-3 py-2">Linha</th><th className="px-3 py-2">Destino</th><th className="px-3 py-2"></th></tr></thead>
             <tbody>
               {items.map((d) => (
-                <tr key={d.id} className="border-t border-line">
+                <tr key={d.id} className="border-t border-line transition hover:bg-surface-2">
                   <td className="px-3 py-2 font-mono">{d.number}</td>
                   <td className="px-3 py-2 text-muted">{d.label ?? "—"}</td>
                   <td className="px-3 py-2 text-muted">{trunkName(d.trunkId)}</td>
                   <td className="px-3 py-2">{d.inboundKind} → {targetName(d.inboundKind, d.inboundId)}</td>
                   <td className="px-3 py-2 text-right">
-                    <button onClick={() => setEditing(d)} className="text-xs underline">Editar</button>
-                    <button onClick={() => remove(d)} className="ml-3 text-xs text-red-500 underline">Remover</button>
+                    <button onClick={() => setEditing(d)} className="text-xs font-medium text-brand hover:underline">Editar</button>
+                    <button onClick={() => remove(d)} className="ml-3 text-xs font-medium text-danger hover:underline">Remover</button>
                   </td>
                 </tr>
               ))}
@@ -204,18 +204,18 @@ function DidModal({ initial, trunks, groups, onClose, onSaved }: { initial: Did 
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-line bg-bg p-6 shadow-2xl">
+      <div className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl">
         <h2 className="text-lg font-semibold">{initial ? "Editar número" : "Adicionar número"}</h2>
         <div className="mt-4 space-y-3 text-sm">
           <label className="block"><span className="text-muted">Linha</span>
-            <select value={trunkId} onChange={(e) => setTrunkId(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2">
+            <select value={trunkId} onChange={(e) => setTrunkId(e.target.value)} className="input-base mt-1">
               {trunks.map((t) => <option key={t.id} value={t.id}>{t.name} ({t.sipHost})</option>)}
             </select>
           </label>
           <Field label="Número (DDD + número)" value={number} onChange={setNumber} placeholder="Ex.: 7131800845" />
           <Field label="Apelido (opcional)" value={label} onChange={setLabel} placeholder="Ex.: Vendas BA" />
           <label className="block"><span className="text-muted">Quando alguém ligar, encaminhar pra:</span>
-            <select value={inboundKind} onChange={(e) => { setInboundKind(e.target.value); setInboundId(""); }} className="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2">
+            <select value={inboundKind} onChange={(e) => { setInboundKind(e.target.value); setInboundId(""); }} className="input-base mt-1">
               <option value="group">Grupo de ramal</option>
               <option value="extension">Ramal específico (em breve)</option>
               <option value="ivr">URA (em breve)</option>
@@ -223,7 +223,7 @@ function DidModal({ initial, trunks, groups, onClose, onSaved }: { initial: Did 
           </label>
           {inboundKind === "group" && (
             <label className="block"><span className="text-muted">Grupo</span>
-              <select value={inboundId} onChange={(e) => setInboundId(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2">
+              <select value={inboundId} onChange={(e) => setInboundId(e.target.value)} className="input-base mt-1">
                 <option value="">— escolha um grupo —</option>
                 {groups.map((g) => <option key={g.id} value={g.id}>{g.name} ({g.memberCount} membros)</option>)}
               </select>
@@ -231,8 +231,8 @@ function DidModal({ initial, trunks, groups, onClose, onSaved }: { initial: Did 
           )}
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm">Cancelar</button>
-          <button onClick={save} disabled={saving} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? "Salvando…" : "Salvar"}</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:border-brand">Cancelar</button>
+          <button onClick={save} disabled={saving} className="btn-grad disabled:opacity-50">{saving ? "Salvando…" : "Salvar"}</button>
         </div>
       </div>
     </div>
@@ -259,23 +259,23 @@ function GroupsTab() {
 
   return (
     <div className="space-y-3">
-      <div className="flex justify-end"><button onClick={() => setEditing("new")} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">+ Adicionar grupo</button></div>
+      <div className="flex justify-end"><button onClick={() => setEditing("new")} className="btn-grad">+ Adicionar grupo</button></div>
       {items === null ? <p className="text-sm text-muted">Carregando…</p> :
-        items.length === 0 ? <p className="rounded-xl border border-line p-8 text-center text-muted">Nenhum grupo ainda.</p> :
-        <div className="overflow-x-auto rounded-xl border border-line">
+        items.length === 0 ? <p className="rounded-xl border border-line bg-surface p-8 text-center text-muted">Nenhum grupo ainda.</p> :
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
           <table className="w-full text-sm">
-            <thead className="bg-bg/60"><tr className="text-left"><th className="px-3 py-2">Nome</th><th className="px-3 py-2">Estratégia</th><th className="px-3 py-2">Timeout</th><th className="px-3 py-2">Membros</th><th className="px-3 py-2"></th></tr></thead>
+            <thead className="border-b border-line bg-surface-2 text-[10px] uppercase tracking-wider text-muted"><tr className="text-left"><th className="px-3 py-2">Nome</th><th className="px-3 py-2">Estratégia</th><th className="px-3 py-2">Timeout</th><th className="px-3 py-2">Membros</th><th className="px-3 py-2"></th></tr></thead>
             <tbody>
               {items.map((g) => (
-                <tr key={g.id} className="border-t border-line">
+                <tr key={g.id} className="border-t border-line transition hover:bg-surface-2">
                   <td className="px-3 py-2 font-medium">{g.name}</td>
                   <td className="px-3 py-2 text-muted">{g.strategy}</td>
                   <td className="px-3 py-2 text-muted">{g.ringTimeoutS}s</td>
                   <td className="px-3 py-2">{g.memberCount}</td>
                   <td className="px-3 py-2 text-right">
-                    <button onClick={() => setOpenMembers(g)} className="text-xs underline">Membros</button>
-                    <button onClick={() => setEditing(g)} className="ml-3 text-xs underline">Editar</button>
-                    <button onClick={() => remove(g)} className="ml-3 text-xs text-red-500 underline">Remover</button>
+                    <button onClick={() => setOpenMembers(g)} className="text-xs font-medium text-brand hover:underline">Membros</button>
+                    <button onClick={() => setEditing(g)} className="ml-3 text-xs font-medium text-brand hover:underline">Editar</button>
+                    <button onClick={() => remove(g)} className="ml-3 text-xs font-medium text-danger hover:underline">Remover</button>
                   </td>
                 </tr>
               ))}
@@ -306,12 +306,12 @@ function GroupModal({ initial, onClose, onSaved }: { initial: Group | null; onCl
   }
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-line bg-bg p-6 shadow-2xl">
+      <div className="w-full max-w-lg rounded-2xl border border-line bg-surface p-6 shadow-2xl">
         <h2 className="text-lg font-semibold">{initial ? "Editar grupo" : "Novo grupo"}</h2>
         <div className="mt-4 space-y-3 text-sm">
           <Field label="Nome" value={name} onChange={setName} placeholder="Ex.: Atendimento" />
           <label className="block"><span className="text-muted">Estratégia de toque</span>
-            <select value={strategy} onChange={(e) => setStrategy(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2">
+            <select value={strategy} onChange={(e) => setStrategy(e.target.value)} className="input-base mt-1">
               <option value="all">Todos tocam ao mesmo tempo</option>
               <option value="sequential">Sequencial (um por vez, por prioridade)</option>
             </select>
@@ -319,8 +319,8 @@ function GroupModal({ initial, onClose, onSaved }: { initial: Group | null; onCl
           <Field label="Timeout de toque (segundos)" value={String(ringTimeoutS)} onChange={(v) => setRingTimeoutS(parseInt(v, 10) || 25)} type="number" />
         </div>
         <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm">Cancelar</button>
-          <button onClick={save} disabled={saving} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? "Salvando…" : "Salvar"}</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:border-brand">Cancelar</button>
+          <button onClick={save} disabled={saving} className="btn-grad disabled:opacity-50">{saving ? "Salvando…" : "Salvar"}</button>
         </div>
       </div>
     </div>
@@ -355,25 +355,25 @@ function MembersDrawer({ group, onClose }: { group: Group; onClose: () => void }
   }
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-end bg-black/60" onClick={onClose}>
-      <div className="h-full w-full max-w-md overflow-y-auto bg-bg p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="h-full w-full max-w-md overflow-y-auto border-l border-line bg-surface p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Membros · {group.name}</h2>
-          <button onClick={onClose} className="text-xs text-muted underline">Fechar</button>
+          <button onClick={onClose} className="text-xs font-medium text-muted hover:text-fg hover:underline">Fechar</button>
         </div>
         <div className="flex gap-2">
-          <select value={pick} onChange={(e) => setPick(e.target.value)} className="flex-1 rounded-lg border border-line bg-bg px-3 py-2 text-sm">
+          <select value={pick} onChange={(e) => setPick(e.target.value)} className="input-base flex-1 w-auto">
             <option value="">— adicionar operador —</option>
             {availableOps.map((o) => <option key={o.membershipId} value={o.membershipId}>{o.name}{o.extension ? ` (ramal ${o.extension})` : " (sem ramal)"}</option>)}
           </select>
-          <button onClick={add} disabled={!pick} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-40">+</button>
+          <button onClick={add} disabled={!pick} className="btn-grad px-4 disabled:opacity-40">+</button>
         </div>
         <div className="mt-4 space-y-2">
           {members === null ? <p className="text-sm text-muted">Carregando…</p> :
-            members.length === 0 ? <p className="rounded-lg border border-line p-6 text-center text-muted">Nenhum membro ainda.</p> :
+            members.length === 0 ? <p className="rounded-lg border border-line bg-surface-2 p-6 text-center text-muted">Nenhum membro ainda.</p> :
             members.map((m) => (
-              <div key={m.id} className="flex items-center justify-between rounded-lg border border-line p-3 text-sm">
+              <div key={m.id} className="flex items-center justify-between rounded-lg border border-line bg-surface-2 p-3 text-sm">
                 <div><span className="font-medium">{m.name}</span>{m.extension && <span className="ml-2 text-xs text-muted">ramal {m.extension}</span>}</div>
-                <button onClick={() => remove(m)} className="text-xs text-red-500 underline">Remover</button>
+                <button onClick={() => remove(m)} className="text-xs font-medium text-danger hover:underline">Remover</button>
               </div>
             ))}
         </div>
@@ -387,7 +387,7 @@ function Field({ label, value, onChange, type = "text", placeholder }: { label: 
   return (
     <label className="block">
       <span className="text-muted">{label}</span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2" />
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="input-base mt-1" />
     </label>
   );
 }

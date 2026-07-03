@@ -57,7 +57,7 @@ export default async function ContractDetailPage({
         >
           ← voltar
         </Link>
-        <p className="mt-8 rounded-lg border border-line bg-bg/60 p-6 text-muted">
+        <p className="mt-8 rounded-2xl border border-line bg-surface p-6 text-muted">
           Contrato não encontrado.
         </p>
       </div>
@@ -97,14 +97,14 @@ export default async function ContractDetailPage({
             href={`/api/contracts/${c.id}/html`}
             target="_blank"
             rel="noopener noreferrer"
-            className="shrink-0 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+            className="btn-grad shrink-0"
           >
             Imprimir / Baixar
           </a>
         </header>
       </div>
 
-      <section className="rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card">
         <h2 className="mb-4 text-lg font-semibold">Signatário</h2>
         <dl className="grid gap-2 text-sm sm:grid-cols-2">
           <Row label="Nome" value={c.signerName ?? "—"} />
@@ -129,7 +129,7 @@ export default async function ContractDetailPage({
       </section>
 
       {Object.keys(c.fieldValues ?? {}).length > 0 && (
-        <section className="rounded-xl border border-line bg-bg/60 p-6">
+        <section className="card">
           <h2 className="mb-4 text-lg font-semibold">Campos preenchidos</h2>
           <dl className="grid gap-2 text-sm sm:grid-cols-2">
             {Object.entries(c.fieldValues).map(([k, v]) => (
@@ -139,7 +139,7 @@ export default async function ContractDetailPage({
         </section>
       )}
 
-      <section className="rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">Corpo do contrato</h2>
           <a
@@ -159,7 +159,7 @@ export default async function ContractDetailPage({
       </section>
 
       {c.signatureImageUrl && (
-        <section className="rounded-xl border border-line bg-bg/60 p-6">
+        <section className="card">
           <h2 className="mb-4 text-lg font-semibold">Rubrica</h2>
           <img
             src={c.signatureImageUrl}

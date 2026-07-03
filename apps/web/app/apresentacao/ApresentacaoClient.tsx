@@ -155,12 +155,12 @@ export function ApresentacaoClient() {
       </header>
 
       {/* seletor de papel */}
-      <section className="rounded-2xl border border-line bg-bg/60 p-6">
+      <section className="rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow-sm)]">
         <p className="text-center text-sm font-semibold uppercase tracking-wider text-muted">Entre como…</p>
         <div className="mt-4 flex flex-wrap justify-center gap-3">
           {ROLES.map((r) => (
             <button key={r.key} onClick={() => setRole(r.key)}
-              className={`rounded-xl border px-5 py-3 text-left transition ${role === r.key ? "border-brand bg-brand/10 shadow-lg shadow-brand/10" : "border-line hover:border-brand"}`}>
+              className={`rounded-xl border px-5 py-3 text-left transition ${role === r.key ? "border-brand/60 bg-brand/10 shadow-[var(--shadow-md)] ring-1 ring-brand/15" : "border-line bg-surface hover:border-brand/60"}`}>
               <span className="block text-sm font-semibold">{r.label}</span>
               <span className="mt-0.5 block max-w-[220px] text-xs text-muted">{r.blurb}</span>
             </button>
@@ -180,7 +180,7 @@ export function ApresentacaoClient() {
                 const acc = m.access[role];
                 const badge = ACCESS_BADGE[acc];
                 return (
-                  <div key={m.key} className="flex flex-col rounded-2xl border border-line bg-bg/60 p-5">
+                  <div key={m.key} className="card flex flex-col">
                     <div className="flex items-start justify-between gap-2">
                       <h3 className="text-lg font-semibold">{m.icon} {m.label}</h3>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${badge.cls}`}>{badge.label}</span>
@@ -190,7 +190,7 @@ export function ApresentacaoClient() {
                       <span className="font-semibold text-fg">Como {ROLES.find((r) => r.key === role)!.label.toLowerCase()}:</span> <span className="text-muted">{m.accessNote[role]}</span>
                     </p>
                     {m.sim && (
-                      <button onClick={() => setSim(m.sim!)} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+                      <button onClick={() => setSim(m.sim!)} className="btn-grad mt-3 px-4 py-2 text-sm">
                         ▶ Simular envio {m.sim.channel === "whatsapp" ? "(WhatsApp)" : "(e-mail)"}
                       </button>
                     )}
@@ -208,7 +208,7 @@ export function ApresentacaoClient() {
         <p className="mt-1 text-sm text-muted">Cada empresa tem seus portais no próprio subdomínio, com o seu logo e a sua cor.</p>
         <div className="mt-5 grid gap-5 md:grid-cols-3">
           {PORTALS.map((p) => (
-            <div key={p.title} className="rounded-2xl border border-line bg-bg/60 p-5">
+            <div key={p.title} className="card">
               <h3 className="text-lg font-semibold">{p.icon} {p.title}</h3>
               <p className="mt-2 text-sm text-muted">{p.desc}</p>
             </div>

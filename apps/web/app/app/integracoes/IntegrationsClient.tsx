@@ -65,13 +65,13 @@ function AiProvidersCard() {
   }
 
   return (
-    <section className="rounded-xl border border-line bg-bg/60 p-5">
+    <section className="card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold">Assistente de IA (atendimento)</h3>
           <p className="text-xs text-muted">Cadastre 1 ou mais conexões. Quando uma estoura a cota do dia, o sistema pula pra próxima continuando o atendimento. Ordem = prioridade (menor primeiro).</p>
         </div>
-        <button onClick={() => setAdding(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">+ Conexão</button>
+        <button onClick={() => setAdding(true)} className="btn-grad px-4 py-2">+ Conexão</button>
       </div>
 
       <div className="mt-4 space-y-2">
@@ -184,7 +184,7 @@ function AiProviderForm({ editing, onClose, onSaved, count }: { editing: AiProv 
         <select
           value={provider}
           onChange={(e) => { setProvider(e.target.value); setModel(""); setModels([]); setManual(false); }}
-          className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"
+          className="input-base mt-3"
         >
           {AI_PROVIDERS.map((p) => <option key={p.id} value={p.id}>{p.name} — {p.free}</option>)}
         </select>
@@ -197,25 +197,25 @@ function AiProviderForm({ editing, onClose, onSaved, count }: { editing: AiProv 
         </div>
 
         {meta.needs.includes("accountId") && (
-          <input value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder="Account ID (Cloudflare)" className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+          <input value={accountId} onChange={(e) => setAccountId(e.target.value)} placeholder="Account ID (Cloudflare)" className="input-base mt-3" />
         )}
         {meta.needs.includes("baseUrl") && (
-          <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder={provider === "local" ? "URL do servidor (ex.: http://ollama:11434/v1)" : "Base URL (ex.: https://openrouter.ai/api/v1)"} className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+          <input value={baseUrl} onChange={(e) => setBaseUrl(e.target.value)} placeholder={provider === "local" ? "URL do servidor (ex.: http://ollama:11434/v1)" : "Base URL (ex.: https://openrouter.ai/api/v1)"} className="input-base mt-3" />
         )}
         <input
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           placeholder={meta.keyless ? "API key (opcional — servidor local)" : editing ? "Nova API key (deixe em branco pra manter a atual)" : "API key"}
-          className="mt-2 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"
+          className="input-base mt-2"
         />
 
         {/* Modelo: dropdown vindo do provedor, com fallback pra digitação manual */}
         {!manual && models.length > 0 ? (
-          <select value={model} onChange={(e) => setModel(e.target.value)} className="mt-2 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+          <select value={model} onChange={(e) => setModel(e.target.value)} className="input-base mt-2">
             {models.map((m) => <option key={m} value={m}>{m}</option>)}
           </select>
         ) : (
-          <input value={model} onChange={(e) => setModel(e.target.value)} placeholder={`Modelo${meta.modelHint ? ` (ex.: ${meta.modelHint})` : ""}`} className="mt-2 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+          <input value={model} onChange={(e) => setModel(e.target.value)} placeholder={`Modelo${meta.modelHint ? ` (ex.: ${meta.modelHint})` : ""}`} className="input-base mt-2" />
         )}
         <div className="mt-1 flex items-center justify-between text-[11px]">
           <button type="button" onClick={() => { if (!canFetch) { dialog.toast("Cole a chave (e Account ID/Base URL, se houver) antes.", "error"); return; } void fetchModels(); }} disabled={loadingModels} className="text-brand hover:underline disabled:opacity-50">
@@ -234,7 +234,7 @@ function AiProviderForm({ editing, onClose, onSaved, count }: { editing: AiProv 
         </label>
 
         <div className="mt-4 flex gap-2">
-          <button disabled={busy} onClick={save} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{editing ? "Salvar alterações" : "Salvar conexão"}</button>
+          <button disabled={busy} onClick={save} className="btn-grad flex-1 py-2">{editing ? "Salvar alterações" : "Salvar conexão"}</button>
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
         </div>
       </div>
@@ -306,13 +306,13 @@ function ExtraInstancesCard() {
   }
 
   return (
-    <section className="rounded-xl border border-line bg-bg/60 p-5">
+    <section className="card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold">Números extras (call center)</h3>
           <p className="text-xs text-muted">Recebem e respondem só pelo atendimento. As notificações continuam saindo pelo número principal. Plano: {extras.length}/{maxExtra}.</p>
         </div>
-        <button onClick={createNew} disabled={busy || !canCreate} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50" title={canCreate ? "" : "Limite do plano atingido"}>
+        <button onClick={createNew} disabled={busy || !canCreate} className="btn-grad px-4 py-2" title={canCreate ? "" : "Limite do plano atingido"}>
           + Novo número
         </button>
       </div>
@@ -353,7 +353,7 @@ function ExtraInstancesCard() {
 
 function IntegrationCard({ name, desc, ok }: { name: string; desc: string; ok: boolean }) {
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-5">
+    <div className="card p-5">
       <div className="flex items-center justify-between">
         <h3 className="text-base font-semibold">{name}</h3>
         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${ok ? "bg-green-500/20 text-green-300" : "bg-line text-muted"}`}>
@@ -430,7 +430,7 @@ function EvolutionCard({ instanceName, initialStatus }: { instanceName: string |
   }
 
   return (
-    <section className="rounded-xl border border-line bg-bg/60 p-5">
+    <section className="card p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="text-base font-semibold">WhatsApp (Evolution)</h3>
@@ -443,7 +443,7 @@ function EvolutionCard({ instanceName, initialStatus }: { instanceName: string |
 
       <div className="mt-4 flex flex-wrap gap-2">
         {status !== "connected" && (
-          <button onClick={openQr} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
+          <button onClick={openQr} disabled={busy} className="btn-grad px-4 py-2">
             {showQr ? "Atualizar QR" : "Conectar"}
           </button>
         )}

@@ -54,7 +54,7 @@ export function MfaSetupCard() {
   }
 
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-6 backdrop-blur-sm">
+    <div className="card">
       <h2 className="text-lg font-semibold">Autenticação em dois fatores (TOTP)</h2>
 
       {step === "idle" && (
@@ -67,7 +67,7 @@ export function MfaSetupCard() {
             type="button"
             onClick={startSetup}
             disabled={loading}
-            className="mt-4 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+            className="btn-grad mt-4"
           >
             {loading ? "Gerando..." : "Ativar 2FA"}
           </button>
@@ -109,7 +109,7 @@ export function MfaSetupCard() {
             type="button"
             onClick={enable}
             disabled={loading || code.length !== 6}
-            className="w-full rounded-lg bg-brand py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+            className="btn-grad w-full"
           >
             {loading ? "Validando..." : "Confirmar e ativar"}
           </button>

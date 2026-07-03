@@ -22,24 +22,24 @@ export default function PortalAjuda() {
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
       <header className="mb-6">
-        <Link href="/c" className="text-sm text-brand hover:underline">← Voltar</Link>
-        <h1 className="mt-1 text-2xl font-semibold">Central de ajuda</h1>
+        <Link href="/c" className="text-sm font-medium text-brand hover:underline">← Voltar</Link>
+        <h1 className="mt-2 text-2xl font-extrabold tracking-tight">Central de ajuda</h1>
         <p className="text-sm text-muted">Perguntas frequentes.</p>
       </header>
 
       {list === null ? (
         <p className="text-sm text-muted">Carregando…</p>
       ) : list.length === 0 ? (
-        <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-sm text-muted">Sem perguntas publicadas no momento.</p>
+        <p className="rounded-2xl border border-line bg-surface p-8 text-center text-sm text-muted">Sem perguntas publicadas no momento.</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {list.map((k) => (
-            <div key={k.id} className="rounded-xl border border-line bg-bg/60">
+            <div key={k.id} className="card p-0">
               <button onClick={() => setOpen(open === k.id ? null : k.id)} className="flex w-full items-center justify-between gap-2 p-4 text-left">
-                <span className="font-medium">{k.question}</span>
-                <span className="text-muted">{open === k.id ? "−" : "+"}</span>
+                <span className="font-semibold text-fg">{k.question}</span>
+                <span className="text-lg text-brand">{open === k.id ? "−" : "+"}</span>
               </button>
-              {open === k.id && <p className="whitespace-pre-wrap border-t border-line/60 p-4 text-sm text-muted">{k.answer}</p>}
+              {open === k.id && <p className="whitespace-pre-wrap border-t border-line p-4 text-sm text-muted">{k.answer}</p>}
             </div>
           ))}
         </div>

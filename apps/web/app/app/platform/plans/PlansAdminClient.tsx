@@ -104,19 +104,13 @@ export function PlansAdminClient({ initialPlans }: { initialPlans: Plan[] }) {
   return (
     <div className="space-y-6">
       {!formOpen && (
-        <button
-          onClick={() => setCreating(true)}
-          className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white"
-        >
+        <button onClick={() => setCreating(true)} className="btn-grad px-5 py-2">
           + Novo plano
         </button>
       )}
 
       {formOpen && (
-        <form
-          onSubmit={onSubmit}
-          className="space-y-5 rounded-xl border border-line bg-bg/60 p-6"
-        >
+        <form onSubmit={onSubmit} className="card space-y-5 p-6">
           <h2 className="text-lg font-semibold">
             {editing ? `Editar — ${editing.name}` : "Novo plano"}
           </h2>
@@ -184,15 +178,15 @@ export function PlansAdminClient({ initialPlans }: { initialPlans: Plan[] }) {
             />
             <label className="block">
               <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Máx lojas (vazio = ilimitado)</span>
-              <input type="number" value={limits.maxStores} onChange={(e) => setLimits({ ...limits, maxStores: e.target.value })} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand" />
+              <input type="number" value={limits.maxStores} onChange={(e) => setLimits({ ...limits, maxStores: e.target.value })} className="input-base" />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Máx usuários (vazio = ilimitado)</span>
-              <input type="number" value={limits.maxUsers} onChange={(e) => setLimits({ ...limits, maxUsers: e.target.value })} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand" />
+              <input type="number" value={limits.maxUsers} onChange={(e) => setLimits({ ...limits, maxUsers: e.target.value })} className="input-base" />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Máx mensagens/mês</span>
-              <input type="number" value={limits.maxMessagesMonth} onChange={(e) => setLimits({ ...limits, maxMessagesMonth: e.target.value })} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand" />
+              <input type="number" value={limits.maxMessagesMonth} onChange={(e) => setLimits({ ...limits, maxMessagesMonth: e.target.value })} className="input-base" />
             </label>
           </div>
 
@@ -204,7 +198,7 @@ export function PlansAdminClient({ initialPlans }: { initialPlans: Plan[] }) {
             </span>
             <div className="grid gap-4 sm:grid-cols-2">
               {MODULE_GROUPS.map((g) => (
-                <div key={g.group} className="rounded-lg border border-line p-3">
+                <div key={g.group} className="rounded-xl border border-line bg-surface-2 p-3">
                   <p className="mb-2 text-[10px] uppercase tracking-wider text-muted">{g.group}</p>
                   <div className="space-y-1.5">
                     {g.modules.map((m) => (
@@ -229,7 +223,7 @@ export function PlansAdminClient({ initialPlans }: { initialPlans: Plan[] }) {
               onChange={(e) => setHighlights(e.target.value)}
               rows={4}
               placeholder={"Tudo do Starter\nNLU avançado\nSuporte prioritário"}
-              className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+              className="input-base"
             />
           </label>
 
@@ -271,15 +265,11 @@ export function PlansAdminClient({ initialPlans }: { initialPlans: Plan[] }) {
                 setEditing(null);
                 setError(null);
               }}
-              className="rounded-lg border border-line px-4 py-2 text-sm"
+              className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand"
             >
               Cancelar
             </button>
-            <button
-              type="submit"
-              disabled={isPending}
-              className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
-            >
+            <button type="submit" disabled={isPending} className="btn-grad px-5 py-2">
               Salvar
             </button>
           </div>
@@ -287,14 +277,14 @@ export function PlansAdminClient({ initialPlans }: { initialPlans: Plan[] }) {
       )}
 
       {initialPlans.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">
+        <p className="card text-sm text-muted">
           Nenhum plano cadastrado.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+        <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
+              <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
                 <th className="px-4 py-3">Nome</th>
                 <th className="px-4 py-3">Slug</th>
                 <th className="px-4 py-3">Nicho</th>
@@ -307,7 +297,7 @@ export function PlansAdminClient({ initialPlans }: { initialPlans: Plan[] }) {
             </thead>
             <tbody>
               {initialPlans.map((p) => (
-                <tr key={p.id} className="border-t border-line/50">
+                <tr key={p.id} className="border-t border-line transition hover:bg-surface-2">
                   <td className="px-4 py-3 font-medium">
                     {p.name}
                     {p.highlight && (
@@ -391,7 +381,7 @@ function Field({
         placeholder={placeholder}
         defaultValue={defaultValue}
         autoComplete="off"
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       />
     </label>
   );
@@ -413,11 +403,7 @@ function SelectField({
       <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">
         {label}
       </span>
-      <select
-        name={name}
-        defaultValue={defaultValue ?? ""}
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
-      >
+      <select name={name} defaultValue={defaultValue ?? ""} className="input-base">
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

@@ -148,12 +148,12 @@ export function CreditClient({
       {tab === "accounts" && (
         <>
           {!creating && (
-            <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white">
+            <button onClick={() => setCreating(true)} className="btn-grad">
               + Nova conta de crediário
             </button>
           )}
           {creating && (
-            <form onSubmit={onCreate} className="space-y-4 rounded-xl border border-line bg-bg/60 p-6">
+            <form onSubmit={onCreate} className="card space-y-4">
               <h2 className="text-lg font-semibold">Nova conta</h2>
               <p className="text-xs text-muted">Digite o CPF/CNPJ — se o cliente já existir na base, os dados são puxados automaticamente.</p>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -164,7 +164,7 @@ export function CreditClient({
                     onChange={(e) => setDocVal(e.target.value)}
                     onBlur={lookupCustomer}
                     required
-                    className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm outline-none focus:border-brand"
+                    className="input-base"
                   />
                 </label>
                 <label className="block">
@@ -173,7 +173,7 @@ export function CreditClient({
                     value={holderVal}
                     onChange={(e) => setHolderVal(e.target.value)}
                     required
-                    className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm outline-none focus:border-brand"
+                    className="input-base"
                   />
                 </label>
                 <Field name="limit" label="Limite (R$)" required />
@@ -191,23 +191,23 @@ export function CreditClient({
               </details>
               {error && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
               <div className="flex justify-end gap-3">
-                <button type="button" onClick={() => { setCreating(false); setError(null); }} className="rounded-lg border border-line px-4 py-2 text-sm">Cancelar</button>
-                <button type="submit" disabled={isPending} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">Criar</button>
+                <button type="button" onClick={() => { setCreating(false); setError(null); }} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">Cancelar</button>
+                <button type="submit" disabled={isPending} className="btn-grad px-5 disabled:opacity-50">Criar</button>
               </div>
             </form>
           )}
 
-          <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+          <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
-                  <th className="px-4 py-3">Titular</th>
-                  <th className="px-4 py-3">Documento</th>
-                  <th className="px-4 py-3">Limite</th>
-                  <th className="px-4 py-3">Usado</th>
-                  <th className="px-4 py-3">Disponível</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3"></th>
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
+                  <th className="px-4 py-3 font-medium">Titular</th>
+                  <th className="px-4 py-3 font-medium">Documento</th>
+                  <th className="px-4 py-3 font-medium">Limite</th>
+                  <th className="px-4 py-3 font-medium">Usado</th>
+                  <th className="px-4 py-3 font-medium">Disponível</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium"></th>
                 </tr>
               </thead>
               <tbody>
@@ -216,7 +216,7 @@ export function CreditClient({
                 ) : initialAccounts.map((a) => {
                   const available = Number(a.limitCents) - Number(a.usedCents);
                   return (
-                    <tr key={a.id} className="border-t border-line/50">
+                    <tr key={a.id} className="border-t border-line transition hover:bg-surface-2">
                       <td className="px-4 py-3 font-medium">{a.holderName}</td>
                       <td className="px-4 py-3 font-mono text-xs">{a.document}</td>
                       <td className="px-4 py-3">{brl(a.limitCents)}</td>
@@ -238,9 +238,9 @@ export function CreditClient({
       {tab === "requests" && (
         <div className="space-y-3">
           {initialRequests.length === 0 ? (
-            <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum pedido pendente.</p>
+            <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhum pedido pendente.</p>
           ) : initialRequests.map((r) => (
-            <div key={r.id} className="rounded-xl border border-line bg-bg/60 p-5">
+            <div key={r.id} className="card">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="font-medium">{r.creditAccount.holderName}</p>
@@ -263,12 +263,12 @@ export function CreditClient({
       {tab === "applications" && (
         <div className="space-y-3">
           {initialApplications.length === 0 ? (
-            <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">
+            <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">
               Nenhuma aplicação de crédito pendente. Quando um cliente pedir
               limite pelo painel (com documentos), aparece aqui.
             </p>
           ) : initialApplications.map((a) => (
-            <div key={a.id} className="rounded-xl border border-line bg-bg/60 p-5">
+            <div key={a.id} className="card">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="font-medium">{a.creditAccount.holderName}</p>
@@ -309,14 +309,14 @@ export function CreditClient({
 
       {docsModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setDocsModal(null)}>
-          <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-semibold">Documentos enviados</h3>
             <div className="mt-3 space-y-2">
               {docsModal.docs.length === 0 ? (
                 <p className="text-sm text-muted">Nenhum documento.</p>
               ) : docsModal.docs.map((d) => (
                 <button key={d.id} onClick={() => openDocBlob(d.viewUrl)}
-                  className="flex w-full items-center justify-between rounded-lg border border-line bg-bg/40 px-3 py-2 text-left text-sm transition hover:border-brand">
+                  className="flex w-full items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-2 text-left text-sm transition hover:border-brand">
                   <span>{DOC_LABEL[d.docType] ?? d.docType}</span>
                   <span className="text-xs text-brand">abrir ↗</span>
                 </button>
@@ -355,7 +355,7 @@ function Field({ name, label, required }: { name: string; label: string; require
       <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">
         {label}{required && <span className="text-brand"> *</span>}
       </span>
-      <input name={name} required={required} autoComplete="off" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+      <input name={name} required={required} autoComplete="off" className="input-base" />
     </label>
   );
 }

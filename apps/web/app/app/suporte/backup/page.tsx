@@ -37,7 +37,7 @@ export default async function BackupPage() {
         </p>
       </header>
 
-      <section className="mb-8 rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Jobs agendados</h2>
         {jobs.length === 0 ? (
           <p className="text-sm text-muted">Nenhum job configurado.</p>
@@ -77,7 +77,7 @@ export default async function BackupPage() {
         )}
       </section>
 
-      <section className="mb-8 rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Retenção & criptografia</h2>
         <div className="space-y-2 text-sm">
           <Row
@@ -91,7 +91,7 @@ export default async function BackupPage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card">
         <h2 className="mb-4 text-lg font-semibold">Restauração</h2>
         <p className="text-sm text-muted">
           Para restaurar um dump, abra um chamado em{" "}

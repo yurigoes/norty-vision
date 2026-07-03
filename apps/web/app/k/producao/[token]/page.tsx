@@ -29,13 +29,13 @@ export default function KioskProducao() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  if (err) return <div className="flex min-h-screen items-center justify-center bg-[#0b1020] text-2xl text-red-300">{err}</div>;
-  if (!data) return <div className="flex min-h-screen items-center justify-center bg-[#0b1020] text-2xl text-slate-400">Carregando painel…</div>;
+  if (err) return <div className="flex min-h-screen items-center justify-center bg-[#060a15] text-2xl text-red-300">{err}</div>;
+  if (!data) return <div className="flex min-h-screen items-center justify-center bg-[#060a15] text-2xl text-slate-400">Carregando painel…</div>;
 
   const t = data.totais ?? {};
 
   const Card = ({ o }: { o: any }) => (
-    <div className={`rounded-lg border px-3 py-2 ${o.atrasado ? "border-red-500/50 bg-red-500/10" : o.prazoHoje ? "border-amber-400/50 bg-amber-400/10" : "border-white/10 bg-black/20"}`}>
+    <div className={`rounded-xl border px-3 py-2.5 shadow-[0_6px_18px_-10px_rgba(0,0,0,0.6)] transition ${o.atrasado ? "border-red-500/50 bg-red-500/10" : o.prazoHoje ? "border-amber-400/50 bg-amber-400/10" : "border-white/10 bg-black/25 hover:border-white/20"}`}>
       <div className="flex items-center justify-between gap-2">
         <p className="truncate text-base font-bold text-white">{o.nome}</p>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold ${o.atrasado ? "bg-red-500/30 text-red-200" : o.prazoHoje ? "bg-amber-400/30 text-amber-100" : "bg-white/10 text-white/70"}`}>
@@ -49,20 +49,26 @@ export default function KioskProducao() {
   );
 
   const Kpi = ({ label, value, cls }: { label: string; value: any; cls?: string }) => (
-    <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-center">
-      <p className={`text-4xl font-black ${cls ?? "text-white"}`}>{value}</p>
-      <p className="mt-1 text-xs uppercase tracking-wider text-white/50">{label}</p>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-4 text-center shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)] ring-1 ring-inset ring-white/5">
+      <p className={`text-4xl font-black tabular-nums ${cls ?? "text-white"}`}>{value}</p>
+      <p className="mt-1 text-xs font-medium uppercase tracking-wider text-white/50">{label}</p>
     </div>
   );
 
   const etapas: any[] = data.etapas ?? [];
 
   return (
-    <div className="flex h-screen flex-col gap-4 overflow-hidden bg-[#0b1020] p-5 text-white">
-      <header className="flex items-center justify-between">
+    <div
+      className="flex h-screen flex-col gap-4 overflow-hidden p-5 text-white"
+      style={{
+        background:
+          "radial-gradient(900px 520px at 82% -6%, rgba(37,99,235,.20), transparent 60%), radial-gradient(760px 520px at 6% 106%, rgba(6,182,212,.14), transparent 58%), linear-gradient(180deg, #060a15 0%, #080d1a 100%)",
+      }}
+    >
+      <header className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 ring-1 ring-inset ring-white/5">
         <div className="flex items-center gap-3">
           {data.org?.logoUrl && <img src={data.org.logoUrl} alt="" className="h-12 w-auto object-contain" />}
-          <div><h1 className="text-2xl font-bold">{data.org?.name ?? "Produção"}</h1><p className="text-sm text-white/50">Painel de produção</p></div>
+          <div><h1 className="text-2xl font-extrabold tracking-tight">{data.org?.name ?? "Produção"}</h1><p className="text-sm text-white/50">Painel de produção</p></div>
         </div>
         <div className="flex items-center gap-4">
           <LiveBall tick={tick} />
@@ -80,7 +86,7 @@ export default function KioskProducao() {
 
       <div className="flex min-h-0 flex-1 gap-3 overflow-x-auto">
         {etapas.map((e) => (
-          <div key={e.key} className="flex min-h-0 w-72 shrink-0 flex-col rounded-2xl border border-white/10 bg-white/5 p-3">
+          <div key={e.key} className="flex min-h-0 w-72 shrink-0 flex-col rounded-2xl border border-white/10 bg-white/[0.06] p-3 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)] ring-1 ring-inset ring-white/5">
             <h2 className="mb-2 text-lg font-bold text-white">{e.label} <span className="text-white/40">({e.items.length})</span></h2>
             <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
               {e.items.length === 0 ? <p className="text-sm text-white/30">—</p> : e.items.map((o: any) => <Card key={o.id} o={o} />)}

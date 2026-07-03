@@ -72,22 +72,22 @@ export function ComissoesClient({ sellers: initialSellers }: { sellers: Seller[]
           {loading ? (
             <p className="text-sm text-muted">Carregando...</p>
           ) : rows.length === 0 ? (
-            <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Sem vendas no período.</p>
+            <p className="card p-6 text-sm text-muted">Sem vendas no período.</p>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+            <div className="card overflow-x-auto p-0">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
-                    <th className="px-4 py-3">Vendedor</th>
-                    <th className="px-4 py-3">Vendas</th>
-                    <th className="px-4 py-3">Faturamento</th>
-                    <th className="px-4 py-3">%</th>
-                    <th className="px-4 py-3">Comissão</th>
+                  <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
+                    <th className="px-4 py-3 font-medium">Vendedor</th>
+                    <th className="px-4 py-3 font-medium">Vendas</th>
+                    <th className="px-4 py-3 font-medium">Faturamento</th>
+                    <th className="px-4 py-3 font-medium">%</th>
+                    <th className="px-4 py-3 font-medium">Comissão</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.userId} className="border-t border-line/50">
+                    <tr key={r.userId} className="border-b border-line transition hover:bg-surface-2">
                       <td className="px-4 py-3 font-medium">{r.name}</td>
                       <td className="px-4 py-3">{r.salesCount}</td>
                       <td className="px-4 py-3">{brl(r.totalCents)}</td>
@@ -167,33 +167,33 @@ function CommissionPayments({ sellers }: { sellers: Seller[] }) {
 
   return (
     <div className="space-y-5">
-      <div className="rounded-xl border border-line bg-bg/60 p-4">
+      <div className="card p-5">
         <p className="mb-3 text-sm font-medium">Apurar e pagar comissão</p>
         <div className="flex flex-wrap items-end gap-2">
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase text-muted">Vendedor</span>
-            <select value={sellerId} onChange={(e) => { setSellerId(e.target.value); setCalc(null); }} className="rounded border border-line bg-bg/60 px-2 py-1 text-sm">
+            <select value={sellerId} onChange={(e) => { setSellerId(e.target.value); setCalc(null); }} className="input-base w-auto">
               {sellers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </label>
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase text-muted">De</span>
-            <input type="date" value={start} onChange={(e) => { setStart(e.target.value); setCalc(null); }} className="rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+            <input type="date" value={start} onChange={(e) => { setStart(e.target.value); setCalc(null); }} className="input-base w-auto" />
           </label>
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase text-muted">Até</span>
-            <input type="date" value={end} onChange={(e) => { setEnd(e.target.value); setCalc(null); }} className="rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+            <input type="date" value={end} onChange={(e) => { setEnd(e.target.value); setCalc(null); }} className="input-base w-auto" />
           </label>
-          <button onClick={preview} className="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand">Apurar</button>
+          <button onClick={preview} className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:border-brand hover:text-brand">Apurar</button>
         </div>
-        {err && <p className="mt-2 text-xs text-red-300">{err}</p>}
+        {err && <p className="mt-2 text-xs text-danger">{err}</p>}
         {calc && (
-          <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-line/50 pt-3 text-sm">
+          <div className="mt-3 flex flex-wrap items-center gap-4 border-t border-line pt-3 text-sm">
             <span className="text-muted">{calc.salesCount} venda(s)</span>
             <span>Base: <strong>{brl(calc.baseCents)}</strong></span>
             <span className="text-muted">{calc.commissionPct}%</span>
             <span>Comissão: <strong className="text-brand">{brl(calc.totalCents)}</strong></span>
-            <button onClick={createPayout} disabled={busy || calc.totalCents <= 0} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            <button onClick={createPayout} disabled={busy || calc.totalCents <= 0} className="btn-grad">
               {busy ? "..." : "Gerar pagamento"}
             </button>
           </div>
@@ -242,17 +242,17 @@ function PayoutsList({ payouts, onChanged }: { payouts: Payout[]; onChanged: () 
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   }
 
-  if (payouts.length === 0) return <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum pagamento de comissão.</p>;
+  if (payouts.length === 0) return <p className="card p-6 text-sm text-muted">Nenhum pagamento de comissão.</p>;
   return (
     <div className="space-y-2">
-      {err && <p className="text-xs text-red-300">{err}</p>}
+      {err && <p className="text-xs text-danger">{err}</p>}
       {payouts.map((p) => (
-        <div key={p.id} className="rounded-lg border border-line bg-bg/60 p-4">
+        <div key={p.id} className="card p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-medium">
                 {p.sellerName} · {brl(p.totalCents)}
-                <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${p.status === "paid" ? "bg-green-500/20 text-green-300" : "bg-orange-500/20 text-orange-300"}`}>
+                <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${p.status === "paid" ? "bg-success/15 text-success" : "bg-warn/15 text-warn"}`}>
                   {p.status === "paid" ? "pago" : "pendente"}
                 </span>
               </p>
@@ -261,31 +261,31 @@ function PayoutsList({ payouts, onChanged }: { payouts: Payout[]; onChanged: () 
               </p>
             </div>
             <div className="flex gap-2">
-              <a href={`/api/commissions/payouts/${p.id}/receipt`} target="_blank" rel="noreferrer" className="rounded border border-line px-3 py-1 text-xs transition hover:border-brand">Recibo</a>
+              <a href={`/api/commissions/payouts/${p.id}/receipt`} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-1 text-xs font-semibold transition hover:border-brand hover:text-brand">Recibo</a>
               {p.status !== "paid" && (
-                <button onClick={() => setPayId(payId === p.id ? null : p.id)} className="rounded bg-brand px-3 py-1 text-xs font-semibold text-white">
+                <button onClick={() => setPayId(payId === p.id ? null : p.id)} className="btn-grad px-3 py-1 text-xs">
                   {payId === p.id ? "Fechar" : "Registrar pagamento"}
                 </button>
               )}
             </div>
           </div>
           {payId === p.id && (
-            <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-line/50 pt-3">
+            <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-line pt-3">
               <label className="block">
                 <span className="mb-1 block text-[10px] uppercase text-muted">Forma</span>
-                <select value={method} onChange={(e) => setMethod(e.target.value)} className="rounded border border-line bg-bg/60 px-2 py-1 text-sm">
+                <select value={method} onChange={(e) => setMethod(e.target.value)} className="input-base w-auto">
                   <option value="pix">Pix</option><option value="transferencia">Transferência</option>
                   <option value="dinheiro">Dinheiro</option><option value="cartao">Cartão</option>
                 </select>
               </label>
-              <input value={pid} onChange={(e) => setPid(e.target.value)} placeholder="ID do pagamento" className="rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
-              <label className="cursor-pointer rounded border border-line px-3 py-1.5 text-xs transition hover:border-brand">
+              <input value={pid} onChange={(e) => setPid(e.target.value)} placeholder="ID do pagamento" className="input-base w-auto" />
+              <label className="cursor-pointer rounded-lg border border-line px-3 py-1.5 text-xs transition hover:border-brand hover:text-brand">
                 {uploading ? "Enviando..." : proof ? "✓ comprovante" : "+ comprovante"}
                 <input type="file" accept="image/png,image/jpeg,image/webp,application/pdf" className="hidden"
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadProof(f); e.currentTarget.value = ""; }} />
               </label>
               {proof && <a href={proof} target="_blank" rel="noreferrer" className="text-xs text-brand hover:underline">ver</a>}
-              <button onClick={() => pay(p.id)} disabled={busy || uploading} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              <button onClick={() => pay(p.id)} disabled={busy || uploading} className="btn-grad">
                 {busy ? "..." : "Confirmar pago"}
               </button>
             </div>
@@ -320,12 +320,12 @@ function CommissionConfig({ sellers }: { sellers: Seller[] }) {
     } catch (e: any) { setMsg(`Erro: ${e.message}`); } finally { setSavingId(null); }
   }
 
-  if (sellers.length === 0) return <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum vendedor.</p>;
+  if (sellers.length === 0) return <p className="card p-6 text-sm text-muted">Nenhum vendedor.</p>;
   return (
     <div className="space-y-2">
       {msg && <p className="text-xs text-muted">{msg}</p>}
       {sellers.map((s) => (
-        <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg/60 px-4 py-3">
+        <div key={s.id} className="card flex items-center justify-between gap-3 px-4 py-3">
           <span className="text-sm font-medium">{s.name}</span>
           <div className="flex items-center gap-2">
             <input
@@ -333,10 +333,10 @@ function CommissionConfig({ sellers }: { sellers: Seller[] }) {
               onChange={(e) => setVals((v) => ({ ...v, [s.id]: e.target.value }))}
               placeholder="0"
               inputMode="decimal"
-              className="w-20 rounded border border-line bg-bg/60 px-2 py-1 text-right text-sm"
+              className="input-base w-20 text-right"
             />
             <span className="text-xs text-muted">%</span>
-            <button onClick={() => save(s.id)} disabled={savingId === s.id} className="rounded border border-line px-3 py-1 text-xs transition hover:border-brand disabled:opacity-50">
+            <button onClick={() => save(s.id)} disabled={savingId === s.id} className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold transition hover:border-brand hover:text-brand disabled:opacity-50">
               {savingId === s.id ? "..." : "Salvar"}
             </button>
           </div>
@@ -351,9 +351,9 @@ function Tab({ active, onClick, children }: { active: boolean; onClick: () => vo
 }
 function Card({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className={`rounded-xl border p-4 ${highlight ? "border-brand/50 bg-brand/10" : "border-line bg-bg/60"}`}>
-      <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
-      <p className={`mt-1 text-xl font-semibold ${highlight ? "text-brand" : ""}`}>{value}</p>
+    <div className={`card p-5 ${highlight ? "border-brand/50 bg-brand/10" : ""}`}>
+      <p className="text-xs uppercase tracking-wider text-muted">{label}</p>
+      <p className={`mt-1 text-3xl font-semibold ${highlight ? "text-brand" : ""}`}>{value}</p>
     </div>
   );
 }

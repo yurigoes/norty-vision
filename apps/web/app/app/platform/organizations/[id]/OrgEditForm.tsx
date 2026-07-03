@@ -110,7 +110,7 @@ export function OrgEditForm({ org }: { org: Org }) {
   }
 
   return (
-    <section className="rounded-xl border border-line bg-bg/60 p-6">
+    <section className="card p-6">
       <h2 className="mb-4 text-lg font-semibold">Editar organização</h2>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nome" value={f.name} onChange={(v) => set("name", v)} />
@@ -159,7 +159,7 @@ export function OrgEditForm({ org }: { org: Org }) {
       {err && <p className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{err}</p>}
       {msg && <p className="mt-3 text-sm text-green-600 dark:text-green-300">{msg}</p>}
       <div className="mt-4">
-        <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        <button onClick={save} disabled={busy} className="btn-grad px-5 py-2">
           {busy ? "Salvando..." : "Salvar alterações"}
         </button>
       </div>
@@ -174,7 +174,7 @@ function Field({ label, value, onChange, mono }: { label: string; value: string;
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm outline-none focus:border-brand ${mono ? "font-mono text-xs" : ""}`}
+        className={`input-base ${mono ? "font-mono text-xs" : ""}`}
       />
     </label>
   );
@@ -184,7 +184,7 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   return (
     <label className="block">
       <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm outline-none focus:border-brand">
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="input-base">
         {options.map((o) => <option key={o} value={o}>{o}</option>)}
       </select>
     </label>

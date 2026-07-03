@@ -489,7 +489,7 @@ export function SalesClient({
           value={prodQ}
           onChange={(e) => setProdQ(e.target.value)}
           placeholder="Buscar por nome, SKU ou valor"
-          className="mb-3 w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+          className="input-base mb-3"
         />
         {filteredProductGroups.length === 0 ? (
           <p className="text-sm text-muted">{products.length === 0 ? "Nenhum produto ativo. Cadastre em Produtos." : "Nenhum produto encontrado."}</p>
@@ -501,18 +501,18 @@ export function SalesClient({
                 <button
                   key={p.id}
                   onClick={() => addProduct(p)}
-                  className="flex items-center gap-3 rounded-lg border border-line bg-bg/60 p-3 text-left transition hover:border-brand"
+                  className="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-md"
                 >
                   {p.imageUrl ? (
                     <img src={p.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-md object-cover" />
                   ) : (
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-line text-[10px] text-muted">sem foto</div>
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-surface-2 text-[10px] text-muted">sem foto</div>
                   )}
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{p.name}</p>
                     <p className="mt-0.5 text-xs text-muted">{brl(priceFor(p, priceMethod))}</p>
                     {p.trackStock && (
-                      <p className={`mt-0.5 text-[10px] font-semibold ${stockOf(p) <= 0 ? "text-red-300" : stockOf(p) <= (p.minStockQty ?? 0) ? "text-amber-300" : "text-muted"}`}>
+                      <p className={`mt-0.5 text-[10px] font-semibold ${stockOf(p) <= 0 ? "text-danger" : stockOf(p) <= (p.minStockQty ?? 0) ? "text-warn" : "text-muted"}`}>
                         {stockOf(p) <= 0 ? "sem estoque (loja)" : `estoque loja: ${stockOf(p)}`}
                       </p>
                     )}
@@ -525,7 +525,7 @@ export function SalesClient({
       </section>
 
       {/* Carrinho / checkout */}
-      <aside className="space-y-4 rounded-xl border border-line bg-bg/60 p-5 h-fit lg:sticky lg:top-8">
+      <aside className="card space-y-4 p-5 h-fit lg:sticky lg:top-8">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Venda</h2>
 
         {stores.length > 1 && (
@@ -784,7 +784,7 @@ export function SalesClient({
         <button
           onClick={submit}
           disabled={isPending || cart.length === 0 || !!creditExceeds || !!creditBlocked || (split && ((tenders.length === 0 && creditSplitCents === 0) || remaining !== 0))}
-          className="w-full rounded-lg bg-brand py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          className="btn-grad w-full py-3"
         >
           {isPending ? "Registrando..." : "Finalizar venda"}
         </button>
@@ -845,7 +845,7 @@ export function SalesClient({
           <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-semibold">Link InfinitePay gerado</h3>
             <p className="mt-1 text-sm text-muted">Enviado ao cliente por WhatsApp/e-mail. Baixa automática quando pagar.</p>
-            <a href={linkResult} target="_blank" rel="noreferrer" className="mt-4 block w-full rounded-lg bg-brand py-2 text-sm font-semibold text-white">Abrir link ↗</a>
+            <a href={linkResult} target="_blank" rel="noreferrer" className="btn-grad mt-4 block w-full py-2 text-center">Abrir link ↗</a>
             <button
               onClick={() => { navigator.clipboard?.writeText(linkResult).then(() => { setQrCopied(true); setTimeout(() => setQrCopied(false), 2000); }); }}
               className="mt-3 w-full break-all rounded-lg border border-line bg-bg/60 px-3 py-2 text-[11px] text-muted transition hover:border-brand"
@@ -887,7 +887,7 @@ export function SalesClient({
                 {qrCopied ? "✓ copiado!" : qrResult.qrCode}
               </button>
             )}
-            <button onClick={() => setQrResult(null)} className="mt-3 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-white transition hover:opacity-90">
+            <button onClick={() => setQrResult(null)} className="btn-grad mt-3 w-full py-2">
               Concluir
             </button>
           </div>
@@ -936,7 +936,7 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+      <select value={value} onChange={(e) => onChange(e.target.value)} className="input-base">
         {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </label>
@@ -1096,7 +1096,7 @@ function NfeModal({ sale, onClose, onResult }: { sale: any; onClose: () => void;
         </div>
         {err && <p className="mt-2 text-xs text-red-300">{err}</p>}
         <div className="mt-4 flex gap-2">
-          <button disabled={busy} onClick={emitir} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Emitindo…" : "Emitir NF-e"}</button>
+          <button disabled={busy} onClick={emitir} className="btn-grad flex-1 py-2">{busy ? "Emitindo…" : "Emitir NF-e"}</button>
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
         </div>
       </div>

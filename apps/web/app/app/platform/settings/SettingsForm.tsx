@@ -176,21 +176,21 @@ export function SettingsForm({ initial }: Props) {
       ))}
 
       {error && (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <p className="rounded-lg border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
           {error}
         </p>
       )}
       {success && (
-        <p className="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+        <p className="rounded-lg border border-success/40 bg-success/10 px-4 py-3 text-sm text-success">
           Configurações salvas com sucesso.
         </p>
       )}
 
-      <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t border-line bg-bg/80 px-4 py-4 backdrop-blur sm:rounded-b-xl">
+      <div className="sticky bottom-0 -mx-4 flex items-center justify-end gap-3 border-t border-line bg-surface/80 px-4 py-4 backdrop-blur sm:rounded-b-2xl">
         <button
           type="submit"
           disabled={loading}
-          className="rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-bg transition hover:opacity-90 disabled:opacity-50"
+          className="btn-grad px-6 py-2.5"
         >
           {loading ? "Salvando..." : "Salvar tudo"}
         </button>
@@ -262,7 +262,7 @@ function FieldInput({
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-fg outline-none transition focus:border-brand"
+          className="input-base"
         >
           {field.options?.map((o) => (
             <option key={o.value} value={o.value}>
@@ -276,14 +276,14 @@ function FieldInput({
             type="color"
             value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : "#000000"}
             onChange={(e) => onChange(e.target.value)}
-            className="h-10 w-12 cursor-pointer rounded-md border border-line bg-bg p-1"
+            className="h-10 w-12 cursor-pointer rounded-lg border border-line bg-surface p-1"
           />
           <input
             type="text"
             value={value}
             placeholder={field.placeholder}
             onChange={(e) => onChange(e.target.value)}
-            className="flex-1 rounded-lg border border-line bg-bg px-3 py-2 text-sm text-fg outline-none transition placeholder:text-muted focus:border-brand"
+            className="input-base flex-1"
           />
         </div>
       ) : (
@@ -293,7 +293,7 @@ function FieldInput({
             value={value}
             placeholder={field.placeholder}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-fg outline-none transition placeholder:text-muted focus:border-brand"
+            className="input-base"
           />
           {kind === "upload" && (
             <input
@@ -308,7 +308,7 @@ function FieldInput({
             />
           )}
           {kind === "upload" && value && (
-            <div className="mt-2 flex items-center gap-2 rounded-md border border-line bg-bg p-2">
+            <div className="mt-2 flex items-center gap-2 rounded-lg border border-line bg-surface-2 p-2">
               <img
                 src={value}
                 alt=""
@@ -324,7 +324,7 @@ function FieldInput({
         <p className="mt-1 text-[11px] text-muted">{field.hint}</p>
       )}
       {uploadError && (
-        <p className="mt-1 text-xs text-red-300">{uploadError}</p>
+        <p className="mt-1 text-xs text-danger">{uploadError}</p>
       )}
     </label>
   );

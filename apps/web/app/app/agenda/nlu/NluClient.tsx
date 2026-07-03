@@ -85,7 +85,7 @@ function UnresolvedList({
 }) {
   if (items.length === 0) {
     return (
-      <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">
+      <p className="card p-6 text-sm text-muted">
         Nenhuma resposta pendente de revisão. Quando o sistema receber uma
         mensagem ambígua, ela aparece aqui.
       </p>
@@ -125,7 +125,7 @@ function UnresolvedCard({
   }
 
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-5">
+    <div className="card">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs text-muted">
@@ -197,7 +197,7 @@ function KeywordsList({
     <div className="space-y-6">
       <button
         onClick={() => setCreating(true)}
-        className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white"
+        className="btn-grad"
       >
         + Nova palavra-chave
       </button>
@@ -261,7 +261,7 @@ function CreateKeywordForm({ onClose }: { onClose: () => void }) {
   return (
     <form
       onSubmit={submit}
-      className="space-y-3 rounded-xl border border-line bg-bg/60 p-5"
+      className="card space-y-3"
     >
       <div className="grid gap-3 sm:grid-cols-4">
         <label className="block">
@@ -270,7 +270,7 @@ function CreateKeywordForm({ onClose }: { onClose: () => void }) {
           </span>
           <select
             name="intent"
-            className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm"
+            className="input-base"
           >
             {INTENTS.filter((i) => i !== "unknown").map((i) => (
               <option key={i} value={i}>{i}</option>
@@ -285,7 +285,7 @@ function CreateKeywordForm({ onClose }: { onClose: () => void }) {
             name="keyword"
             required
             placeholder="confirma"
-            className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm"
+            className="input-base"
           />
         </label>
         <label className="block">
@@ -295,7 +295,7 @@ function CreateKeywordForm({ onClose }: { onClose: () => void }) {
           <select
             name="matchType"
             defaultValue="contains"
-            className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm"
+            className="input-base"
           >
             <option value="exact">exact</option>
             <option value="contains">contains</option>
@@ -314,12 +314,12 @@ function CreateKeywordForm({ onClose }: { onClose: () => void }) {
             max={1}
             step={0.05}
             defaultValue="0.9"
-            className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm"
+            className="input-base"
           />
         </label>
       </div>
       {error && (
-        <p className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}
@@ -327,13 +327,13 @@ function CreateKeywordForm({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={onClose}
-          className="rounded border border-line px-3 py-1.5 text-sm"
+          className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:bg-surface-2"
         >
           Cancelar
         </button>
         <button
           type="submit"
-          className="rounded bg-brand px-4 py-1.5 text-sm font-semibold text-white"
+          className="btn-grad"
         >
           Adicionar
         </button>
@@ -369,17 +369,17 @@ function ClassifyTester() {
         onChange={(e) => setText(e.target.value)}
         rows={3}
         placeholder="Ex: pode confirmar, vou sim"
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+        className="input-base"
       />
       <button
         onClick={test}
         disabled={loading || !text.trim()}
-        className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="btn-grad"
       >
         {loading ? "Classificando..." : "Classificar"}
       </button>
       {result && (
-        <div className="rounded-xl border border-line bg-bg/60 p-5">
+        <div className="card">
           <div className="flex items-center gap-3">
             <span
               className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${

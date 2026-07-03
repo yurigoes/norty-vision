@@ -26,7 +26,7 @@ export function SupportAccessOrgCard() {
   if (!loaded) return null;
 
   return (
-    <section className="mt-6 rounded-2xl border border-line bg-bg/60 p-6">
+    <section className="card mt-6 p-6">
       <h2 className="text-lg font-semibold">Acesso do suporte</h2>
       <p className="mt-1 text-sm text-muted">
         Quando você pede ajuda, a equipe de suporte recebe acesso temporário ao seu painel.

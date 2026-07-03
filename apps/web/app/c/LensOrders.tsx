@@ -64,9 +64,9 @@ function OrderCard({ o, onRefresh }: { o: LensOrder; onRefresh: () => void }) {
   }
 
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-4">
+    <div className="card">
       <div className="flex items-center justify-between">
-        <p className="font-medium">
+        <p className="font-semibold text-fg">
           {LABEL[o.status] ?? o.status}
           {o.late && <span className="ml-2 text-xs text-red-300">⚠ atrasado</span>}
         </p>
@@ -81,7 +81,7 @@ function OrderCard({ o, onRefresh }: { o: LensOrder; onRefresh: () => void }) {
 
       {/* detalhe do produto / óculos */}
       {(o.productDescription || o.productPhotoUrl) && (
-        <div className="mt-4 flex gap-3 rounded-lg border border-line bg-bg/40 p-3">
+        <div className="mt-4 flex gap-3 rounded-xl border border-line bg-surface-2 p-3">
           {o.productPhotoUrl && (
             <img src={o.productPhotoUrl} alt="produto" className="h-20 w-20 rounded-lg object-cover" />
           )}
@@ -111,7 +111,7 @@ function OrderCard({ o, onRefresh }: { o: LensOrder; onRefresh: () => void }) {
                 href={`/api/portal/lens-orders/${o.id}/receipt`}
                 target="_blank"
                 rel="noopener"
-                className="rounded-lg border border-line px-3 py-1.5 text-xs transition hover:border-brand"
+                className="rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/50 hover:text-brand"
               >
                 📄 Baixar comprovante
               </a>
@@ -120,7 +120,7 @@ function OrderCard({ o, onRefresh }: { o: LensOrder; onRefresh: () => void }) {
                   href={`/p/${o.surveyToken}`}
                   target="_blank"
                   rel="noopener"
-                  className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white"
+                  className="btn-grad px-3 py-1.5 text-xs"
                 >
                   ⭐ Avaliar
                 </a>
@@ -128,7 +128,7 @@ function OrderCard({ o, onRefresh }: { o: LensOrder; onRefresh: () => void }) {
               {o.surveyAnswered && <span className="text-xs text-muted">✓ avaliado</span>}
             </div>
           ) : !confirming ? (
-            <button onClick={() => setConfirming(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
+            <button onClick={() => setConfirming(true)} className="btn-grad px-4 py-2">
               Confirmar recebimento
             </button>
           ) : (
@@ -137,10 +137,10 @@ function OrderCard({ o, onRefresh }: { o: LensOrder; onRefresh: () => void }) {
                 <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-0.5 h-4 w-4" />
                 <span>Confirmo que recebi meu produto. Este aceite eletrônico tem validade legal (Lei 14.063/2020).</span>
               </label>
-              {err && <p className="text-xs text-red-500">{err}</p>}
+              {err && <p className="text-xs font-medium text-danger">{err}</p>}
               <div className="flex gap-2">
-                <button onClick={() => { setConfirming(false); setErr(null); }} className="rounded-lg border border-line px-3 py-1.5 text-xs">Cancelar</button>
-                <button onClick={confirm} disabled={busy} className="rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+                <button onClick={() => { setConfirming(false); setErr(null); }} className="rounded-xl border border-line px-3 py-1.5 text-xs text-muted transition hover:border-brand/50 hover:text-fg">Cancelar</button>
+                <button onClick={confirm} disabled={busy} className="btn-grad px-4 py-1.5 text-xs">
                   {busy ? "Confirmando..." : "Confirmar recebimento"}
                 </button>
               </div>

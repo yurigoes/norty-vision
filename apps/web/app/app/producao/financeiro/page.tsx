@@ -36,11 +36,11 @@ export default function ProducaoFinanceiro() {
         </div>
         <div className="flex flex-wrap items-end gap-2 text-sm">
           <label className="block"><span className="block text-[10px] uppercase text-muted">De</span>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-lg border border-line bg-bg/60 px-2 py-1.5" /></label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input-base" /></label>
           <label className="block"><span className="block text-[10px] uppercase text-muted">Até</span>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-lg border border-line bg-bg/60 px-2 py-1.5" /></label>
-          <a href={`/api/production/financeiro/export?format=pdf&start=${from}&end=${to}`} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-2 hover:border-brand">PDF</a>
-          <a href={`/api/production/financeiro/export?format=csv&start=${from}&end=${to}`} className="rounded-lg border border-line px-3 py-2 hover:border-brand">CSV</a>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input-base" /></label>
+          <a href={`/api/production/financeiro/export?format=pdf&start=${from}&end=${to}`} target="_blank" rel="noreferrer" className="rounded-xl border border-line px-3 py-2 transition hover:border-brand/60 hover:text-brand">PDF</a>
+          <a href={`/api/production/financeiro/export?format=csv&start=${from}&end=${to}`} className="rounded-xl border border-line px-3 py-2 transition hover:border-brand/60 hover:text-brand">CSV</a>
         </div>
       </header>
 
@@ -51,7 +51,7 @@ export default function ProducaoFinanceiro() {
         <Card label="Cancelados" value={String(p?.cancelados ?? 0)} tone="muted" />
       </div>
 
-      <section className="mt-6 rounded-xl border border-line bg-bg/60 p-5">
+      <section className="card mt-6">
         <h2 className="mb-3 text-sm font-semibold">Pedidos por etapa (valor)</h2>
         {(p?.porStatus.length ?? 0) === 0 ? <p className="text-xs text-muted">Sem pedidos no período.</p> : p!.porStatus.map((s) => (
           <div key={s.status} className="mb-2">
@@ -61,7 +61,7 @@ export default function ProducaoFinanceiro() {
         ))}
       </section>
 
-      <section className="mt-6 rounded-xl border border-line bg-bg/60 p-5">
+      <section className="card mt-6">
         <h2 className="mb-3 text-sm font-semibold">Orçamentos no período</h2>
         <div className="grid gap-4 sm:grid-cols-4 text-sm">
           <div><p className="text-[10px] uppercase text-muted">Total</p><p className="text-lg font-semibold">{o?.total ?? 0}</p></div>
@@ -78,7 +78,7 @@ export default function ProducaoFinanceiro() {
 function Card({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "green" | "amber" | "muted" }) {
   const cls = tone === "green" ? "text-green-300" : tone === "amber" ? "text-amber-200" : tone === "muted" ? "text-muted" : "text-fg";
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-4">
+    <div className="card p-4">
       <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
       <p className={`mt-1 text-xl font-semibold ${cls}`}>{value}</p>
       {hint && <p className="mt-0.5 text-[11px] text-muted">{hint}</p>}

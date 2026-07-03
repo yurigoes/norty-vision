@@ -33,9 +33,9 @@ export default function TrocarSenhaPrimeiroAcesso() {
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border border-line bg-bg/60 p-6">
+      <form onSubmit={submit} className="glass w-full max-w-sm space-y-4 rounded-2xl p-8">
         <div>
-          <h1 className="text-xl font-semibold">Defina uma nova senha</h1>
+          <h1 className="text-xl font-extrabold tracking-tight">Defina uma nova senha</h1>
           <p className="mt-1 text-sm text-muted">
             No primeiro acesso é obrigatório trocar a senha temporária por uma pessoal.
           </p>
@@ -43,8 +43,8 @@ export default function TrocarSenhaPrimeiroAcesso() {
         <Field label="Senha atual" value={current} onChange={setCurrent} />
         <Field label="Nova senha" value={next} onChange={setNext} />
         <Field label="Confirmar nova senha" value={confirm} onChange={setConfirm} />
-        {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{err}</p>}
-        <button type="submit" disabled={busy} className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+        {err && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
+        <button type="submit" disabled={busy} className="btn-grad w-full py-2.5 text-sm">
           {busy ? "Salvando..." : "Salvar e continuar"}
         </button>
       </form>
@@ -62,7 +62,7 @@ function Field({ label, value, onChange }: { label: string; value: string; onCha
         onChange={(e) => onChange(e.target.value)}
         required
         autoComplete="new-password"
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm outline-none focus:border-brand"
+        className="input-base"
       />
     </label>
   );

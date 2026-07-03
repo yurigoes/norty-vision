@@ -52,8 +52,9 @@ export default async function SignPage({
   if (c.status === "signed") {
     return (
       <Centered>
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-success/15 text-3xl text-success">✓</div>
         <h1 className="text-2xl font-semibold">
-          ✓ Contrato já foi assinado
+          Contrato já foi assinado
         </h1>
         <p className="mt-2 text-sm text-muted">
           {c.signedAt && (
@@ -80,7 +81,7 @@ export default async function SignPage({
         <p className="text-xs font-semibold uppercase tracking-wider text-brand">
           Assinatura digital
         </p>
-        <h1 className="mt-2 text-3xl font-semibold">{c.template.title}</h1>
+        <h1 className="text-gradient-brand mt-2 text-3xl font-semibold">{c.template.title}</h1>
         {c.template.description && (
           <p className="mt-2 text-muted">{c.template.description}</p>
         )}
@@ -93,7 +94,9 @@ export default async function SignPage({
 
 function Centered({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mx-auto max-w-md px-4 py-20 text-center">{children}</div>
+    <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-20">
+      <div className="glass rounded-2xl p-8 text-center">{children}</div>
+    </div>
   );
 }
 

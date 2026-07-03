@@ -394,7 +394,7 @@ export function AtendimentoClient() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-180px)] gap-3 overflow-hidden rounded-2xl border border-line bg-bg/40">
+    <div className="flex h-[calc(100vh-180px)] gap-3 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
       {/* lista de conversas */}
       <div className="flex w-72 shrink-0 flex-col border-r border-line">
         {/* presença do operador */}
@@ -458,7 +458,7 @@ export function AtendimentoClient() {
             value={searchQ}
             onChange={(e) => setSearchQ(e.target.value)}
             placeholder="Buscar por nome, telefone ou assunto…"
-            className="w-full rounded-md border border-line bg-bg/40 px-2 py-1.5 text-xs outline-none focus:border-brand"
+            className="w-full rounded-lg border border-line bg-surface-2 px-2 py-1.5 text-xs outline-none transition focus:border-brand"
           />
           <div className="flex items-center gap-1 text-[11px]">
             <span className="text-muted">📅</span>
@@ -466,7 +466,7 @@ export function AtendimentoClient() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="flex-1 rounded-md border border-line bg-bg/40 px-1.5 py-1 text-[11px] outline-none focus:border-brand"
+              className="flex-1 rounded-lg border border-line bg-surface-2 px-1.5 py-1 text-[11px] outline-none transition focus:border-brand"
               title="Conversas a partir desta data"
             />
             <span className="text-muted">→</span>
@@ -474,7 +474,7 @@ export function AtendimentoClient() {
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="flex-1 rounded-md border border-line bg-bg/40 px-1.5 py-1 text-[11px] outline-none focus:border-brand"
+              className="flex-1 rounded-lg border border-line bg-surface-2 px-1.5 py-1 text-[11px] outline-none transition focus:border-brand"
               title="Conversas até esta data"
             />
             {(searchQ || dateFrom || dateTo) && (
@@ -671,40 +671,40 @@ export function AtendimentoClient() {
             )}
             {resolving && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setResolving(false)}>
-                <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
                   <h3 className="text-base font-semibold">Finalizar atendimento</h3>
                   <p className="mt-1 text-xs text-muted">Tabule o motivo (vai pros relatórios) e gere o protocolo.</p>
                   <p className="mt-3 text-[10px] uppercase tracking-wider text-muted">Tabulação</p>
-                  <select value={tabSel} onChange={(e) => setTabSel(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm">
+                  <select value={tabSel} onChange={(e) => setTabSel(e.target.value)} className="input-base mt-1">
                     <option value="">Selecione…</option>
                     {tabulations.map((t) => <option key={t.id} value={t.id}>{t.groupName ? `${t.groupName} · ` : ""}{t.name}</option>)}
                   </select>
                   <textarea value={tabNote} onChange={(e) => setTabNote(e.target.value)} rows={2} placeholder="Observação (opcional)"
-                    className="mt-2 w-full rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
+                    className="input-base mt-2" />
                   <div className="mt-4 flex gap-2">
-                    <button onClick={doResolve} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white">Finalizar e gerar protocolo</button>
-                    <button onClick={() => setResolving(false)} className="rounded-lg border border-line px-3 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+                    <button onClick={doResolve} className="btn-grad flex-1 py-2">Finalizar e gerar protocolo</button>
+                    <button onClick={() => setResolving(false)} className="rounded-xl border border-line px-3 py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
                   </div>
                 </div>
               </div>
             )}
             {transferOpen && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setTransferOpen(false)}>
-                <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+                <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
                   <h3 className="text-base font-semibold">Transferir atendimento</h3>
                   <p className="mt-3 text-[10px] uppercase tracking-wider text-muted">Para uma pessoa</p>
                   <select onChange={(e) => { if (e.target.value) { act("transfer", { toMembershipId: e.target.value }); setTransferOpen(false); } }} defaultValue=""
-                    className="mt-1 w-full rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm">
+                    className="input-base mt-1">
                     <option value="">Selecione…</option>
                     {agents.map((a) => <option key={a.membershipId} value={a.membershipId}>{a.name}</option>)}
                   </select>
                   <p className="mt-3 text-[10px] uppercase tracking-wider text-muted">Para uma equipe (fica pendente até alguém pegar)</p>
                   <select onChange={(e) => { if (e.target.value) { act("transfer", { toTeamId: e.target.value }); setTransferOpen(false); } }} defaultValue=""
-                    className="mt-1 w-full rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm">
+                    className="input-base mt-1">
                     <option value="">Selecione…</option>
                     {teams.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
-                  <button onClick={() => setTransferOpen(false)} className="mt-4 w-full rounded-lg border border-line py-2 text-sm text-muted hover:text-fg">cancelar</button>
+                  <button onClick={() => setTransferOpen(false)} className="mt-4 w-full rounded-xl border border-line py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
                 </div>
               </div>
             )}
@@ -817,13 +817,13 @@ export function AtendimentoClient() {
                 <div className="relative flex-1">
                   <textarea value={reply} onChange={(e) => handleReplyChange(e.target.value)} rows={2} placeholder={internal ? "Nota interna (cliente não vê). Use @nome pra avisar alguém…" : "Responder…"}
                     onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !mentionOpen) { e.preventDefault(); send(); } }}
-                    className={`w-full rounded-lg border bg-bg/40 px-3 py-2 text-sm outline-none ${internal ? "border-amber-500/50" : "border-line focus:border-brand"}`} />
+                    className={`w-full rounded-xl border bg-surface-2 px-3 py-2 text-sm outline-none transition focus:ring-2 ${internal ? "border-amber-500/50" : "border-line focus:border-brand"}`} style={{ ["--tw-ring-color" as any]: "rgb(var(--ring) / 0.35)" }} />
                   {mentionOpen && internal && (() => {
                     const q = mentionOpen.query;
                     const matches = mentionables.filter((m) => m.firstName.toLowerCase().startsWith(q)).slice(0, 6);
                     if (matches.length === 0) return null;
                     return (
-                      <div className="absolute bottom-full left-0 mb-1 max-h-48 w-56 overflow-y-auto rounded-lg border border-line bg-bg shadow-xl">
+                      <div className="absolute bottom-full left-0 mb-1 max-h-48 w-56 overflow-y-auto rounded-xl border border-line bg-surface shadow-lg">
                         {matches.map((m) => (
                           <button key={m.membershipId} onClick={() => pickMention(m.firstName)} className="block w-full px-3 py-2 text-left text-xs hover:bg-line/40">
                             <span className="font-medium">@{m.firstName}</span>
@@ -834,7 +834,7 @@ export function AtendimentoClient() {
                     );
                   })()}
                 </div>
-                <button disabled={busy || !reply.trim()} onClick={send} className="rounded-lg bg-brand px-4 text-sm font-semibold text-white disabled:opacity-50">Enviar</button>
+                <button disabled={busy || !reply.trim()} onClick={send} className="btn-grad self-stretch px-4 disabled:opacity-50">Enviar</button>
               </div>
             </div>
             )}
@@ -889,25 +889,25 @@ function SellModal({ conversationId, onClose, onSent }: { conversationId: string
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="flex max-h-[88vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex max-h-[88vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Vender pelo chat</h3>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar produto (nome/SKU)" className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar produto (nome/SKU)" className="input-base mt-3" />
         <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
           {filtered.map((p) => (
-            <button key={p.id} onClick={() => add(p)} className="flex w-full items-center justify-between rounded-lg border border-line bg-bg/40 px-3 py-1.5 text-left text-sm hover:border-brand">
+            <button key={p.id} onClick={() => add(p)} className="flex w-full items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-1.5 text-left text-sm transition hover:border-brand">
               <span className="truncate">{p.name}</span><span className="text-xs text-muted">{brl(p.priceCashCents ?? 0)}</span>
             </button>
           ))}
         </div>
         {cart.length > 0 && (
-          <div className="mt-3 rounded-lg border border-line bg-bg/40 p-2">
+          <div className="mt-3 rounded-xl border border-line bg-surface-2 p-2">
             {cart.map((i, idx) => (
               <div key={idx} className="flex items-center justify-between gap-2 py-1 text-sm">
                 <span className="truncate">{i.name}</span>
                 <div className="flex items-center gap-2">
-                  <input type="number" min={1} value={i.qty} onChange={(e) => setCart((c) => c.map((x, j) => (j === idx ? { ...x, qty: Math.max(1, Number(e.target.value)) } : x)))} className="w-14 rounded border border-line bg-bg/60 px-1 py-0.5 text-xs" />
+                  <input type="number" min={1} value={i.qty} onChange={(e) => setCart((c) => c.map((x, j) => (j === idx ? { ...x, qty: Math.max(1, Number(e.target.value)) } : x)))} className="w-14 rounded-lg border border-line bg-surface px-1 py-0.5 text-xs" />
                   <span className="w-20 text-right text-xs">{brl(i.qty * i.unitCents)}</span>
-                  <button onClick={() => setCart((c) => c.filter((_, j) => j !== idx))} className="text-red-300">×</button>
+                  <button onClick={() => setCart((c) => c.filter((_, j) => j !== idx))} className="text-danger">×</button>
                 </div>
               </div>
             ))}
@@ -916,14 +916,14 @@ function SellModal({ conversationId, onClose, onSent }: { conversationId: string
         )}
         <div className="mt-3 flex items-center gap-3 text-sm">
           <span className="text-muted">Pagamento:</span>
-          <label className="flex items-center gap-1"><input type="radio" checked={method === "pix"} onChange={() => setMethod("pix")} /> Pix</label>
-          <label className="flex items-center gap-1"><input type="radio" checked={method === "card"} onChange={() => setMethod("card")} /> Cartão</label>
+          <label className="flex items-center gap-1"><input type="radio" checked={method === "pix"} onChange={() => setMethod("pix")} className="accent-brand" /> Pix</label>
+          <label className="flex items-center gap-1"><input type="radio" checked={method === "card"} onChange={() => setMethod("card")} className="accent-brand" /> Cartão</label>
         </div>
         <div className="mt-4 flex gap-2">
-          <button disabled={busy || cart.length === 0} onClick={submit} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <button disabled={busy || cart.length === 0} onClick={submit} className="btn-grad flex-1 py-2 disabled:opacity-50">
             {busy ? "Enviando…" : `Enviar cobrança (${brl(total)})`}
           </button>
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
         </div>
         <p className="mt-2 text-[10px] text-muted">Envia a descrição + valores e o {method === "pix" ? "Pix copia-e-cola" : "link de cartão"} pro cliente. O status atualiza sozinho quando pagar.</p>
       </div>
@@ -972,22 +972,22 @@ function StartConversationModal({ onClose, onStarted }: { onClose: () => void; o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Iniciar conversa</h3>
         <p className="mt-1 text-xs text-muted">Busque um cliente cadastrado ou digite um telefone avulso.</p>
 
         {picked ? (
-          <div className="mt-3 flex items-center justify-between rounded-lg border border-brand/40 bg-brand/10 px-3 py-2 text-sm">
+          <div className="mt-3 flex items-center justify-between rounded-xl border border-brand/40 bg-brand/10 px-3 py-2 text-sm">
             <span className="truncate">👤 {picked.name}{picked.document ? ` · ${picked.document}` : ""}</span>
-            <button onClick={() => setPicked(null)} className="text-xs text-red-300 hover:underline">trocar</button>
+            <button onClick={() => setPicked(null)} className="text-xs text-danger hover:underline">trocar</button>
           </div>
         ) : (
           <>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome / CPF / telefone" className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome / CPF / telefone" className="input-base mt-3" />
             {results.length > 0 && (
               <div className="mt-1 max-h-40 space-y-1 overflow-y-auto">
                 {results.map((c) => (
-                  <button key={c.id} onClick={() => { setPicked(c); setResults([]); setQ(""); }} className="flex w-full items-center justify-between rounded-lg border border-line bg-bg/40 px-3 py-1.5 text-left text-sm hover:border-brand">
+                  <button key={c.id} onClick={() => { setPicked(c); setResults([]); setQ(""); }} className="flex w-full items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-1.5 text-left text-sm transition hover:border-brand">
                     <span className="truncate">{c.name}</span>
                     <span className="text-xs text-muted">{c.whatsappPhone || c.phone || c.document || ""}</span>
                   </button>
@@ -995,15 +995,15 @@ function StartConversationModal({ onClose, onStarted }: { onClose: () => void; o
               </div>
             )}
             <div className="my-3 flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted"><span className="h-px flex-1 bg-line" />ou telefone avulso<span className="h-px flex-1 bg-line" /></div>
-            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefone (ex.: 71 99999-9999)" inputMode="tel" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome (opcional)" className="mt-2 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+            <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefone (ex.: 71 99999-9999)" inputMode="tel" className="input-base" />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome (opcional)" className="input-base mt-2" />
           </>
         )}
 
-        <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder="Primeira mensagem (opcional)" className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+        <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} placeholder="Primeira mensagem (opcional)" className="input-base mt-3" />
         <div className="mt-4 flex gap-2">
-          <button disabled={busy} onClick={submit} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Iniciando…" : "Iniciar conversa"}</button>
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+          <button disabled={busy} onClick={submit} className="btn-grad flex-1 py-2 disabled:opacity-50">{busy ? "Iniciando…" : "Iniciar conversa"}</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
         </div>
         <p className="mt-2 text-[10px] text-muted">O telefone é normalizado automaticamente (adiciona 55 se faltar).</p>
       </div>
@@ -1048,7 +1048,7 @@ function InternalChatModal({ onClose, onRead }: { onClose: () => void; onRead: (
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="flex h-[70vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-line bg-bg shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex h-[70vh] w-full max-w-2xl overflow-hidden rounded-2xl border border-line bg-surface shadow-lg" onClick={(e) => e.stopPropagation()}>
         <div className="flex w-56 shrink-0 flex-col border-r border-line">
           <div className="border-b border-line p-3 text-sm font-semibold">💬 Equipe</div>
           <div className="flex-1 overflow-y-auto">
@@ -1081,8 +1081,8 @@ function InternalChatModal({ onClose, onRead }: { onClose: () => void; onRead: (
               <div className="flex items-end gap-2 border-t border-line p-3">
                 <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder="Mensagem interna…"
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
-                  className="flex-1 rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
-                <button disabled={!text.trim()} onClick={send} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Enviar</button>
+                  className="input-base flex-1" />
+                <button disabled={!text.trim()} onClick={send} className="btn-grad px-4 py-2 disabled:opacity-50">Enviar</button>
               </div>
             </>
           )}
@@ -1165,32 +1165,32 @@ function AgendaModal({ customerId, customerName, contactPhone, conversationId, o
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="flex max-h-[88vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex max-h-[88vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Agenda — {customerName}</h3>
         {!customerId ? (
           <div className="mt-3 space-y-3">
             <p className="text-sm text-muted">Esta conversa ainda não tem cliente cadastrado. Informe o nome para vincular (o número já vem da conversa) e agendar.</p>
             <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Telefone</span>
-              <input value={linkPhone} onChange={(e) => setLinkPhone(e.target.value)} placeholder="(71) 99999-9999" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+              <input value={linkPhone} onChange={(e) => setLinkPhone(e.target.value)} placeholder="(71) 99999-9999" className="input-base" />
             </label>
             <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Nome do cliente</span>
-              <input value={linkName} onChange={(e) => setLinkName(e.target.value)} placeholder="Nome completo" autoFocus className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+              <input value={linkName} onChange={(e) => setLinkName(e.target.value)} placeholder="Nome completo" autoFocus className="input-base" />
             </label>
-            <button disabled={linking || linkName.trim().length < 2} onClick={linkCustomer} className="w-full rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{linking ? "Vinculando…" : "Vincular e continuar"}</button>
+            <button disabled={linking || linkName.trim().length < 2} onClick={linkCustomer} className="btn-grad w-full py-2 disabled:opacity-50">{linking ? "Vinculando…" : "Vincular e continuar"}</button>
           </div>
         ) : (
           <>
             <div className="mt-3 max-h-48 space-y-1 overflow-y-auto">
               {apts.length === 0 ? <p className="text-xs text-muted">Nenhum agendamento.</p> : apts.map((a) => (
-                <div key={a.id} className="flex items-center justify-between gap-2 rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+                <div key={a.id} className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
                   <div className="min-w-0">
                     <span className="font-medium">{fmt(a.startsAt)}</span>
                     <span className="block truncate text-xs text-muted">{a.professional?.name ?? ""}{a.serviceName ? ` · ${a.serviceName}` : ""} · {APT_STATUS[a.status] ?? a.status}</span>
                   </div>
                   {!["canceled", "attended", "no_show"].includes(a.status) && (
                     <div className="flex shrink-0 gap-2 text-xs">
-                      {a.status !== "confirmed" && <button onClick={() => confirmApt(a.id)} className="text-green-300 hover:underline">confirmar</button>}
-                      <button onClick={() => cancelApt(a.id)} className="text-red-300 hover:underline">cancelar</button>
+                      {a.status !== "confirmed" && <button onClick={() => confirmApt(a.id)} className="text-success hover:underline">confirmar</button>}
+                      <button onClick={() => cancelApt(a.id)} className="text-danger hover:underline">cancelar</button>
                     </div>
                   )}
                 </div>
@@ -1198,30 +1198,30 @@ function AgendaModal({ customerId, customerName, contactPhone, conversationId, o
             </div>
 
             {!showNew ? (
-              <button onClick={() => setShowNew(true)} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">+ Novo agendamento</button>
+              <button onClick={() => setShowNew(true)} className="btn-grad mt-3">+ Novo agendamento</button>
             ) : (
-              <div className="mt-3 rounded-lg border border-line bg-bg/40 p-3">
+              <div className="mt-3 rounded-xl border border-line bg-surface-2 p-3">
                 <div className="flex items-center gap-2 text-sm">
                   <label className="text-[10px] uppercase text-muted">Dia</label>
-                  <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setSlotId(""); }} className="rounded-lg border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+                  <input type="date" value={date} onChange={(e) => { setDate(e.target.value); setSlotId(""); }} className="input-base w-auto" />
                 </div>
                 <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
                   {slots.length === 0 ? <p className="text-xs text-muted">Sem horários livres nesse dia.</p> : slots.map((s) => (
-                    <button key={s.id} onClick={() => setSlotId(s.id)} className={`flex w-full items-center justify-between rounded-lg border px-3 py-1.5 text-left text-sm ${slotId === s.id ? "border-brand bg-brand/10" : "border-line bg-bg/40 hover:border-brand"}`}>
+                    <button key={s.id} onClick={() => setSlotId(s.id)} className={`flex w-full items-center justify-between rounded-xl border px-3 py-1.5 text-left text-sm transition ${slotId === s.id ? "border-brand bg-brand/10" : "border-line bg-surface hover:border-brand"}`}>
                       <span>{fmtTime(s.startsAt)}</span><span className="text-xs text-muted">{s.professional?.name ?? ""}</span>
                     </button>
                   ))}
                 </div>
-                <input value={service} onChange={(e) => setService(e.target.value)} placeholder="Serviço (opcional)" className="mt-2 w-full rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
+                <input value={service} onChange={(e) => setService(e.target.value)} placeholder="Serviço (opcional)" className="input-base mt-2" />
                 <div className="mt-2 flex gap-2">
-                  <button disabled={busy || !slotId} onClick={createApt} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Agendando…" : "Confirmar agendamento"}</button>
-                  <button onClick={() => setShowNew(false)} className="rounded-lg border border-line px-3 py-2 text-sm text-muted hover:text-fg">voltar</button>
+                  <button disabled={busy || !slotId} onClick={createApt} className="btn-grad flex-1 py-2 disabled:opacity-50">{busy ? "Agendando…" : "Confirmar agendamento"}</button>
+                  <button onClick={() => setShowNew(false)} className="rounded-xl border border-line px-3 py-2 text-sm text-muted transition hover:text-fg">voltar</button>
                 </div>
               </div>
             )}
           </>
         )}
-        <button onClick={onClose} className="mt-4 w-full rounded-lg border border-line py-2 text-sm text-muted hover:text-fg">fechar</button>
+        <button onClick={onClose} className="mt-4 w-full rounded-xl border border-line py-2 text-sm text-muted transition hover:text-fg">fechar</button>
       </div>
     </div>
   );
@@ -1262,41 +1262,41 @@ function CannedManager({ items, onClose, onChanged }: { items: Canned[]; onClose
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Respostas rápidas</h3>
         <p className="mt-1 text-xs text-muted">🔒 privada (só você) · 👥 compartilhada com a equipe · 🌐 global (toda a empresa, só admin). Use variáveis: {"{{cliente}} {{operador}} {{saudacao}}"}.</p>
 
         <div className="mt-3 grid grid-cols-[1fr_2fr] gap-2">
-          <input value={shortcut} onChange={(e) => setShortcut(e.target.value)} placeholder="atalho (ex.: ola)" className="rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="título (opcional)" className="rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
+          <input value={shortcut} onChange={(e) => setShortcut(e.target.value)} placeholder="atalho (ex.: ola)" className="input-base" />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="título (opcional)" className="input-base" />
         </div>
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Texto da resposta…" className="mt-2 w-full rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Texto da resposta…" className="input-base mt-2" />
         <div className="mt-2 flex items-center gap-3 text-sm">
           <span className="text-muted">Escopo:</span>
-          <label className="flex items-center gap-1"><input type="radio" checked={scope === "private"} onChange={() => setScope("private")} /> 🔒 privada</label>
-          <label className="flex items-center gap-1"><input type="radio" checked={scope === "shared"} onChange={() => setScope("shared")} /> 👥 equipe</label>
-          <label className="flex items-center gap-1"><input type="radio" checked={scope === "global"} onChange={() => setScope("global")} /> 🌐 global</label>
+          <label className="flex items-center gap-1"><input type="radio" checked={scope === "private"} onChange={() => setScope("private")} className="accent-brand" /> 🔒 privada</label>
+          <label className="flex items-center gap-1"><input type="radio" checked={scope === "shared"} onChange={() => setScope("shared")} className="accent-brand" /> 👥 equipe</label>
+          <label className="flex items-center gap-1"><input type="radio" checked={scope === "global"} onChange={() => setScope("global")} className="accent-brand" /> 🌐 global</label>
         </div>
         <div className="mt-3 flex gap-2">
-          <button disabled={busy} onClick={save} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{editId ? "Salvar" : "Adicionar"}</button>
-          {editId && <button onClick={reset} className="rounded-lg border border-line px-3 py-2 text-sm text-muted hover:text-fg">cancelar edição</button>}
+          <button disabled={busy} onClick={save} className="btn-grad px-4 py-2 disabled:opacity-50">{editId ? "Salvar" : "Adicionar"}</button>
+          {editId && <button onClick={reset} className="rounded-xl border border-line px-3 py-2 text-sm text-muted transition hover:text-fg">cancelar edição</button>}
         </div>
 
         <div className="mt-4 flex-1 space-y-1 overflow-y-auto border-t border-line pt-3">
           {items.length === 0 ? <p className="text-xs text-muted">Nenhuma resposta ainda.</p> : items.map((c) => (
-            <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg border border-line bg-bg/40 px-3 py-1.5 text-sm">
+            <div key={c.id} className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface-2 px-3 py-1.5 text-sm">
               <div className="min-w-0">
                 <span className="font-mono text-brand">/{c.shortcut}</span> <span className="text-muted">{c.scope === "private" ? "🔒" : c.scope === "shared" ? "👥" : "🌐"}</span>
                 <span className="block truncate text-xs text-muted">{c.title || c.body}</span>
               </div>
               <div className="flex shrink-0 gap-2 text-xs">
                 <button onClick={() => edit(c)} className="text-brand hover:underline">editar</button>
-                <button onClick={() => remove(c)} className="text-red-300 hover:underline">excluir</button>
+                <button onClick={() => remove(c)} className="text-danger hover:underline">excluir</button>
               </div>
             </div>
           ))}
         </div>
-        <button onClick={onClose} className="mt-3 w-full rounded-lg border border-line py-2 text-sm text-muted hover:text-fg">fechar</button>
+        <button onClick={onClose} className="mt-3 w-full rounded-xl border border-line py-2 text-sm text-muted transition hover:text-fg">fechar</button>
       </div>
     </div>
   );
@@ -1321,17 +1321,17 @@ function ProtocolSearchModal({ onClose, onOpen }: { onClose: () => void; onOpen:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Buscar atendimento</h3>
         <p className="mt-1 text-xs text-muted">Por protocolo, nome, telefone ou CPF.</p>
-        <input value={q} onChange={(e) => setQ(e.target.value)} autoFocus placeholder="Ex.: AT-20260522-AB12 / 123.456.789-00 / Maria" className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} autoFocus placeholder="Ex.: AT-20260522-AB12 / 123.456.789-00 / Maria" className="input-base mt-3" />
         <div className="mt-3 flex-1 overflow-y-auto">
           {searched && rows.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted">Nenhum atendimento encontrado.</p>
           ) : (
             <div className="space-y-1">
               {rows.map((r) => (
-                <button key={r.id} onClick={() => onOpen(r.id)} className="flex w-full flex-col gap-0.5 rounded-lg border border-line bg-bg/40 px-3 py-2 text-left text-sm hover:border-brand">
+                <button key={r.id} onClick={() => onOpen(r.id)} className="flex w-full flex-col gap-0.5 rounded-xl border border-line bg-surface-2 px-3 py-2 text-left text-sm transition hover:border-brand">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-mono text-brand">{r.protocol ?? "— sem protocolo —"}</span>
                     <span className="text-[11px] text-muted">{new Date(r.date).toLocaleString("pt-BR")}</span>
@@ -1343,7 +1343,7 @@ function ProtocolSearchModal({ onClose, onOpen }: { onClose: () => void; onOpen:
             </div>
           )}
         </div>
-        <button onClick={onClose} className="mt-3 w-full rounded-lg border border-line py-2 text-sm text-muted hover:text-fg">fechar</button>
+        <button onClick={onClose} className="mt-3 w-full rounded-xl border border-line py-2 text-sm text-muted transition hover:text-fg">fechar</button>
       </div>
     </div>
   );
@@ -1389,7 +1389,7 @@ function CustomerDrawer({ customerId, customerName, onClose }: { customerId: str
 
   return (
     <div className="fixed inset-0 z-[60] flex items-stretch justify-end bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="flex h-full w-full max-w-md flex-col bg-bg shadow-xl">
+      <div onClick={(e) => e.stopPropagation()} className="flex h-full w-full max-w-md flex-col bg-surface shadow-lg">
         <header className="flex items-center justify-between border-b border-line p-4">
           <div>
             <p className="text-[10px] uppercase tracking-wider text-muted">Cliente</p>
@@ -1410,21 +1410,21 @@ function CustomerDrawer({ customerId, customerName, onClose }: { customerId: str
                 onChange={(e) => setNewNote(e.target.value)}
                 rows={2}
                 placeholder="Nova nota sobre o cliente... (ex: prefere atendimento de manhã)"
-                className="w-full rounded border border-line bg-bg/40 px-2 py-1.5 text-sm"
+                className="input-base"
               />
               <div className="mt-2 flex items-center gap-2">
                 <label className="flex items-center gap-1 text-xs text-muted">
                   <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} className="accent-brand" /> fixar no topo
                 </label>
-                <button onClick={addNote} disabled={busy || !newNote.trim()} className="ml-auto rounded bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">Adicionar</button>
+                <button onClick={addNote} disabled={busy || !newNote.trim()} className="btn-grad ml-auto px-3 py-1.5 text-xs disabled:opacity-40">Adicionar</button>
               </div>
             </div>
             <div className="scroll-themed flex-1 space-y-2 overflow-y-auto p-3">
               {notes.length === 0 ? <p className="text-xs text-muted">Sem notas ainda.</p> : notes.map((n) => (
-                <div key={n.id} className={`rounded-lg border p-3 ${n.pinned ? "border-amber-500/50 bg-amber-500/5" : "border-line bg-bg/40"}`}>
+                <div key={n.id} className={`rounded-xl border p-3 ${n.pinned ? "border-amber-500/50 bg-amber-500/5" : "border-line bg-surface-2"}`}>
                   <div className="flex items-start justify-between gap-2">
                     <p className="flex-1 whitespace-pre-wrap text-sm">{n.body}</p>
-                    <button onClick={() => delNote(n.id)} title="Apagar" className="text-muted hover:text-red-300">×</button>
+                    <button onClick={() => delNote(n.id)} title="Apagar" className="text-muted hover:text-danger">×</button>
                   </div>
                   <p className="mt-1 text-[10px] text-muted">{n.pinned ? "📌 fixada · " : ""}{n.authorName ?? "—"} · {new Date(n.createdAt).toLocaleString("pt-BR")}</p>
                 </div>
@@ -1434,7 +1434,7 @@ function CustomerDrawer({ customerId, customerName, onClose }: { customerId: str
         ) : (
           <div className="scroll-themed flex-1 space-y-2 overflow-y-auto p-3">
             {timeline.length === 0 ? <p className="text-xs text-muted">Sem histórico ainda.</p> : timeline.map((ev, i) => (
-              <div key={i} className="flex items-start gap-3 rounded border border-line/60 bg-bg/40 p-3">
+              <div key={i} className="flex items-start gap-3 rounded-xl border border-line bg-surface-2 p-3">
                 <div className="flex-1">
                   <p className="text-sm font-medium">{ev.title}</p>
                   <p className="text-xs text-muted">{ev.subtitle}</p>

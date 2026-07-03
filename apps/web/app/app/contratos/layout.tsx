@@ -14,7 +14,7 @@ export default async function ContratosLayout({
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-muted">
+        <p className="rounded-2xl border border-line bg-surface p-6 text-muted">
           Apenas administradores podem gerenciar contratos.
         </p>
       </div>
@@ -47,7 +47,7 @@ function SubLink({
   return (
     <Link
       href={href}
-      className="block rounded-md px-3 py-2 text-fg transition hover:bg-line"
+      className="block rounded-xl px-3 py-2 text-fg transition hover:bg-surface-2 hover:text-brand"
     >
       {children}
     </Link>

@@ -35,7 +35,7 @@ export function SsoCards() {
           key={it.key}
           onClick={() => open(it.key)}
           disabled={busy === it.key}
-          className="block rounded-xl border border-line bg-bg/60 p-5 text-left backdrop-blur-sm transition hover:border-brand/60 disabled:opacity-50"
+          className="card block text-left disabled:opacity-50"
         >
           <h3 className="text-base font-semibold">{busy === it.key ? "Abrindo..." : it.title}</h3>
           <p className="mt-1 text-sm text-muted">{it.desc}</p>

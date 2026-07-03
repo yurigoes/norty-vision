@@ -8,7 +8,7 @@ export default async function ProspectorPage() {
   const session = await getSession();
   if (!session.authenticated) redirect("/login");
   if (!session.user?.isOrgAdmin && !session.master) {
-    return <div className="max-w-3xl"><p className="rounded-lg border border-line bg-bg/60 p-6 text-muted">Apenas administradores configuram a prospecção.</p></div>;
+    return <div className="max-w-3xl"><p className="card text-muted">Apenas administradores configuram a prospecção.</p></div>;
   }
   return (
     <div className="max-w-5xl">

@@ -48,27 +48,27 @@ export function KioskPanelsCard({ niche }: { niche?: string | null }) {
   }
 
   return (
-    <div className="mb-8 rounded-2xl border border-line bg-bg/60 p-6">
+    <div className="mb-8 rounded-2xl border border-line bg-surface p-6 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">📺 Painéis de TV (kiosk)</h2>
           <p className="mt-1 text-sm text-muted">Telas de acompanhamento em tempo real, sem login. Abra o link no navegador de uma TV/computador — atualiza sozinho a cada 30s.</p>
         </div>
-        <button onClick={rotate} disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-xs text-muted hover:text-fg disabled:opacity-50">Gerar links novos</button>
+        <button onClick={rotate} disabled={busy} className="rounded-xl border border-line px-3 py-1.5 text-xs text-muted transition hover:text-fg disabled:opacity-50">Gerar links novos</button>
       </div>
 
       <div className="mt-4 space-y-2">
         {busy && !token ? <p className="text-sm text-muted">Gerando link…</p> : panels.map((p) => {
           const u = urlFor(p.kind);
           return (
-            <div key={p.kind} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-bg/40 px-4 py-3">
+            <div key={p.kind} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface-2 px-4 py-3">
               <div className="min-w-0">
                 <p className="text-sm font-medium">{p.label}</p>
                 <p className="text-xs text-muted">{p.desc}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
-                <button onClick={() => copy(p.kind)} disabled={!u} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{copied === p.kind ? "Copiado ✅" : "Copiar link"}</button>
-                <a href={u || "#"} target="_blank" rel="noreferrer" className={`rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand ${!u ? "pointer-events-none opacity-50" : ""}`}>Abrir ↗</a>
+                <button onClick={() => copy(p.kind)} disabled={!u} className="btn-grad px-3 py-1.5 text-xs disabled:opacity-50">{copied === p.kind ? "Copiado ✅" : "Copiar link"}</button>
+                <a href={u || "#"} target="_blank" rel="noreferrer" className={`rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand ${!u ? "pointer-events-none opacity-50" : ""}`}>Abrir ↗</a>
               </div>
             </div>
           );

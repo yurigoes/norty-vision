@@ -90,25 +90,25 @@ export function TeamClient({ initial, selfId }: { initial: Member[]; selfId: str
       )}
 
       {!creating ? (
-        <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">+ Novo membro</button>
+        <button onClick={() => setCreating(true)} className="btn-grad">+ Novo membro</button>
       ) : (
-        <div className="flex flex-wrap items-end gap-2 rounded-lg border border-line bg-bg/60 p-4">
+        <div className="card flex flex-wrap items-end gap-2 p-4">
           <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Nome</span>
-            <input value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} className="rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" /></label>
+            <input value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} className="input-base w-auto" /></label>
           <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">E-mail</span>
-            <input value={nf.email} onChange={(e) => setNf({ ...nf, email: e.target.value })} className="rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" /></label>
+            <input value={nf.email} onChange={(e) => setNf({ ...nf, email: e.target.value })} className="input-base w-auto" /></label>
           <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Papel</span>
-            <select value={nf.role} onChange={(e) => setNf({ ...nf, role: e.target.value as any })} className="rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">
+            <select value={nf.role} onChange={(e) => setNf({ ...nf, role: e.target.value as any })} className="input-base w-auto">
               <option value="support">Suporte master</option><option value="owner">Dono (acesso total)</option>
             </select></label>
-          <button onClick={createMember} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Criar</button>
-          <button onClick={() => setCreating(false)} className="text-xs text-muted">cancelar</button>
+          <button onClick={createMember} className="btn-grad">Criar</button>
+          <button onClick={() => setCreating(false)} className="text-xs text-muted hover:text-fg">cancelar</button>
         </div>
       )}
       {initial.map((m) => {
         const isSelf = m.id === selfId;
         return (
-          <div key={m.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg/60 px-4 py-3">
+          <div key={m.id} className="card flex items-center justify-between gap-3 px-4 py-3">
             <div className="min-w-0">
               <p className="text-sm font-medium">
                 {m.name} {isSelf && <span className="text-xs text-muted">(você)</span>}
@@ -126,7 +126,7 @@ export function TeamClient({ initial, selfId }: { initial: Member[]; selfId: str
                     value={m.role}
                     disabled={busyId === m.id}
                     onChange={(e) => setRole(m, e.target.value as "owner" | "support")}
-                    className="rounded border border-line bg-bg/60 px-2 py-1 text-xs"
+                    className="input-base w-auto px-2 py-1 text-xs"
                   >
                     <option value="owner">Dono (acesso total)</option>
                     <option value="support">Suporte master</option>
@@ -142,7 +142,7 @@ export function TeamClient({ initial, selfId }: { initial: Member[]; selfId: str
         );
       })}
       {initial.length === 0 && (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum master cadastrado.</p>
+        <p className="card text-sm text-muted">Nenhum master cadastrado.</p>
       )}
     </div>
   );

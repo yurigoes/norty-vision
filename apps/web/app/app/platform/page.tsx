@@ -78,9 +78,9 @@ function Metric({ label, value, tone }: { label: string; value: string; tone?: "
     : tone === "orange" ? "text-orange-500 dark:text-orange-300"
     : tone === "red" ? "text-red-500 dark:text-red-300" : "";
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-4">
+    <div className="card p-4">
       <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${color}`}>{value}</p>
+      <p className={`mt-1 text-3xl font-semibold ${color}`}>{value}</p>
     </div>
   );
 }
@@ -95,10 +95,7 @@ function Card({
   href: string;
 }) {
   return (
-    <Link
-      href={href}
-      className="block rounded-xl border border-line p-5 transition hover:border-brand/60"
-    >
+    <Link href={href} className="card block">
       <h3 className="text-base font-semibold">{title}</h3>
       <p className="mt-1 text-sm text-muted">{body}</p>
     </Link>

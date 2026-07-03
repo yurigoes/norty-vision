@@ -60,10 +60,10 @@ export default function SupplierDashboard() {
     <main className="mx-auto max-w-3xl px-4 py-8">
       <header className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Olá, {me.name.split(" ")[0]}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">Olá, {me.name.split(" ")[0]}</h1>
           <p className="text-sm text-muted">{me.type === "medico" ? "Médico" : me.type === "laboratorio" ? "Laboratório" : me.type === "costureira" ? "Costureira" : "Fornecedor"}</p>
         </div>
-        <button onClick={logout} className="text-sm text-muted hover:text-red-300">Sair</button>
+        <button onClick={logout} className="text-sm text-muted transition-colors hover:text-danger">Sair</button>
       </header>
 
       {isCostureira ? (
@@ -93,10 +93,10 @@ export default function SupplierDashboard() {
       {isCostureira && tab === "producao" ? (
         <div className="space-y-2">
           {productionQueue.length === 0 ? (
-            <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhuma OS na sua fila no momento. Quando o admin atribuir uma, ela aparece aqui.</p>
+            <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted shadow-[var(--shadow-sm)]">Nenhuma OS na sua fila no momento. Quando o admin atribuir uma, ela aparece aqui.</p>
           ) : (
             productionQueue.map((o: any) => (
-              <Link key={o.id} href={`/f/producao/${o.id}`} className="block rounded-lg border border-line bg-bg/60 p-4 transition hover:border-brand">
+              <Link key={o.id} href={`/f/producao/${o.id}`} className="block rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-sm)] transition hover:-translate-y-0.5 hover:border-brand/50 hover:shadow-[var(--shadow-md)]">
                 <div className="flex items-center justify-between">
                   <p className="text-base font-semibold">#{o.shortCode ?? "—"}</p>
                   <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-brand">{o.totalPieces ?? 0} pç</span>
@@ -113,10 +113,10 @@ export default function SupplierDashboard() {
       ) : tab === "pacientes" ? (
         <div className="space-y-2">
           {(patients?.items ?? []).length === 0 ? (
-            <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum paciente.</p>
+            <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted shadow-[var(--shadow-sm)]">Nenhum paciente.</p>
           ) : (
             (patients.items as any[]).map((o) => (
-              <div key={o.id} className="rounded-lg border border-line bg-bg/60 p-4">
+              <div key={o.id} className="rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-sm)]">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium">{o.patientName}</p>
                   <span className="text-xs text-muted">{new Date(o.createdAt).toLocaleDateString("pt-BR")} · {o.status}</span>
@@ -130,10 +130,10 @@ export default function SupplierDashboard() {
       ) : (
         <div className="space-y-2">
           {payments.length === 0 ? (
-            <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum pagamento.</p>
+            <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted shadow-[var(--shadow-sm)]">Nenhum pagamento.</p>
           ) : (
             payments.map((s) => (
-              <div key={s.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg/60 p-4">
+              <div key={s.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-sm)]">
                 <div>
                   <p className="text-sm font-medium">{brl(s.totalCents)}
                     <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] uppercase ${s.status === "paid" ? "bg-green-500/20 text-green-300" : "bg-orange-500/20 text-orange-300"}`}>
@@ -143,8 +143,8 @@ export default function SupplierDashboard() {
                   <p className="text-xs text-muted">{s.items?.length ?? 0} item(ns){s.paidAt ? ` · ${new Date(s.paidAt).toLocaleDateString("pt-BR")}` : ""}</p>
                 </div>
                 <div className="flex gap-2">
-                  <a href={`/api/supplier-portal/payments/${s.id}/receipt`} target="_blank" rel="noreferrer" className="rounded border border-line px-3 py-1 text-xs hover:border-brand">Recibo</a>
-                  {s.proofUrl && <a href={s.proofUrl} target="_blank" rel="noreferrer" className="rounded border border-line px-3 py-1 text-xs hover:border-brand">Comprovante</a>}
+                  <a href={`/api/supplier-portal/payments/${s.id}/receipt`} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium transition hover:border-brand hover:text-brand">Recibo</a>
+                  {s.proofUrl && <a href={s.proofUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium transition hover:border-brand hover:text-brand">Comprovante</a>}
                 </div>
               </div>
             ))
@@ -157,14 +157,14 @@ export default function SupplierDashboard() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-4">
-      <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-semibold">{value}</p>
+    <div className="rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-sm)]">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">{label}</p>
+      <p className="mt-1 text-2xl font-extrabold tracking-tight">{value}</p>
     </div>
   );
 }
 function Tab({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
-  return <button onClick={onClick} className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition ${active ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"}`}>{children}</button>;
+  return <button onClick={onClick} className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold transition ${active ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"}`}>{children}</button>;
 }
 function Centered({ children }: { children: React.ReactNode }) {
   return <div className="flex min-h-screen items-center justify-center text-sm text-muted">{children}</div>;

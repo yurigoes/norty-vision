@@ -243,7 +243,7 @@ export function UsersClient({
       {!showForm && !editing && (
         <button
           onClick={() => setShowForm(true)}
-          className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+          className="btn-grad px-5"
         >
           + Novo usuário
         </button>
@@ -252,7 +252,7 @@ export function UsersClient({
       {showForm && (
         <form
           onSubmit={onCreate}
-          className="space-y-4 rounded-xl border border-line bg-bg/60 p-6"
+          className="space-y-4 rounded-2xl border border-line bg-surface p-6 shadow-sm"
         >
           <h2 className="text-lg font-semibold">Novo usuário</h2>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -296,14 +296,14 @@ export function UsersClient({
                 setShowForm(false);
                 setError(null);
               }}
-              className="rounded-lg border border-line px-4 py-2 text-sm"
+              className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="btn-grad px-5 disabled:opacity-50"
             >
               Criar usuário
             </button>
@@ -314,7 +314,7 @@ export function UsersClient({
       {editing && (
         <form
           onSubmit={onUpdate}
-          className="space-y-4 rounded-xl border border-line bg-bg/60 p-6"
+          className="space-y-4 rounded-2xl border border-line bg-surface p-6 shadow-sm"
         >
           <h2 className="text-lg font-semibold">
             Editar — <span className="font-mono text-sm text-muted">{editing.email}</span>
@@ -349,7 +349,7 @@ export function UsersClient({
                 defaultValue={primaryOf(editing)!.role.slug}
                 onChange={(e) => changeRole(primaryOf(editing)!.id, e.target.value)}
                 disabled={busyAction === "role"}
-                className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                className="input-base"
               >
                 {roles.map((r) => <option key={r.slug} value={r.slug}>{r.name}</option>)}
               </select>
@@ -366,9 +366,9 @@ export function UsersClient({
                 value={pwValue}
                 onChange={(e) => setPwValue(e.target.value)}
                 placeholder="deixe em branco pra manter"
-                className="flex-1 rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm font-mono"
+                className="input-base flex-1 font-mono"
               />
-              <button type="button" onClick={() => setPwValue(genPassword())} className="rounded-lg border border-line px-3 py-2 text-xs whitespace-nowrap transition hover:border-brand">
+              <button type="button" onClick={() => setPwValue(genPassword())} className="rounded-xl border border-line px-3 py-2 text-xs whitespace-nowrap transition hover:border-brand/60 hover:text-brand">
                 Gerar aleatória
               </button>
             </div>
@@ -377,7 +377,7 @@ export function UsersClient({
 
           {/* Personalizar permissões */}
           {primaryOf(editing) && (
-            <div className="rounded-lg border border-line bg-bg/40 p-3">
+            <div className="rounded-xl border border-line bg-surface-2 p-3">
               <button type="button" onClick={() => setShowPerms((v) => !v)} className="text-xs font-medium text-brand hover:underline">
                 {showPerms ? "▾ Personalizar permissões" : "▸ Personalizar permissões deste usuário"}
               </button>
@@ -389,7 +389,7 @@ export function UsersClient({
                       <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-brand">{g.group}</p>
                       <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                         {g.items.map((it) => (
-                          <label key={it.key} className="flex items-center gap-2 rounded border border-line bg-bg/40 px-2 py-1.5 text-xs">
+                          <label key={it.key} className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-2 py-1.5 text-xs">
                             <input
                               type="checkbox"
                               checked={!!perms[it.key]}
@@ -402,7 +402,7 @@ export function UsersClient({
                       </div>
                     </div>
                   ))}
-                  <button type="button" onClick={() => savePerms(primaryOf(editing)!.id)} disabled={busyAction === "perms"} className="rounded-lg border border-brand px-4 py-2 text-xs font-semibold text-brand transition hover:bg-brand hover:text-white disabled:opacity-50">
+                  <button type="button" onClick={() => savePerms(primaryOf(editing)!.id)} disabled={busyAction === "perms"} className="rounded-xl border border-brand px-4 py-2 text-xs font-semibold text-brand transition hover:bg-brand hover:text-white disabled:opacity-50">
                     {busyAction === "perms" ? "Salvando..." : "Salvar permissões"}
                   </button>
                 </div>
@@ -418,7 +418,7 @@ export function UsersClient({
             <button
               type="button"
               onClick={() => onDisableMfa(editing.id, editing.name)}
-              className="mr-auto rounded-lg border border-orange-500/40 px-4 py-2 text-sm text-orange-300 transition hover:border-orange-400"
+              className="mr-auto rounded-xl border border-warn/40 px-4 py-2 text-sm text-warn transition hover:border-warn/60"
             >
               Desativar 2FA
             </button>
@@ -426,7 +426,7 @@ export function UsersClient({
               type="button"
               onClick={() => sendCredentials(editing.id)}
               disabled={busyAction === "creds"}
-              className="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand disabled:opacity-50"
+              className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand disabled:opacity-50"
             >
               {busyAction === "creds" ? "Enviando..." : "Enviar credenciais"}
             </button>
@@ -436,14 +436,14 @@ export function UsersClient({
                 setEditing(null);
                 setError(null);
               }}
-              className="rounded-lg border border-line px-4 py-2 text-sm"
+              className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="btn-grad px-5 disabled:opacity-50"
             >
               Salvar
             </button>
@@ -452,25 +452,25 @@ export function UsersClient({
       )}
 
       {initialUsers.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">
+        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">
           Nenhum usuário cadastrado.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
-                <th className="px-4 py-3">Nome</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Papel / Loja</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Último acesso</th>
-                <th className="px-4 py-3">Ações</th>
+              <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
+                <th className="px-4 py-3 font-medium">Nome</th>
+                <th className="px-4 py-3 font-medium">Email</th>
+                <th className="px-4 py-3 font-medium">Papel / Loja</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Último acesso</th>
+                <th className="px-4 py-3 font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
               {initialUsers.map((u) => (
-                <tr key={u.id} className="border-t border-line/50 align-top">
+                <tr key={u.id} className="border-t border-line align-top transition hover:bg-surface-2">
                   <td className="px-4 py-3 font-medium">{u.name}</td>
                   <td className="px-4 py-3 font-mono text-xs text-muted">
                     {u.email}
@@ -587,7 +587,7 @@ function Field({
         required={required}
         defaultValue={defaultValue}
         autoComplete="off"
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       />
       {help && <p className="mt-1 text-[11px] leading-snug text-muted">{help}</p>}
     </label>
@@ -617,7 +617,7 @@ function SelectField({
         name={name}
         defaultValue={defaultValue ?? ""}
         required={required}
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

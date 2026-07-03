@@ -115,26 +115,26 @@ export default function PortalDashboard() {
           <img src={data.customer.avatarUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
         )}
         <div>
-          <h1 className="text-2xl font-semibold">Olá, {displayName}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">Olá, {displayName}</h1>
           <p className="text-sm text-muted">{displayDoc}</p>
         </div>
       </div>
 
       {/* Quadro do crediário — só quando a empresa usa crediário (portalConfig) */}
       {showFeat("crediario") && (acc ? (
-        <section className={`rounded-2xl border bg-bg/60 p-6 ${frameClass}`}>
+        <section className={`rounded-2xl border bg-surface p-6 shadow-sm ${frameClass}`}>
           <div className="grid gap-4 sm:grid-cols-3">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-muted">Limite</p>
-              <p className="mt-1 text-xl font-semibold">{brl(acc.limitCents)}</p>
+              <p className="mt-1 text-xl font-bold">{brl(acc.limitCents)}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-muted">Em uso</p>
-              <p className="mt-1 text-xl font-semibold">{brl(acc.usedCents)}</p>
+              <p className="mt-1 text-xl font-bold">{brl(acc.usedCents)}</p>
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-muted">Disponível</p>
-              <p className="mt-1 text-xl font-semibold text-green-300">{brl(available)}</p>
+              <p className="mt-1 text-xl font-bold text-green-300">{brl(available)}</p>
             </div>
           </div>
           <p className="mt-4 text-sm">
@@ -150,11 +150,11 @@ export default function PortalDashboard() {
           </p>
         </section>
       ) : (
-        <section className="rounded-2xl border border-line bg-bg/60 p-6">
+        <section className="card">
           <p className="text-sm text-muted">
             Você ainda não tem crediário. Se quiser comprar parcelado, solicite um limite.
           </p>
-          <Link href="/c/limite" className="mt-3 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
+          <Link href="/c/limite" className="btn-grad mt-3 inline-block px-4 py-2">
             Pedir limite
           </Link>
         </section>
@@ -175,7 +175,7 @@ export default function PortalDashboard() {
               };
               const d = new Date(ap.startsAt);
               return (
-                <div key={ap.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-bg/60 p-4">
+                <div key={ap.id} className="card flex items-center justify-between gap-3">
                   <div>
                     <p className="font-medium">{ap.serviceName || "Exame de vista"}</p>
                     <p className="text-xs text-muted">
@@ -209,9 +209,9 @@ export default function PortalDashboard() {
           <h2 className="mb-4 text-lg font-semibold">Minhas compras</h2>
           <div className="space-y-2">
             {data.purchases.map((p: any) => (
-              <div key={p.id} className="rounded-xl border border-line bg-bg/60 p-4">
+              <div key={p.id} className="card">
                 <div className="flex items-center justify-between">
-                  <p className="font-medium">
+                  <p className="font-semibold text-fg">
                     {(Number(p.totalCents) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                     <span className="ml-2 rounded-full bg-line px-2 py-0.5 text-[10px] uppercase text-muted">{p.paymentMethod}</span>
                   </p>
@@ -233,13 +233,13 @@ export default function PortalDashboard() {
       <section className="mt-8">
         <h2 className="mb-4 text-lg font-semibold">Minhas compras</h2>
         {acc.purchases.length === 0 ? (
-          <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhuma compra no crediário.</p>
+          <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhuma compra no crediário.</p>
         ) : (
           <div className="space-y-4">
             {acc.purchases.map((p: any) => (
-              <div key={p.id} className="rounded-xl border border-line bg-bg/60 p-5">
+              <div key={p.id} className="card">
                 <div className="flex items-center justify-between">
-                  <p className="font-medium">{brl(p.totalCents)} em {p.installmentsCount}x</p>
+                  <p className="font-semibold text-fg">{brl(p.totalCents)} em {p.installmentsCount}x</p>
                   <span className="text-xs text-muted">{new Date(p.createdAt).toLocaleDateString("pt-BR")}</span>
                 </div>
                 <div className="mt-3 space-y-1">
@@ -403,52 +403,52 @@ function SavedCardSection({ onChanged }: { onChanged: () => void }) {
   const canTokenize = !!status.publicKey;
 
   return (
-    <section className="mt-6 rounded-2xl border border-line bg-bg/60 p-5">
+    <section className="card mt-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold">Cobrança automática</h2>
+          <h2 className="text-sm font-bold text-fg">Cobrança automática</h2>
           <p className="text-xs text-muted">Cadastre um cartão e suas parcelas são pagas sozinhas no vencimento.</p>
         </div>
         {status.hasCard && (
-          <span className="rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-green-300">ativa</span>
+          <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-success">ativa</span>
         )}
       </div>
 
       {status.hasCard ? (
-        <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-line bg-bg/40 p-3">
+        <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-line bg-surface-2 p-3">
           <div className="flex items-center gap-2 text-sm">
             <span className="rounded bg-line px-2 py-1 text-xs uppercase">{status.brand ?? "cartão"}</span>
             <span className="font-mono">•••• {status.last4 ?? "????"}</span>
           </div>
-          <button disabled={busy} onClick={remove} className="text-xs text-red-300 hover:underline disabled:opacity-50">remover</button>
+          <button disabled={busy} onClick={remove} className="text-xs text-danger hover:underline disabled:opacity-50">remover</button>
         </div>
       ) : !canTokenize ? (
-        <p className="mt-4 rounded-lg border border-line bg-bg/40 px-3 py-2 text-xs text-muted">
+        <p className="mt-4 rounded-xl border border-line bg-surface-2 px-3 py-2 text-xs text-muted">
           Cobrança automática indisponível nesta loja no momento.
         </p>
       ) : !form ? (
-        <button onClick={() => setForm(true)} className="mt-4 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
+        <button onClick={() => setForm(true)} className="btn-grad mt-4 px-4 py-2">
           Cadastrar cartão
         </button>
       ) : (
         <div className="mt-4 space-y-3">
-          {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">{err}</p>}
+          {err && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-xs font-medium text-danger">{err}</p>}
           <input
             value={holder}
             onChange={(e) => setHolder(e.target.value)}
             placeholder="Nome impresso no cartão"
-            className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand"
+            className="input-base"
           />
-          <div id="mp-card-number" className="h-10 rounded-lg border border-line bg-bg/40 px-3" />
+          <div id="mp-card-number" className="h-10 rounded-xl border border-line bg-surface px-3" />
           <div className="grid grid-cols-2 gap-3">
-            <div id="mp-card-exp" className="h-10 rounded-lg border border-line bg-bg/40 px-3" />
-            <div id="mp-card-cvv" className="h-10 rounded-lg border border-line bg-bg/40 px-3" />
+            <div id="mp-card-exp" className="h-10 rounded-xl border border-line bg-surface px-3" />
+            <div id="mp-card-cvv" className="h-10 rounded-xl border border-line bg-surface px-3" />
           </div>
           <div className="flex items-center gap-2">
-            <button disabled={busy || !ready} onClick={save} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">
+            <button disabled={busy || !ready} onClick={save} className="btn-grad flex-1 py-2">
               {busy ? "Salvando…" : ready ? "Salvar cartão" : "Carregando…"}
             </button>
-            <button disabled={busy} onClick={() => { setForm(false); setReady(false); setErr(null); }} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">
+            <button disabled={busy} onClick={() => { setForm(false); setReady(false); setErr(null); }} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:border-brand/50 hover:text-fg">
               cancelar
             </button>
           </div>
@@ -484,10 +484,10 @@ function NpsCard() {
   }
 
   return (
-    <section className="mt-8 rounded-2xl border border-line bg-bg/60 p-6">
-      <h2 className="text-lg font-semibold">Como você avalia nosso atendimento?</h2>
+    <section className="card mt-8">
+      <h2 className="text-lg font-bold text-fg">Como você avalia nosso atendimento?</h2>
       {done ? (
-        <p className="mt-3 text-sm text-green-300">✓ Obrigado pela sua avaliação!</p>
+        <p className="mt-3 text-sm font-medium text-green-300">✓ Obrigado pela sua avaliação!</p>
       ) : (
         <>
           <p className="mt-1 text-sm text-muted">De 0 (não recomendaria) a 10 (recomendaria com certeza).</p>
@@ -496,7 +496,8 @@ function NpsCard() {
               <button
                 key={n}
                 onClick={() => setScore(n)}
-                className={`h-9 w-9 rounded-lg border text-sm font-medium transition ${score === n ? "border-brand bg-brand text-white" : "border-line text-muted hover:border-brand"}`}
+                className={`h-9 w-9 rounded-lg border text-sm font-semibold transition ${score === n ? "border-brand text-white shadow-sm" : "border-line text-muted hover:border-brand/50 hover:text-brand"}`}
+                style={score === n ? { background: "var(--grad-brand)" } : undefined}
               >
                 {n}
               </button>
@@ -507,13 +508,13 @@ function NpsCard() {
             onChange={(e) => setComment(e.target.value)}
             placeholder="Quer deixar um comentário? (opcional)"
             rows={2}
-            className="mt-3 w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+            className="input-base mt-3"
           />
-          {err && <p className="mt-2 text-xs text-red-300">{err}</p>}
+          {err && <p className="mt-2 text-xs font-medium text-danger">{err}</p>}
           <button
             onClick={submit}
             disabled={busy || score == null}
-            className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="btn-grad mt-3 px-4 py-2"
           >
             {busy ? "Enviando..." : "Enviar avaliação"}
           </button>
@@ -586,12 +587,12 @@ function PayInstallment({ installmentId, onPaid }: { installmentId: string; onPa
       </button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={close}>
-          <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5 text-center shadow-lg" onClick={(e) => e.stopPropagation()}>
             {link ? (
               <>
-                <h3 className="text-base font-semibold">Link de pagamento</h3>
+                <h3 className="text-base font-bold text-fg">Link de pagamento</h3>
                 <p className="mt-1 text-sm text-muted">Pague por Pix ou cartão (até 12x) no link abaixo.</p>
-                <a href={link} target="_blank" rel="noreferrer" className="mt-4 block w-full rounded-lg bg-brand py-2 text-sm font-semibold text-white">Abrir pagamento ↗</a>
+                <a href={link} target="_blank" rel="noreferrer" className="btn-grad mt-4 block w-full py-2">Abrir pagamento ↗</a>
                 <button
                   onClick={() => { navigator.clipboard?.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); }}
                   className="mt-3 w-full break-all rounded-lg border border-line bg-bg/60 px-3 py-2 text-[11px] text-muted transition hover:border-brand"
@@ -602,9 +603,9 @@ function PayInstallment({ installmentId, onPaid }: { installmentId: string; onPa
               </>
             ) : pix ? (
               <>
-                <h3 className="text-base font-semibold">Pix gerado</h3>
+                <h3 className="text-base font-bold text-fg">Pix gerado</h3>
                 {pixPaid ? (
-                  <p className="mt-2 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm font-semibold text-green-300">✅ Pagamento confirmado!</p>
+                  <p className="mt-2 rounded-xl border border-success/40 bg-success/10 px-3 py-2 text-sm font-semibold text-success">✅ Pagamento confirmado!</p>
                 ) : (
                   <p className="mt-1 flex items-center justify-center gap-2 text-sm text-muted">
                     <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-400" /> Aguardando pagamento… (confirma automático)
@@ -625,23 +626,23 @@ function PayInstallment({ installmentId, onPaid }: { installmentId: string; onPa
                     {copied ? "✓ copiado!" : pix.qrCode}
                   </button>
                 )}
-                <button onClick={close} className="mt-3 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-white">Concluir</button>
+                <button onClick={close} className="btn-grad mt-3 w-full py-2">Concluir</button>
               </>
             ) : (
               <>
-                <h3 className="text-base font-semibold">Como deseja pagar?</h3>
-                {err && <p className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">{err}</p>}
+                <h3 className="text-base font-bold text-fg">Como deseja pagar?</h3>
+                {err && <p className="mt-2 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-xs font-medium text-danger">{err}</p>}
                 <div className="mt-4 grid gap-2">
-                  <button disabled={busy} onClick={() => pay("pix")} className="rounded-lg border border-line bg-bg/60 p-3 text-left transition hover:border-brand disabled:opacity-50">
-                    <span className="block text-sm font-medium">Pix</span>
+                  <button disabled={busy} onClick={() => pay("pix")} className="rounded-xl border border-line bg-surface p-3 text-left transition hover:border-brand/50 disabled:opacity-50">
+                    <span className="block text-sm font-semibold">Pix</span>
                     <span className="block text-xs text-muted">Gera o QR Code na hora.</span>
                   </button>
-                  <button disabled={busy} onClick={() => pay("card")} className="rounded-lg border border-line bg-bg/60 p-3 text-left transition hover:border-brand disabled:opacity-50">
-                    <span className="block text-sm font-medium">Cartão</span>
+                  <button disabled={busy} onClick={() => pay("card")} className="rounded-xl border border-line bg-surface p-3 text-left transition hover:border-brand/50 disabled:opacity-50">
+                    <span className="block text-sm font-semibold">Cartão</span>
                     <span className="block text-xs text-muted">Abre o checkout do Mercado Pago.</span>
                   </button>
-                  <button disabled={busy} onClick={() => pay("infinitepay")} className="rounded-lg border border-line bg-bg/60 p-3 text-left transition hover:border-brand disabled:opacity-50">
-                    <span className="block text-sm font-medium">InfinitePay (Pix ou cartão)</span>
+                  <button disabled={busy} onClick={() => pay("infinitepay")} className="rounded-xl border border-line bg-surface p-3 text-left transition hover:border-brand/50 disabled:opacity-50">
+                    <span className="block text-sm font-semibold">InfinitePay (Pix ou cartão)</span>
                     <span className="block text-xs text-muted">Abre o checkout da InfinitePay.</span>
                   </button>
                 </div>

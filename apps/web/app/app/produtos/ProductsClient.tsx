@@ -212,10 +212,10 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2">
-        <button onClick={startCreate} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white">
+        <button onClick={startCreate} className="btn-grad px-5">
           + Novo produto
         </button>
-        <button onClick={() => setImporting(true)} className="rounded-lg border border-line px-5 py-2 text-sm font-semibold hover:border-brand">
+        <button onClick={() => setImporting(true)} className="rounded-xl border border-line bg-surface px-5 py-2 text-sm font-semibold transition hover:border-brand/60 hover:text-brand">
           ↑ Importar estoque
         </button>
       </div>
@@ -226,7 +226,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
           className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm"
           onClick={() => { setCreating(false); setEditing(null); setError(null); }}
         >
-        <form ref={formRef} onSubmit={onSubmit} onBlur={refreshTips} onClick={(e) => e.stopPropagation()} className="my-8 w-full max-w-3xl space-y-5 rounded-2xl border border-line bg-bg p-6 shadow-2xl">
+        <form ref={formRef} onSubmit={onSubmit} onBlur={refreshTips} onClick={(e) => e.stopPropagation()} className="my-8 w-full max-w-3xl space-y-5 rounded-2xl border border-line bg-surface p-6 shadow-lg">
           <h2 className="text-lg font-semibold">{editing ? `Editar — ${editing.name}` : "Novo produto"}</h2>
           {tips.length > 0 && (
             <div className="space-y-1 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
@@ -259,7 +259,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
             {editing ? (
               <label className="block">
                 <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Estoque atual (total)</span>
-                <input value={String(editing?.stockQty ?? 0)} readOnly className="w-full rounded-lg border border-line bg-line/30 px-3 py-2 text-sm text-muted" />
+                <input value={String(editing?.stockQty ?? 0)} readOnly className="input-base bg-surface-2 text-muted" />
                 <p className="mt-1 text-[10px] text-muted">Total das lojas. Para alterar, use <b>Entrada</b> ou <b>Mov.</b> (por loja).</p>
               </label>
             ) : (
@@ -268,7 +268,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
             <Field name="minStock" label="Estoque mínimo" help="alerta quando o total ficar igual/abaixo" defaultValue={String((editing as any)?.minStockQty ?? 0)} />
           </div>
           {/* Imagem */}
-          <div className="rounded-lg border border-line bg-bg/40 p-4">
+          <div className="rounded-xl border border-line bg-surface-2 p-4">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">Imagem (opcional)</h3>
             <div className="flex items-center gap-4">
               {imageUrl ? (
@@ -278,7 +278,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
               )}
               <div className="flex-1 space-y-2">
                 {editing ? (
-                  <label className="inline-block cursor-pointer rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand">
+                  <label className="inline-block cursor-pointer rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">
                     Enviar arquivo
                     <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadImage(e.target.files[0])} />
                   </label>
@@ -289,7 +289,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
                   name="imageUrlLink"
                   placeholder="ou cole um link https://..."
                   defaultValue={editing?.imageUrl && !editing.imageUrl.includes("/storage/") ? editing.imageUrl : ""}
-                  className="w-full rounded-lg border border-line bg-bg/60 px-3 py-1.5 text-xs"
+                  className="input-base py-1.5 text-xs"
                 />
               </div>
             </div>
@@ -314,7 +314,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
           {isOtica && (
             <label className="block">
               <span className="mb-1 block text-xs uppercase text-muted">Laboratório (para lentes)</span>
-              <select name="laboratorySupplierId" defaultValue={editing?.laboratorySupplierId ?? ""} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+              <select name="laboratorySupplierId" defaultValue={editing?.laboratorySupplierId ?? ""} className="input-base">
                 <option value="">— nenhum —</option>
                 {labs.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
@@ -323,7 +323,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
           )}
 
           {/* Fiscal (NFC-e) — usados na emissão da nota */}
-          <div className="rounded-lg border border-line bg-bg/40 p-4">
+          <div className="rounded-xl border border-line bg-surface-2 p-4">
             <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Fiscal (NFC-e)</h3>
             <p className="mb-3 text-[11px] text-muted">Preencha para emitir nota deste produto. <b>Simples Nacional</b> usa CSOSN (ex.: 102/500); <b>Regime Normal</b> usa CST (ex.: 00/60). Deixe em branco se ainda não emite.</p>
             <div className="grid gap-4 sm:grid-cols-3">
@@ -334,10 +334,10 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
                   onChange={(e) => onNcmChange(e.target.value)}
                   onBlur={() => setTimeout(() => setNcmSugs([]), 150)}
                   placeholder="código ou descrição"
-                  className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                  className="input-base"
                 />
                 {ncmSugs.length > 0 && (
-                  <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-line bg-bg shadow-xl">
+                  <div className="absolute z-20 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-line bg-surface shadow-lg">
                     {ncmSugs.map((s) => (
                       <button type="button" key={s.codigo} onMouseDown={(e) => { e.preventDefault(); pickNcm(s); }} className="block w-full px-3 py-1.5 text-left text-xs hover:bg-line">
                         <span className="font-mono text-brand">{s.codigo}</span> — {s.descricao}
@@ -350,13 +350,13 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
               <Field name="cfop" label="CFOP" help="ex.: 5102" defaultValue={editing?.cfop ?? ""} />
               <label className="block">
                 <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">CEST <span className="normal-case text-[10px] text-muted">(sugerido)</span></span>
-                <input name="cest" value={cestVal} onChange={(e) => setCestVal(e.target.value)} placeholder="opcional (ST)" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+                <input name="cest" value={cestVal} onChange={(e) => setCestVal(e.target.value)} placeholder="opcional (ST)" className="input-base" />
               </label>
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-4">
               <label className="block">
                 <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Origem</span>
-                <select name="origem" defaultValue={String(editing?.origem ?? 0)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+                <select name="origem" defaultValue={String(editing?.origem ?? 0)} className="input-base">
                   <option value="0">0 — Nacional</option>
                   <option value="1">1 — Estrangeira (import. direta)</option>
                   <option value="2">2 — Estrangeira (mercado interno)</option>
@@ -376,8 +376,8 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
 
           {error && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
           <div className="flex justify-end gap-3">
-            <button type="button" onClick={() => { setCreating(false); setEditing(null); setError(null); }} className="rounded-lg border border-line px-4 py-2 text-sm">Cancelar</button>
-            <button type="submit" disabled={isPending} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">Salvar</button>
+            <button type="button" onClick={() => { setCreating(false); setEditing(null); setError(null); }} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">Cancelar</button>
+            <button type="submit" disabled={isPending} className="btn-grad px-5 disabled:opacity-50">Salvar</button>
           </div>
         </form>
         </div>
@@ -389,10 +389,10 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
           value={q}
           onChange={(e) => { setQ(e.target.value); setPage(1); }}
           placeholder="Buscar por nome, SKU, categoria ou valor"
-          className="flex-1 rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+          className="input-base flex-1"
         />
         <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-          className="rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+          className="input-base w-auto">
           <option value={10}>10 por página</option>
           <option value={50}>50 por página</option>
           <option value={100}>100 por página</option>
@@ -401,16 +401,16 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
       </div>
       <p className="text-[11px] text-muted">{total} produto(s){q ? " (filtrados)" : ""}{pageSize !== 0 ? ` · página ${curPage}/${totalPages}` : ""}</p>
 
-      <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
-              <th className="px-4 py-3">Produto</th>
-              <th className="px-4 py-3">À vista</th>
-              <th className="px-4 py-3">Cartão</th>
-              <th className="px-4 py-3">Crediário</th>
-              <th className="px-4 py-3">Estoque</th>
-              <th className="px-4 py-3">Vitrine</th>
+            <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
+              <th className="px-4 py-3 font-medium">Produto</th>
+              <th className="px-4 py-3 font-medium">À vista</th>
+              <th className="px-4 py-3 font-medium">Cartão</th>
+              <th className="px-4 py-3 font-medium">Crediário</th>
+              <th className="px-4 py-3 font-medium">Estoque</th>
+              <th className="px-4 py-3 font-medium">Vitrine</th>
               <th className="px-4 py-3"></th>
             </tr>
           </thead>
@@ -418,7 +418,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
             {paged.length === 0 ? (
               <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">Nenhum produto.</td></tr>
             ) : paged.map((p) => (
-              <tr key={p.id} className="border-t border-line/50">
+              <tr key={p.id} className="border-t border-line transition hover:bg-surface-2">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     {p.imageUrl ? (
@@ -469,9 +469,9 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
 
       {pageSize !== 0 && totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 text-sm">
-          <button disabled={curPage <= 1} onClick={() => setPage(curPage - 1)} className="rounded-lg border border-line px-3 py-1.5 disabled:opacity-40">‹ Anterior</button>
+          <button disabled={curPage <= 1} onClick={() => setPage(curPage - 1)} className="rounded-xl border border-line px-3 py-1.5 transition hover:border-brand/60 disabled:opacity-40">‹ Anterior</button>
           <span className="text-muted">{curPage} / {totalPages}</span>
-          <button disabled={curPage >= totalPages} onClick={() => setPage(curPage + 1)} className="rounded-lg border border-line px-3 py-1.5 disabled:opacity-40">Próxima ›</button>
+          <button disabled={curPage >= totalPages} onClick={() => setPage(curPage + 1)} className="rounded-xl border border-line px-3 py-1.5 transition hover:border-brand/60 disabled:opacity-40">Próxima ›</button>
         </div>
       )}
 
@@ -493,7 +493,7 @@ function ProductView({ product, labs, onClose, onEdit }: { product: Product; lab
   const money = (c: any) => (c === null || c === undefined ? null : brl(c));
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="my-8 w-full max-w-2xl rounded-2xl border border-line bg-bg p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="my-8 w-full max-w-2xl rounded-2xl border border-line bg-surface p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-4">
           {p.imageUrl ? <img src={p.imageUrl} alt="" className="h-20 w-20 rounded-lg object-cover" /> : <div className="flex h-20 w-20 items-center justify-center rounded-lg bg-line text-xs text-muted">sem</div>}
           <div className="flex-1">
@@ -533,8 +533,8 @@ function ProductView({ product, labs, onClose, onEdit }: { product: Product; lab
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">Fechar</button>
-          <button onClick={onEdit} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white">Editar</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">Fechar</button>
+          <button onClick={onEdit} className="btn-grad px-5">Editar</button>
         </div>
       </div>
     </div>
@@ -567,29 +567,29 @@ function EntradaModal({ product, stores, onClose, onSaved }: { product: Product;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Entrada — {product.name}</h3>
         <p className="mt-1 text-xs text-muted">Estoque total: <b>{product.stockQty}</b>. A quantidade entra na loja escolhida.</p>
         {stores.length > 1 && (
           <label className="mt-3 block"><span className="mb-1 block text-[10px] uppercase text-muted">Loja</span>
-            <select value={storeId} onChange={(e) => setStoreId(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+            <select value={storeId} onChange={(e) => setStoreId(e.target.value)} className="input-base">
               {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </label>
         )}
         <label className="mt-3 block"><span className="mb-1 block text-[10px] uppercase text-muted">Quantidade que entrou</span>
-          <input type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} autoFocus className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+          <input type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} autoFocus className="input-base" />
         </label>
         <label className="mt-2 block"><span className="mb-1 block text-[10px] uppercase text-muted">Custo unitário (R$) — opcional</span>
-          <input value={cost} onChange={(e) => setCost(e.target.value)} inputMode="decimal" placeholder="atualiza o custo do produto" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+          <input value={cost} onChange={(e) => setCost(e.target.value)} inputMode="decimal" placeholder="atualiza o custo do produto" className="input-base" />
         </label>
         <label className="mt-2 block"><span className="mb-1 block text-[10px] uppercase text-muted">Motivo / nota</span>
-          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: NF 1234 fornecedor X" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Ex.: NF 1234 fornecedor X" className="input-base" />
         </label>
-        {err && <p className="mt-2 text-xs text-red-300">{err}</p>}
+        {err && <p className="mt-2 text-xs text-danger">{err}</p>}
         <div className="mt-4 flex gap-2">
-          <button disabled={busy} onClick={save} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Dar entrada"}</button>
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+          <button disabled={busy} onClick={save} className="btn-grad flex-1 disabled:opacity-50">{busy ? "Salvando…" : "Dar entrada"}</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
         </div>
       </div>
     </div>
@@ -609,13 +609,13 @@ function MovsModal({ product, stores = [], onClose, onChanged }: { product: Prod
   const KIND: Record<string, string> = { sale: "Venda", purchase: "Entrada", adjustment: "Ajuste", return: "Devolução", transfer: "Transferência" };
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex max-h-[85vh] w-full max-w-md flex-col rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Movimentações — {product.name}</h3>
         <p className="mt-1 text-xs text-muted">Estoque total: <b>{product.stockQty}</b></p>
         {byStore.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
             {byStore.map((s, i) => (
-              <span key={i} className="rounded-full border border-line bg-bg/40 px-2.5 py-1 text-[11px]">{s.store}: <b>{s.qty}</b></span>
+              <span key={i} className="rounded-full border border-line bg-surface-2 px-2.5 py-1 text-[11px]">{s.store}: <b>{s.qty}</b></span>
             ))}
           </div>
         )}
@@ -626,7 +626,7 @@ function MovsModal({ product, stores = [], onClose, onChanged }: { product: Prod
           {items === null ? <p className="text-sm text-muted">Carregando…</p>
             : items.length === 0 ? <p className="text-sm text-muted">Nenhuma movimentação registrada.</p>
             : items.map((m) => (
-              <div key={m.id} className="flex items-center justify-between rounded-lg border border-line/60 bg-bg/40 px-3 py-2 text-sm">
+              <div key={m.id} className="flex items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
                 <div>
                   <span className="font-medium">{KIND[m.kind] ?? m.kind}</span>
                   {m.reason && <span className="ml-2 text-xs text-muted">{m.reason}</span>}
@@ -639,7 +639,7 @@ function MovsModal({ product, stores = [], onClose, onChanged }: { product: Prod
               </div>
             ))}
         </div>
-        <button onClick={onClose} className="mt-4 w-full rounded-lg border border-line py-2 text-sm text-muted hover:text-fg">fechar</button>
+        <button onClick={onClose} className="mt-4 w-full rounded-xl border border-line py-2 text-sm text-muted transition hover:text-fg">fechar</button>
       </div>
     </div>
   );
@@ -667,21 +667,21 @@ function TransferForm({ product, stores, onDone }: { product: Product; stores: A
   }
 
   return (
-    <div className="mt-3 rounded-lg border border-line bg-bg/40 p-3">
+    <div className="mt-3 rounded-xl border border-line bg-surface-2 p-3">
       <button onClick={() => setOpen((v) => !v)} className="text-xs font-medium text-brand hover:underline">{open ? "− Transferir entre lojas" : "+ Transferir entre lojas"}</button>
       {open && (
         <div className="mt-2 space-y-2">
           <div className="grid grid-cols-[1fr_1fr_70px] gap-2">
-            <select value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border border-line bg-bg/40 px-2 py-1 text-sm">
+            <select value={from} onChange={(e) => setFrom(e.target.value)} className="input-base py-1">
               {stores.map((s) => <option key={s.id} value={s.id}>De: {s.name}</option>)}
             </select>
-            <select value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-line bg-bg/40 px-2 py-1 text-sm">
+            <select value={to} onChange={(e) => setTo(e.target.value)} className="input-base py-1">
               {stores.map((s) => <option key={s.id} value={s.id}>Para: {s.name}</option>)}
             </select>
-            <input type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} className="rounded border border-line bg-bg/40 px-2 py-1 text-sm" />
+            <input type="number" min={1} value={qty} onChange={(e) => setQty(e.target.value)} className="input-base py-1" />
           </div>
           {msg && <p className="text-xs text-muted">{msg}</p>}
-          <button disabled={busy || from === to} onClick={submit} className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">{busy ? "..." : "Transferir"}</button>
+          <button disabled={busy || from === to} onClick={submit} className="btn-grad px-3 py-1 text-xs disabled:opacity-50">{busy ? "..." : "Transferir"}</button>
         </div>
       )}
     </div>
@@ -740,27 +740,27 @@ function ImportEstoque({ onClose, onDone }: { onClose: () => void; onDone: () =>
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Importar estoque</h3>
         <p className="mt-1 text-xs text-muted">Cole as linhas do relatório de estoque (formato do seu sistema: <code>CÓDIGO NOME … UN ESTOQUE PREÇO NCM</code>) ou um CSV <code>código;nome;estoque;preço;ncm</code>. Categoria (Armações/Lentes) e estoque negativo→0 são tratados automaticamente. Produtos com SKU já existente são ignorados.</p>
         {result ? (
           <div className="mt-4 rounded-xl border border-green-500/40 bg-green-500/10 p-4 text-sm">
             <p className="font-semibold text-green-300">Importação concluída ✅</p>
             <p className="mt-1">Criados: <b>{result.created}</b> · Ignorados (já existiam): <b>{result.skipped}</b> · Total enviado: {result.total}</p>
-            <button onClick={onDone} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Concluir</button>
+            <button onClick={onDone} className="btn-grad mt-3">Concluir</button>
           </div>
         ) : (
           <>
-            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={10} placeholder="000162 ARMA ACTION JS5017 C3 UN -1,00 390,00 90031100&#10;..." className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 font-mono text-xs" />
+            <textarea value={text} onChange={(e) => setText(e.target.value)} rows={10} placeholder="000162 ARMA ACTION JS5017 C3 UN -1,00 390,00 90031100&#10;..." className="input-base mt-3 font-mono text-xs" />
             <label className="mt-2 flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={reuseImage} onChange={(e) => setReuseImage(e.target.checked)} className="h-4 w-4 accent-brand" /> Usar imagem de um produto já cadastrado (armação/lente) como provisória</label>
             <div className="mt-2 text-xs text-muted">Reconhecidos: <b className="text-fg">{parsed.rows.length}</b> item(ns){parsed.ignored ? ` · ${parsed.ignored} linha(s) ignorada(s) (cabeçalho/sem padrão)` : ""}.</div>
             {parsed.rows.length > 0 && (
-              <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-line/60">
+              <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-line">
                 <table className="w-full text-xs">
-                  <thead className="bg-bg/40 text-left text-[10px] uppercase text-muted"><tr><th className="px-2 py-1">SKU</th><th className="px-2 py-1">Produto</th><th className="px-2 py-1">Estoque</th><th className="px-2 py-1">Preço</th></tr></thead>
+                  <thead className="bg-surface-2 text-left text-[10px] uppercase text-muted"><tr><th className="px-2 py-1">SKU</th><th className="px-2 py-1">Produto</th><th className="px-2 py-1">Estoque</th><th className="px-2 py-1">Preço</th></tr></thead>
                   <tbody>
                     {parsed.rows.slice(0, 12).map((r, i) => (
-                      <tr key={i} className="border-t border-line/40"><td className="px-2 py-1">{r.sku}</td><td className="px-2 py-1">{r.name}</td><td className="px-2 py-1">{Math.max(0, r.stockQty)}</td><td className="px-2 py-1">{brl(r.priceCents)}</td></tr>
+                      <tr key={i} className="border-t border-line"><td className="px-2 py-1">{r.sku}</td><td className="px-2 py-1">{r.name}</td><td className="px-2 py-1">{Math.max(0, r.stockQty)}</td><td className="px-2 py-1">{brl(r.priceCents)}</td></tr>
                     ))}
                   </tbody>
                 </table>
@@ -769,8 +769,8 @@ function ImportEstoque({ onClose, onDone }: { onClose: () => void; onDone: () =>
             )}
             {err && <p className="mt-2 text-xs text-red-300">{err}</p>}
             <div className="mt-4 flex gap-2">
-              <button disabled={busy || !parsed.rows.length} onClick={importar} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? `Importando ${parsed.rows.length}…` : `Importar ${parsed.rows.length} produto(s)`}</button>
-              <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+              <button disabled={busy || !parsed.rows.length} onClick={importar} className="btn-grad flex-1 disabled:opacity-50">{busy ? `Importando ${parsed.rows.length}…` : `Importar ${parsed.rows.length} produto(s)`}</button>
+              <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
             </div>
           </>
         )}
@@ -785,7 +785,7 @@ function Field({ name, label, required, help, defaultValue }: { name: string; la
       <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">
         {label}{required && <span className="text-brand"> *</span>}
       </span>
-      <input name={name} required={required} defaultValue={defaultValue} autoComplete="off" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+      <input name={name} required={required} defaultValue={defaultValue} autoComplete="off" className="input-base" />
       {help && <p className="mt-1 text-[10px] text-muted">{help}</p>}
     </label>
   );

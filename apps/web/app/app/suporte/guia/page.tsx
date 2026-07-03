@@ -56,7 +56,7 @@ export default async function GuiaPage() {
                 <a
                   key={s.id}
                   href={`/app/suporte/guia/${encodeURIComponent(s.path)}`}
-                  className="block rounded-lg border border-line bg-bg/60 p-4 backdrop-blur-sm transition hover:border-brand/60"
+                  className="card block"
                   style={{ paddingLeft: `${1 + s.depth * 1.5}rem` }}
                 >
                   <h3 className="font-semibold">{s.title}</h3>

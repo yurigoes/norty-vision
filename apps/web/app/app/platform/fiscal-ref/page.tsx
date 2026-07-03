@@ -47,22 +47,22 @@ export default function FiscalRefPage() {
         <Card title="Serviços LC116" value={counts ? counts.servicos.toLocaleString("pt-BR") : "—"} />
       </div>
 
-      {msg && <p className="mb-4 rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">{msg}</p>}
+      {msg && <p className="card mb-4 px-3 py-2 text-sm">{msg}</p>}
 
       <section className="space-y-4">
-        <div className="rounded-xl border border-line bg-bg/60 p-5">
+        <div className="card">
           <h2 className="text-sm font-semibold">NCM (Siscomex)</h2>
           <p className="mt-1 text-xs text-muted">Suba o JSON oficial da Tabela NCM vigente (Portal Único Siscomex). ~15 mil itens.</p>
-          <label className="mt-3 inline-block cursor-pointer rounded-lg border border-line px-4 py-2 text-sm hover:border-brand">
+          <label className="mt-3 inline-block cursor-pointer rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand">
             {busy === "ncm" ? "Importando…" : "Subir JSON do NCM"}
             <input type="file" accept="application/json,.json" className="hidden" disabled={!!busy} onChange={(e) => e.target.files?.[0] && importNcm(e.target.files[0])} />
           </label>
         </div>
 
-        <div className="rounded-xl border border-line bg-bg/60 p-5">
+        <div className="card">
           <h2 className="text-sm font-semibold">CEST + Serviços (LC116)</h2>
           <p className="mt-1 text-xs text-muted">Tabelas oficiais já embutidas no sistema (Convênio 142/18 e LC 116/03). Clique para semear/atualizar.</p>
-          <button onClick={seed} disabled={!!busy} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <button onClick={seed} disabled={!!busy} className="btn-grad mt-3">
             {busy === "seed" ? "Semeando…" : "Semear CEST + LC116"}
           </button>
         </div>
@@ -73,7 +73,7 @@ export default function FiscalRefPage() {
 
 function Card({ title, value }: { title: string; value: string }) {
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-4">
+    <div className="card">
       <p className="text-xs uppercase tracking-wider text-muted">{title}</p>
       <p className="mt-1 text-2xl font-semibold">{value}</p>
     </div>

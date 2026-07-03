@@ -51,7 +51,7 @@ export default function EmployeePortal() {
         {brand?.logoUrl ? (
           <img src={brand.logoUrl} alt={brand.name ?? ""} className="h-9 w-auto max-w-[160px] object-contain" />
         ) : (
-          <span className="text-sm font-semibold">{brand?.name ?? "Portal do funcionário"}</span>
+          <span className="text-sm font-bold tracking-tight">{brand?.name ?? "Portal do funcionário"}</span>
         )}
         <span className="text-[11px] text-muted">powered by <strong className="text-brand">yugo</strong></span>
       </div>
@@ -59,21 +59,21 @@ export default function EmployeePortal() {
       <header className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-3">
           {e.photoUrl ? (
-            <img src={e.photoUrl} alt="" className="h-12 w-12 rounded-full object-cover" />
+            <img src={e.photoUrl} alt="" className="h-12 w-12 rounded-full object-cover ring-2 ring-brand/20" />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-line bg-bg/60 text-xl text-muted" aria-hidden>🧑</div>
+            <div className="flex h-12 w-12 items-center justify-center rounded-full border border-line bg-surface-2 text-xl text-muted" aria-hidden>🧑</div>
           )}
           <div>
-            <h1 className="text-2xl font-semibold">Olá, {String(e.name).split(" ")[0]}</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight">Olá, {String(e.name).split(" ")[0]}</h1>
             <p className="text-sm text-muted">{e.roleTitle ?? "Funcionário"}</p>
           </div>
         </div>
-        <button onClick={logout} className="text-sm text-muted hover:text-red-300">Sair</button>
+        <button onClick={logout} className="text-sm text-muted transition-colors hover:text-danger">Sair</button>
       </header>
 
       <nav className="mb-5 flex flex-wrap gap-2 border-b border-line">
         {([["home", "Início"], ["dados", "Meus dados"], ["ponto", "Ponto"], ["holerite", "Holerite"], ["emprestimos", "Empréstimos"], ["comissoes", "Comissões"], ["solicitacoes", "Solicitações"], ["documentos", "Documentos"]] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition ${tab === k ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"}`}>{l}</button>
+          <button key={k} onClick={() => setTab(k)} className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition ${tab === k ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"}`}>{l}</button>
         ))}
       </nav>
 

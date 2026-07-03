@@ -31,16 +31,16 @@ export function OrgSupportAccessCard({ orgId }: { orgId: string }) {
 
   const now = Date.now();
   return (
-    <section className="rounded-xl border border-line bg-bg/60 p-6">
+    <section className="card p-6">
       <h2 className="text-lg font-semibold">Acesso de suporte (token)</h2>
       <p className="text-sm text-muted">Libera o acesso do <strong>suporte master</strong> a esta empresa por um período. O dono do SaaS tem acesso total. A empresa também pode revogar.</p>
       <div className="mt-4 flex flex-wrap items-end gap-2">
         <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Duração</span>
-          <select value={duration} onChange={(e) => setDuration(e.target.value)} className="rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">
+          <select value={duration} onChange={(e) => setDuration(e.target.value)} className="input-base w-auto px-2 py-1.5">
             <option value="24h">24 horas</option><option value="30d">30 dias</option><option value="90d">90 dias</option><option value="sempre">Sem expiração</option>
           </select>
         </label>
-        <button onClick={grant} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Liberar acesso</button>
+        <button onClick={grant} disabled={busy} className="btn-grad px-4 py-2">Liberar acesso</button>
       </div>
       {key && (
         <div className="mt-3 rounded-lg border border-green-500/40 bg-green-500/10 p-3">

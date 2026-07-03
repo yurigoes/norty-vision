@@ -43,7 +43,7 @@ export default async function AjudaPage() {
       </header>
 
       {items.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-muted">
+        <p className="card text-muted">
           Nenhum artigo publicado ainda.
         </p>
       ) : (
@@ -58,7 +58,7 @@ export default async function AjudaPage() {
                   <Link
                     key={item.id}
                     href={`/app/suporte/ajuda/${item.slug}`}
-                    className="block rounded-lg border border-line bg-bg/60 p-4 backdrop-blur-sm transition hover:border-brand/60"
+                    className="card block"
                   >
                     <h3 className="font-semibold">{item.title}</h3>
                     {item.summary && (

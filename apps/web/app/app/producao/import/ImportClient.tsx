@@ -80,7 +80,7 @@ export function ImportClient() {
   return (
     <div className="space-y-5">
       <WipeSection />
-      <section className="rounded-xl border border-line bg-bg/60 p-5">
+      <section className="card">
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Arquivo .xlsx</span>
           <input type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); setSummary(null); }} className="w-full text-sm" />
@@ -90,15 +90,15 @@ export function ImportClient() {
           Cadastrar costureiras novas automaticamente (se aparecer um nome na planilha que ainda não está em Fornecedores)
         </label>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button disabled={!file || busy !== null} onClick={doPreview} className="rounded-lg border border-brand px-4 py-2 text-sm font-semibold text-brand hover:bg-brand/10 disabled:opacity-50">{busy === "preview" ? "Lendo…" : "1) Visualizar"}</button>
-          <button disabled={!file || !preview || busy !== null} onClick={doImport} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy === "run" ? "Importando…" : "2) Importar tudo"}</button>
+          <button disabled={!file || busy !== null} onClick={doPreview} className="rounded-xl border border-brand px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand/10 disabled:opacity-50">{busy === "preview" ? "Lendo…" : "1) Visualizar"}</button>
+          <button disabled={!file || !preview || busy !== null} onClick={doImport} className="btn-grad disabled:opacity-50">{busy === "run" ? "Importando…" : "2) Importar tudo"}</button>
         </div>
       </section>
 
       {preview && (
-        <section className="rounded-xl border border-line bg-bg/60 p-5">
+        <section className="card">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Pré-visualização ({preview.totalRows} linhas detectadas)</h2>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
             <table className="w-full text-xs">
               <thead className="text-[10px] uppercase text-muted">
                 <tr>
@@ -167,7 +167,7 @@ export function ImportClient() {
 function Stat({ label, value, tone }: { label: string; value: number; tone?: "green" | "amber" | "red" }) {
   const cls = tone === "green" ? "text-green-300" : tone === "amber" ? "text-amber-300" : tone === "red" ? "text-red-300" : "text-fg";
   return (
-    <div className="rounded-lg border border-line bg-bg/40 p-3">
+    <div className="rounded-xl border border-line bg-surface-2 p-3">
       <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
       <p className={`mt-1 text-lg font-semibold ${cls}`}>{value}</p>
     </div>
@@ -262,7 +262,7 @@ function WipeSection() {
         value={confirmSlug}
         onChange={(e) => setConfirmSlug(e.target.value)}
         placeholder={`digite "${orgSlug}"`}
-        className="mt-1 w-full max-w-xs rounded border border-line bg-bg/60 px-3 py-2 text-sm font-mono"
+        className="input-base mt-1 max-w-xs font-mono"
       />
 
       <button

@@ -45,14 +45,14 @@ export default async function OrganizationsPage() {
           Cadastradas ({orgs.length})
         </h2>
         {orgs.length === 0 ? (
-          <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">
+          <p className="card text-sm text-muted">
             Nenhuma organização criada ainda.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+          <div className="card overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
                   <th className="px-4 py-3">Nome</th>
                   <th className="px-4 py-3">Slug</th>
                   <th className="px-4 py-3">Documento</th>
@@ -65,7 +65,7 @@ export default async function OrganizationsPage() {
               </thead>
               <tbody>
                 {orgs.map((o) => (
-                  <tr key={o.id} className="border-t border-line/50">
+                  <tr key={o.id} className="border-t border-line transition hover:bg-surface-2">
                     <td className="px-4 py-3 font-medium">
                       {o.name}
                       {o.legalName && (
@@ -89,8 +89,8 @@ export default async function OrganizationsPage() {
                       <span
                         className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
                           o.status === "active"
-                            ? "bg-green-500/20 text-green-300"
-                            : "bg-yellow-500/20 text-yellow-300"
+                            ? "bg-success/15 text-success"
+                            : "bg-warn/15 text-warn"
                         }`}
                       >
                         {o.status}

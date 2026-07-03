@@ -62,7 +62,7 @@ export function ModuleFeaturesCard({ orgId }: { orgId: string }) {
   const hiddenCount = Object.values(overrides).filter((v) => v === false).length;
 
   return (
-    <section className="rounded-xl border border-line bg-bg/60 p-6">
+    <section className="card p-6">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Sub-módulos por módulo</h2>
         {hiddenCount > 0 && (
@@ -88,7 +88,7 @@ export function ModuleFeaturesCard({ orgId }: { orgId: string }) {
                   {subs.map((m) => {
                     const on = submoduleEnabled(overrides, moduleKey, m.key);
                     return (
-                      <label key={m.key} className="flex cursor-pointer items-center gap-3 rounded-lg border border-line/60 bg-bg/40 px-3 py-2.5 hover:border-line">
+                      <label key={m.key} className="flex cursor-pointer items-center gap-3 rounded-xl border border-line bg-surface-2 px-3 py-2.5 transition hover:border-brand/50">
                         <input type="checkbox" checked={on} onChange={() => toggle(moduleKey, m.key)} className="h-4 w-4 accent-brand" />
                         <span className="flex-1">
                           <span className="text-sm font-medium">{m.label}</span>
@@ -108,7 +108,7 @@ export function ModuleFeaturesCard({ orgId }: { orgId: string }) {
       )}
 
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={save} disabled={busy || !loaded} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Salvar"}</button>
+        <button onClick={save} disabled={busy || !loaded} className="btn-grad px-4 py-2">{busy ? "Salvando…" : "Salvar"}</button>
         {msg && <span className={`text-xs ${msg.includes("✓") ? "text-green-300" : "text-red-300"}`}>{msg}</span>}
       </div>
     </section>

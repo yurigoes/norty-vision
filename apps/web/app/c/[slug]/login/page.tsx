@@ -126,7 +126,7 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
+    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-10">
       <div className="mb-8 text-center">
         {brand?.logoUrl ? (
           <img src={brand.logoUrl} alt={brand.name} className="mx-auto h-14 w-auto max-w-[220px] object-contain" />
@@ -135,49 +135,49 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
         ) : (
           <span className="text-2xl font-bold" style={{ color: "rgb(var(--brand))" }}>{brand?.name ?? "Painel do cliente"}</span>
         )}
-        <h1 className="mt-6 text-2xl font-semibold">Painel do cliente</h1>
+        <h1 className="mt-6 text-2xl font-extrabold tracking-tight">Painel do cliente</h1>
         <p className="mt-1 text-sm text-muted">
           {brand?.name ? `Acompanhe suas compras e parcelas na ${brand.name}.` : "Acompanhe suas compras e parcelas do crediário."}
         </p>
       </div>
 
-      <div className="glass rounded-2xl p-6">
+      <div className="card p-6 sm:p-7">
         {step === "input" && (
           <>
             {/* Toggle de modo: telefone (default) ou CPF/CNPJ */}
-            <div className="mb-4 flex rounded-lg border border-line bg-bg/40 p-0.5 text-sm">
+            <div className="mb-4 flex rounded-xl border border-line bg-surface-2 p-1 text-sm">
               <button
                 onClick={() => { setIdMode("phone"); setError(null); }}
-                className={`flex-1 rounded-md py-1.5 transition ${idMode === "phone" ? "bg-brand text-white" : "text-muted hover:text-fg"}`}
+                className={`flex-1 rounded-lg py-1.5 font-medium transition ${idMode === "phone" ? "bg-surface text-brand shadow-sm" : "text-muted hover:text-fg"}`}
               >📱 Telefone</button>
               <button
                 onClick={() => { setIdMode("doc"); setError(null); }}
-                className={`flex-1 rounded-md py-1.5 transition ${idMode === "doc" ? "bg-brand text-white" : "text-muted hover:text-fg"}`}
+                className={`flex-1 rounded-lg py-1.5 font-medium transition ${idMode === "doc" ? "bg-surface text-brand shadow-sm" : "text-muted hover:text-fg"}`}
               >🪪 CPF / CNPJ</button>
             </div>
 
             {idMode === "phone" ? (
               <label className="block">
-                <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Telefone (com DDD)</span>
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">Telefone (com DDD)</span>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(formatPhone(e.target.value))}
                   inputMode="numeric"
                   placeholder="(71) 99999-9999"
-                  className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                  className="input-base"
                   autoFocus
                 />
-                <p className="mt-1 text-[11px] text-muted">Enviamos um código de 6 dígitos pelo WhatsApp.</p>
+                <p className="mt-1.5 text-[11px] text-muted">Enviamos um código de 6 dígitos pelo WhatsApp.</p>
               </label>
             ) : (
               <label className="block">
-                <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">CPF / CNPJ</span>
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">CPF / CNPJ</span>
                 <input
                   value={document}
                   onChange={(e) => setDocument(formatDoc(e.target.value))}
                   inputMode="numeric"
                   placeholder="000.000.000-00"
-                  className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                  className="input-base"
                   autoFocus
                 />
               </label>
@@ -187,7 +187,7 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
               <button
                 onClick={requestCode}
                 disabled={loading || !idValid}
-                className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="btn-grad w-full py-2.5 text-[15px]"
               >
                 {loading ? "Enviando..." : "Receber código no WhatsApp"}
               </button>
@@ -195,7 +195,7 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
                 <button
                   onClick={() => setStep("password")}
                   disabled={!idValid}
-                  className="w-full rounded-lg border border-line py-2.5 text-sm disabled:opacity-50"
+                  className="w-full rounded-xl border border-line bg-surface py-2.5 text-sm font-medium text-fg transition hover:border-brand/50 hover:text-brand disabled:opacity-50"
                 >
                   Entrar com senha
                 </button>
@@ -212,17 +212,17 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
               inputMode="numeric"
               placeholder="000000"
-              className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-center font-mono text-lg tracking-widest"
+              className="input-base text-center font-mono text-lg tracking-widest"
               autoFocus
             />
             <button
               onClick={verifyCode}
               disabled={loading || code.length !== 6}
-              className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              className="btn-grad w-full py-2.5 text-[15px]"
             >
               {loading ? "Verificando..." : "Entrar"}
             </button>
-            <button onClick={() => { setStep("input"); setCode(""); }} className="w-full text-xs text-muted hover:text-fg">voltar</button>
+            <button onClick={() => { setStep("input"); setCode(""); }} className="w-full text-xs text-muted transition-colors hover:text-fg">voltar</button>
           </div>
         )}
 
@@ -233,21 +233,21 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Sua senha"
-              className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+              className="input-base"
               autoFocus
             />
             <button
               onClick={loginPassword}
               disabled={loading || !password}
-              className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              className="btn-grad w-full py-2.5 text-[15px]"
             >
               {loading ? "Entrando..." : "Entrar"}
             </button>
-            <button onClick={() => { setStep("input"); setPassword(""); }} className="w-full text-xs text-muted hover:text-fg">usar WhatsApp</button>
+            <button onClick={() => { setStep("input"); setPassword(""); }} className="w-full text-xs text-muted transition-colors hover:text-fg">usar WhatsApp</button>
           </div>
         )}
 
-        {error && <p className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
+        {error && <p className="mt-4 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{error}</p>}
       </div>
 
       <p className="mt-6 text-center text-[11px] text-muted">Portal seguro por YUGO</p>

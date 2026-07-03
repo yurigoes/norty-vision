@@ -52,14 +52,14 @@ export function FollowupsClient({ items }: { items: Followup[] }) {
   }
 
   if (items.length === 0) {
-    return <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-sm text-muted">Nenhuma pendência. 🎉</p>;
+    return <p className="card p-8 text-center text-sm text-muted">Nenhuma pendência. 🎉</p>;
   }
 
   return (
     <div className="space-y-3">
       {items.map((f) => {
         return (
-          <div key={f.id} className="rounded-xl border border-line bg-bg/60 p-4">
+          <div key={f.id} className="card">
             <div className="flex items-center justify-between gap-2">
               <div>
                 <p className="font-medium">{f.customer.name}</p>
@@ -67,19 +67,19 @@ export function FollowupsClient({ items }: { items: Followup[] }) {
                   {f.customer.phone ?? "sem telefone"} · {new Date(f.createdAt).toLocaleString("pt-BR")}
                 </p>
               </div>
-              <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-300">
+              <span className="rounded-full border border-warn/25 bg-warn/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase text-warn">
                 {KIND_LABEL[f.kind] ?? f.kind}
               </span>
             </div>
             {f.note && <p className="mt-2 text-sm text-muted">{f.note}</p>}
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button disabled={busy === f.id} onClick={() => notifyNext(f.id)} className="rounded-lg bg-brand px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">
+              <button disabled={busy === f.id} onClick={() => notifyNext(f.id)} className="btn-grad !py-1.5 text-xs disabled:opacity-50">
                 {busy === f.id ? "Enviando..." : "Enviar próxima data por WhatsApp"}
               </button>
-              <button disabled={busy === f.id} onClick={() => resolve(f.id, "done")} className="rounded-lg border border-green-500/40 px-3 py-1 text-xs text-green-300 hover:bg-green-500/10 disabled:opacity-50">
+              <button disabled={busy === f.id} onClick={() => resolve(f.id, "done")} className="rounded-xl border border-success/40 px-3 py-1.5 text-xs font-medium text-success transition hover:bg-success/10 disabled:opacity-50">
                 Remarcado / resolvido
               </button>
-              <button disabled={busy === f.id} onClick={() => resolve(f.id, "dismissed")} className="rounded-lg border border-line px-3 py-1 text-xs text-muted hover:text-red-300 disabled:opacity-50">
+              <button disabled={busy === f.id} onClick={() => resolve(f.id, "dismissed")} className="rounded-xl border border-line px-3 py-1.5 text-xs font-medium text-muted transition hover:text-danger disabled:opacity-50">
                 Descartar
               </button>
               {msg[f.id] && <span className="text-xs text-muted">{msg[f.id]}</span>}

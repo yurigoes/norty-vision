@@ -9,15 +9,17 @@ export const metadata = {
 export default async function PrivacidadePage() {
   return (
     <main className="mx-auto max-w-3xl px-6 py-20">
-      <Link href="/" className="mb-12 inline-block transition-opacity hover:opacity-80">
+      <Link href="/" className="mb-10 inline-block transition-opacity hover:opacity-80">
         <BrandLogo size="md" />
       </Link>
-      <h1 className="text-3xl font-semibold">Política de privacidade</h1>
-      <p className="mt-6 text-muted">
-        Em construção. O texto definitivo será publicado em breve pelo master da
-        plataforma, conforme LGPD.
-      </p>
-      <Link href="/" className="mt-12 inline-block text-sm text-muted hover:text-fg">
+      <div className="card prose-yugo p-8 hover:translate-y-0">
+        <h1 className="text-gradient-brand text-3xl font-semibold">Política de privacidade</h1>
+        <p className="mt-6 text-muted">
+          Em construção. O texto definitivo será publicado em breve pelo master da
+          plataforma, conforme LGPD.
+        </p>
+      </div>
+      <Link href="/" className="mt-10 inline-block text-sm text-muted transition-colors hover:text-fg">
         ← voltar
       </Link>
     </main>

@@ -83,7 +83,7 @@ export default async function PrivacidadePage() {
         </section>
       )}
 
-      <section className="mb-8 rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Retenção & criptografia</h2>
         <div className="space-y-2 text-sm">
           <Row
@@ -121,7 +121,7 @@ export default async function PrivacidadePage() {
         </div>
       </section>
 
-      <section className="mb-8 rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Direitos do titular</h2>
         <ul className="space-y-2 text-sm text-muted">
           <li>
@@ -143,7 +143,7 @@ export default async function PrivacidadePage() {
         </ul>
       </section>
 
-      <section className="rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card">
         <h2 className="mb-4 text-lg font-semibold">
           Acessos recentes a dados pessoais
         </h2>
@@ -189,7 +189,7 @@ export default async function PrivacidadePage() {
 
 function StatCard({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-4 backdrop-blur-sm">
+    <div className="card">
       <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
       <p className="mt-1 text-2xl font-semibold">{Number(value).toLocaleString("pt-BR")}</p>
     </div>

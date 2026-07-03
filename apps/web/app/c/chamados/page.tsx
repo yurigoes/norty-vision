@@ -37,10 +37,10 @@ export default function PortalChamados() {
     <main className="mx-auto max-w-3xl px-4 py-8">
       <header className="mb-6 flex items-center justify-between">
         <div>
-          <Link href="/c" className="text-sm text-brand hover:underline">← Voltar</Link>
-          <h1 className="mt-1 text-2xl font-semibold">Meus chamados</h1>
+          <Link href="/c" className="text-sm font-medium text-brand hover:underline">← Voltar</Link>
+          <h1 className="mt-2 text-2xl font-extrabold tracking-tight">Meus chamados</h1>
         </div>
-        <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
+        <button onClick={() => setCreating(true)} className="btn-grad px-4 py-2">
           Abrir chamado
         </button>
       </header>
@@ -48,16 +48,16 @@ export default function PortalChamados() {
       {list === null ? (
         <p className="text-sm text-muted">Carregando…</p>
       ) : list.length === 0 ? (
-        <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">
+        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">
           Você ainda não abriu nenhum chamado. Clique em “Abrir chamado” pra falar com a loja.
         </p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {list.map((t) => (
             <button key={t.id} onClick={() => setOpenId(t.id)}
-              className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-bg/60 p-4 text-left transition hover:border-brand">
+              className="card flex w-full items-center justify-between gap-3 text-left">
               <div className="min-w-0">
-                <p className="truncate font-medium">{t.subject}</p>
+                <p className="truncate font-semibold text-fg">{t.subject}</p>
                 <p className="text-xs text-muted">{t.code} · {new Date(t.createdAt).toLocaleDateString("pt-BR")}</p>
               </div>
               <span className={`shrink-0 text-xs font-semibold ${STATUS_CLS[t.status] ?? "text-brand"}`}>{STATUS[t.status] ?? t.status}</span>
@@ -94,15 +94,15 @@ function NewTicket({ onClose, onCreated }: { onClose: () => void; onCreated: () 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-base font-semibold">Abrir chamado</h3>
-        {err && <p className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">{err}</p>}
+      <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-base font-bold text-fg">Abrir chamado</h3>
+        {err && <p className="mt-2 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-medium text-danger">{err}</p>}
         <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Assunto"
-          className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
+          className="input-base mt-3" />
         <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Descreva o que você precisa" rows={4}
-          className="mt-2 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
+          className="input-base mt-2" />
         <select value={priority} onChange={(e) => setPriority(e.target.value)}
-          className="mt-2 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand">
+          className="input-base mt-2">
           <option value="low">Baixa</option>
           <option value="normal">Normal</option>
           <option value="high">Alta</option>
@@ -110,10 +110,10 @@ function NewTicket({ onClose, onCreated }: { onClose: () => void; onCreated: () 
         </select>
         <div className="mt-4 flex gap-2">
           <button disabled={busy || !subject.trim() || !description.trim()} onClick={submit}
-            className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">
+            className="btn-grad flex-1 py-2">
             {busy ? "Enviando…" : "Abrir chamado"}
           </button>
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:border-brand/50 hover:text-fg">cancelar</button>
         </div>
       </div>
     </div>
@@ -152,7 +152,7 @@ function TicketDetail({ id, onClose }: { id: string; onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         {!t ? (
           <p className="text-sm text-muted">Carregando…</p>
         ) : (
@@ -185,9 +185,9 @@ function TicketDetail({ id, onClose }: { id: string; onClose: () => void }) {
               <div className="mt-3 flex gap-2">
                 <input value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Escreva uma resposta…"
                   onKeyDown={(e) => { if (e.key === "Enter") sendReply(); }}
-                  className="flex-1 rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
+                  className="input-base flex-1" />
                 <button disabled={busy || !reply.trim()} onClick={sendReply}
-                  className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Enviar</button>
+                  className="btn-grad px-4 py-2">Enviar</button>
               </div>
             ) : (
               <p className="mt-3 text-center text-xs text-muted">Chamado fechado.</p>
@@ -225,9 +225,9 @@ function ConfirmClose({ id, onDone }: { id: string; onDone: () => void }) {
         ))}
       </div>
       <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Observação (opcional)" rows={2}
-        className="mt-2 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-xs outline-none focus:border-brand" />
+        className="input-base mt-2 text-xs" />
       <div className="mt-2 flex gap-2">
-        <button disabled={busy} onClick={() => act(true)} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">
+        <button disabled={busy} onClick={() => act(true)} className="btn-grad flex-1 py-2">
           Confirmar e avaliar
         </button>
         <button disabled={busy} onClick={() => act(false)} className="rounded-lg border border-orange-500/50 px-3 py-2 text-sm text-orange-300 hover:bg-orange-500/10">

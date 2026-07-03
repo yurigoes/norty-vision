@@ -33,7 +33,7 @@ export default async function PlanosPage() {
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand">
           Planos
         </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
+        <h1 className="text-gradient-brand mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
           Escolha o plano certo pra sua operação
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-muted">
@@ -71,14 +71,14 @@ function PlanCard({ plan }: { plan: Plan }) {
 
   return (
     <div
-      className={`relative flex flex-col rounded-2xl border bg-bg/60 p-6 backdrop-blur-sm transition ${
+      className={`relative flex flex-col rounded-2xl border bg-surface p-6 shadow-[var(--shadow-sm)] transition duration-300 hover:-translate-y-1 ${
         isHighlight
-          ? "border-brand shadow-lg shadow-brand/20"
-          : "border-line hover:border-brand/40"
+          ? "border-brand/60 shadow-[var(--shadow-lg)] ring-1 ring-brand/15"
+          : "border-line hover:border-brand/50"
       }`}
     >
       {isHighlight && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-white">
+        <div className="btn-grad absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-[10px] uppercase tracking-wider">
           {plan.highlight}
         </div>
       )}
@@ -115,10 +115,10 @@ function PlanCard({ plan }: { plan: Plan }) {
       </ul>
       <Link
         href={`/signup?plan=${plan.slug}`}
-        className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition ${
+        className={`mt-8 block rounded-xl py-3 text-center text-sm font-semibold transition ${
           isHighlight
-            ? "bg-brand text-white hover:opacity-90"
-            : "border border-line text-fg hover:border-brand"
+            ? "btn-grad"
+            : "border border-line text-fg hover:border-brand/60"
         }`}
       >
         Começar grátis

@@ -19,7 +19,7 @@ function Modal({ onClose, children, maxWidth = "max-w-xl" }: { onClose: () => vo
   if (!mounted) return null;
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className={`max-h-[90vh] w-full ${maxWidth} overflow-y-auto rounded-2xl border border-line/60 bg-bg/80 p-6 shadow-2xl backdrop-blur-xl`} onClick={(e) => e.stopPropagation()}>
+      <div className={`max-h-[90vh] w-full ${maxWidth} overflow-y-auto rounded-2xl border border-line/60 bg-surface/90 p-6 shadow-2xl backdrop-blur-xl`} onClick={(e) => e.stopPropagation()}>
         {children}
       </div>
     </div>,
@@ -106,29 +106,29 @@ function Fechamento() {
         fechamento do mês anterior até o dia de fechamento deste mês.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Dia de fechamento</span>
-          <input type="number" min={1} max={31} value={s.closingDay} onChange={(e) => setS({ ...s, closingDay: Number(e.target.value) })} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Dia de fechamento</span>
+          <input type="number" min={1} max={31} value={s.closingDay} onChange={(e) => setS({ ...s, closingDay: Number(e.target.value) })} className="input-base" />
         </label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Dia do pagamento</span>
-          <input type="number" min={1} max={31} value={s.paymentDay} onChange={(e) => setS({ ...s, paymentDay: Number(e.target.value) })} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Dia do pagamento</span>
+          <input type="number" min={1} max={31} value={s.paymentDay} onChange={(e) => setS({ ...s, paymentDay: Number(e.target.value) })} className="input-base" />
         </label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Jornada diária (h)</span>
-          <input type="number" step="0.5" min={0} max={24} value={s.dailyHours} onChange={(e) => setS({ ...s, dailyHours: Number(e.target.value) })} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Jornada diária (h)</span>
+          <input type="number" step="0.5" min={0} max={24} value={s.dailyHours} onChange={(e) => setS({ ...s, dailyHours: Number(e.target.value) })} className="input-base" />
         </label>
       </div>
       {msg && <p className="text-xs text-muted">{msg}</p>}
-      <button onClick={save} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white">Salvar</button>
+      <button onClick={save} className="btn-grad">Salvar</button>
 
-      <div className="rounded-xl border border-line bg-bg/60 p-4">
+      <div className="card">
         <p className="text-sm font-medium">Folha de fechamento (PDF)</p>
         <p className="mt-1 text-xs text-muted">Consolidado do mês com horas trabalhadas, saldo, faltas, atestados e salário de todos os funcionários — com o logo e a cor da empresa.</p>
         <div className="mt-3 flex flex-wrap items-end gap-3">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Mês (competência)</span>
-            <input type="month" value={folhaMes} onChange={(e) => setFolhaMes(e.target.value)} className="rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Mês (competência)</span>
+            <input type="month" value={folhaMes} onChange={(e) => setFolhaMes(e.target.value)} className="input-base" />
           </label>
           <button
             onClick={() => window.open(`/api/hr/payroll/${folhaMes}/sheet`, "_blank")}
-            className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+            className="btn-grad"
           >
             Baixar folha (PDF)
           </button>
@@ -183,13 +183,13 @@ function Geocerca() {
         {stores.map((s) => {
           const v = edit[s.id] ?? { geoLat: "", geoLng: "", geoRadiusM: "" };
           return (
-            <div key={s.id} className="flex flex-wrap items-end gap-2 rounded-lg border border-line bg-bg/60 p-3">
+            <div key={s.id} className="flex flex-wrap items-end gap-2 rounded-xl border border-line bg-surface-2 p-3">
               <span className="min-w-[120px] text-sm font-medium">{s.name}</span>
               <Inp label="Lat" value={v.geoLat} onChange={(val) => setEdit((e) => ({ ...e, [s.id]: { ...v, geoLat: val } }))} />
               <Inp label="Lng" value={v.geoLng} onChange={(val) => setEdit((e) => ({ ...e, [s.id]: { ...v, geoLng: val } }))} />
               <Inp label="Raio (m)" value={v.geoRadiusM} onChange={(val) => setEdit((e) => ({ ...e, [s.id]: { ...v, geoRadiusM: val } }))} />
-              <button onClick={() => useMyLocation(s.id)} className="rounded border border-line px-3 py-1.5 text-xs hover:border-brand">usar minha localização</button>
-              <button onClick={() => save(s.id)} className="rounded-lg bg-brand px-4 py-1.5 text-sm font-semibold text-white">Salvar</button>
+              <button onClick={() => useMyLocation(s.id)} className="rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">usar minha localização</button>
+              <button onClick={() => save(s.id)} className="btn-grad">Salvar</button>
             </div>
           );
         })}
@@ -221,23 +221,23 @@ function HoleriteOrg({ employees }: { employees: Employee[] }) {
   }
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-line bg-bg/60 p-4">
+      <div className="card">
         <p className="mb-2 text-sm font-semibold">Lançar holerite</p>
         <div className="grid gap-2 sm:grid-cols-4">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Funcionário</span>
-            <select value={f.employeeId} onChange={(e) => setF((s) => ({ ...s, employeeId: e.target.value }))} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">{employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Funcionário</span>
+            <select value={f.employeeId} onChange={(e) => setF((s) => ({ ...s, employeeId: e.target.value }))} className="input-base">{employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
           <Inp label="Competência" type="month" value={f.refMonth} onChange={(v) => setF((s) => ({ ...s, refMonth: v }))} />
           <Inp label="Bruto (R$)" value={f.gross} onChange={(v) => setF((s) => ({ ...s, gross: v }))} />
           <Inp label="Líquido (R$)" value={f.net} onChange={(v) => setF((s) => ({ ...s, net: v }))} />
         </div>
         <div className="mt-2 flex items-center gap-2">
-          <label className="cursor-pointer rounded border border-line px-3 py-1.5 text-xs hover:border-brand">{uploading ? "Enviando..." : f.fileUrl ? "✓ PDF anexado" : "+ Anexar holerite (PDF)"}<input type="file" accept="application/pdf,image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); e.currentTarget.value = ""; }} /></label>
-          <button onClick={save} className="rounded bg-brand px-4 py-1.5 text-sm font-semibold text-white">Salvar</button>
+          <label className="cursor-pointer rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">{uploading ? "Enviando..." : f.fileUrl ? "✓ PDF anexado" : "+ Anexar holerite (PDF)"}<input type="file" accept="application/pdf,image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); e.currentTarget.value = ""; }} /></label>
+          <button onClick={save} className="btn-grad">Salvar</button>
         </div>
       </div>
       <div className="space-y-1">
         {items.map((p) => (
-          <div key={p.id} className="flex items-center justify-between rounded border border-line/60 bg-bg/60 px-3 py-2 text-sm">
+          <div key={p.id} className="flex items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
             <span>{p.employeeName ?? "—"} · {new Date(p.refMonth).toLocaleDateString("pt-BR", { month: "2-digit", year: "numeric", timeZone: "UTC" })}</span>
             <span className="flex items-center gap-3 text-xs">
               {p.netCents != null && <span>{brl(Number(p.netCents))}</span>}
@@ -270,22 +270,22 @@ function EmprestimosOrg({ employees }: { employees: Employee[] }) {
   }
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-line bg-bg/60 p-4">
+      <div className="card">
         <p className="mb-2 text-sm font-semibold">Novo empréstimo / adiantamento</p>
         <div className="grid gap-2 sm:grid-cols-4">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Funcionário</span>
-            <select value={f.employeeId} onChange={(e) => setF((s) => ({ ...s, employeeId: e.target.value }))} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">{employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Funcionário</span>
+            <select value={f.employeeId} onChange={(e) => setF((s) => ({ ...s, employeeId: e.target.value }))} className="input-base">{employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</select></label>
           <Inp label="Valor (R$)" value={f.principal} onChange={(v) => setF((s) => ({ ...s, principal: v }))} />
           <Inp label="Parcelas" value={f.count} onChange={(v) => setF((s) => ({ ...s, count: v }))} />
           <Inp label="1ª parcela (mês)" type="month" value={f.firstDueMonth} onChange={(v) => setF((s) => ({ ...s, firstDueMonth: v }))} />
         </div>
-        <button onClick={save} className="mt-2 rounded bg-brand px-4 py-1.5 text-sm font-semibold text-white">Conceder</button>
+        <button onClick={save} className="btn-grad mt-2">Conceder</button>
       </div>
       <div className="space-y-1">
         {items.map((l) => {
           const paid = (l.installments ?? []).filter((i: any) => i.status === "paid").length;
           return (
-            <div key={l.id} className="flex items-center justify-between rounded border border-line/60 bg-bg/60 px-3 py-2 text-sm">
+            <div key={l.id} className="flex items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
               <span>{l.employeeName ?? "—"} · {brl(Number(l.principalCents))} em {l.installmentsCount}x</span>
               <span className={`text-xs ${l.status === "paid" ? "text-green-300" : "text-muted"}`}>{l.status === "paid" ? "quitado" : `${paid}/${l.installmentsCount} pagas`}</span>
             </div>
@@ -308,7 +308,7 @@ function RhDashboard() {
   if (loading) return <p className="text-sm text-muted">Carregando…</p>;
   if (!d) return <p className="text-sm text-muted">Sem dados.</p>;
   const KPI = ({ label, value, hint, tone }: { label: string; value: any; hint?: string; tone?: string }) => (
-    <div className="rounded-xl border border-line bg-bg/60 p-4">
+    <div className="card">
       <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
       <p className={`mt-1 text-2xl font-semibold ${tone ?? ""}`}>{value}</p>
       {hint && <p className="mt-0.5 text-[11px] text-muted">{hint}</p>}
@@ -339,7 +339,7 @@ function RhDashboard() {
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="rounded-xl border border-line bg-bg/60 p-4">
+        <section className="card">
           <h3 className="mb-2 text-sm font-semibold">🎂 Aniversariantes de {mesNome}</h3>
           {d.aniversariantes.length === 0 ? <p className="text-sm text-muted">Ninguém neste mês.</p> : (
             <div className="space-y-1">
@@ -354,7 +354,7 @@ function RhDashboard() {
           )}
         </section>
 
-        <section className="rounded-xl border border-line bg-bg/60 p-4">
+        <section className="card">
           <h3 className="mb-2 text-sm font-semibold">Headcount por loja</h3>
           {d.headcountByStore.length === 0 ? <p className="text-sm text-muted">—</p> : (
             <div className="space-y-1">
@@ -365,7 +365,7 @@ function RhDashboard() {
           )}
         </section>
 
-        <section className="rounded-xl border border-line bg-bg/60 p-4">
+        <section className="card">
           <h3 className="mb-2 text-sm font-semibold">ASO — vencidos / a vencer</h3>
           {d.aso.items.length === 0 ? <p className="text-sm text-muted">Nenhum exame com vencimento próximo.</p> : (
             <div className="space-y-1">
@@ -379,7 +379,7 @@ function RhDashboard() {
           )}
         </section>
 
-        <section className="rounded-xl border border-line bg-bg/60 p-4">
+        <section className="card">
           <h3 className="mb-2 text-sm font-semibold">Próximas férias (60d)</h3>
           {d.vacationsUpcoming.length === 0 ? <p className="text-sm text-muted">Nenhuma férias agendada.</p> : (
             <div className="space-y-1">
@@ -418,23 +418,23 @@ function Employees({ initialEmployees, stores }: { initialEmployees: Employee[];
   return (
     <div className="space-y-3">
       {msg && <p className="text-xs text-muted">{msg}</p>}
-      <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">+ Novo funcionário</button>
+      <button onClick={() => setCreating(true)} className="btn-grad">+ Novo funcionário</button>
 
       {employees.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum funcionário cadastrado.</p>
+        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhum funcionário cadastrado.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
-                <th className="px-4 py-3">Nome</th><th className="px-4 py-3">Cargo</th>
-                <th className="px-4 py-3">Loja</th><th className="px-4 py-3">Salário</th>
-                <th className="px-4 py-3">Status</th><th className="px-4 py-3">Ações</th>
+              <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
+                <th className="px-4 py-3 font-medium">Nome</th><th className="px-4 py-3 font-medium">Cargo</th>
+                <th className="px-4 py-3 font-medium">Loja</th><th className="px-4 py-3 font-medium">Salário</th>
+                <th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
               {employees.map((e) => (
-                <tr key={e.id} className="border-t border-line/50">
+                <tr key={e.id} className="border-t border-line transition hover:bg-surface-2">
                   <td className="px-4 py-3 font-medium">
                     <div className="flex items-center gap-2">
                       <Boneco3D photoUrl={e.photoUrl} />
@@ -542,8 +542,8 @@ function EmployeeForm({ employee, stores, onClose, onSaved }: { employee: Employ
               <Inp label="CPF" value={f.cpf} onChange={(v) => setF({ ...f, cpf: v })} />
               <Inp label="Cargo" value={f.roleTitle} onChange={(v) => setF({ ...f, roleTitle: v })} />
               <label className="block">
-                <span className="mb-1 block text-[10px] uppercase text-muted">Loja</span>
-                <select value={f.storeId} onChange={(e) => setF({ ...f, storeId: e.target.value })} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">
+                <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Loja</span>
+                <select value={f.storeId} onChange={(e) => setF({ ...f, storeId: e.target.value })} className="input-base">
                   <option value="">—</option>
                   {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
@@ -554,15 +554,15 @@ function EmployeeForm({ employee, stores, onClose, onSaved }: { employee: Employ
               <Inp label="WhatsApp" value={f.whatsappPhone} onChange={(v) => setF({ ...f, whatsappPhone: v })} />
               <Inp label="Email" value={f.email} onChange={(v) => setF({ ...f, email: v })} />
               <label className="block">
-                <span className="mb-1 block text-[10px] uppercase text-muted">Status</span>
-                <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">
+                <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Status</span>
+                <select value={f.status} onChange={(e) => setF({ ...f, status: e.target.value })} className="input-base">
                   <option value="active">Ativo</option><option value="inactive">Inativo</option><option value="terminated">Desligado</option>
                 </select>
               </label>
             </div>
 
             {!isEdit && (
-              <div className="mt-4 rounded-lg border border-line bg-bg/40 p-3">
+              <div className="mt-4 rounded-xl border border-line bg-surface-2 p-3">
                 <label className="flex items-center gap-2 text-sm font-medium">
                   <input type="checkbox" checked={access.create} onChange={(e) => setAccess({ ...access, create: e.target.checked, email: access.email || f.email })} className="h-4 w-4" />
                   Criar acesso ao sistema para este funcionário
@@ -571,8 +571,8 @@ function EmployeeForm({ employee, stores, onClose, onSaved }: { employee: Employ
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     <Inp label="E-mail de acesso" value={access.email} onChange={(v) => setAccess({ ...access, email: v })} />
                     <label className="block">
-                      <span className="mb-1 block text-[10px] uppercase text-muted">Papel</span>
-                      <select value={access.roleSlug} onChange={(e) => setAccess({ ...access, roleSlug: e.target.value })} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">
+                      <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Papel</span>
+                      <select value={access.roleSlug} onChange={(e) => setAccess({ ...access, roleSlug: e.target.value })} className="input-base">
                         <option value="">— selecione —</option>
                         {roles.map((r) => <option key={r.slug} value={r.slug}>{r.name}</option>)}
                       </select>
@@ -588,8 +588,8 @@ function EmployeeForm({ employee, stores, onClose, onSaved }: { employee: Employ
 
             {err && <p className="mt-3 text-xs text-red-300">{err}</p>}
             <div className="mt-5 flex justify-end gap-3">
-              <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm">Cancelar</button>
-              <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando..." : "Salvar"}</button>
+              <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">Cancelar</button>
+              <button onClick={save} disabled={busy} className="btn-grad px-5 disabled:opacity-50">{busy ? "Salvando..." : "Salvar"}</button>
             </div>
           </>
         )}
@@ -640,13 +640,13 @@ function Admissao({ employeeId }: { employeeId: string }) {
       ) : (
         <div className="flex flex-wrap items-end gap-2">
           <label className="block">
-            <span className="mb-1 block text-[10px] uppercase text-muted">Modelo</span>
-            <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} className="rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">
+            <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Modelo</span>
+            <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} className="input-base">
               <option value="">— selecione —</option>
               {templates.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
             </select>
           </label>
-          <button onClick={generate} disabled={busy || !templateId} className="rounded-lg bg-brand px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Gerando..." : "Gerar contrato"}</button>
+          <button onClick={generate} disabled={busy || !templateId} className="btn-grad disabled:opacity-50">{busy ? "Gerando..." : "Gerar contrato"}</button>
         </div>
       )}
       {err && <p className="text-xs text-red-300">{err}</p>}
@@ -711,17 +711,17 @@ function Payslips({ employeeId }: { employeeId: string }) {
 
   return (
     <div className="mt-4 space-y-3">
-      <div className="rounded-lg border border-line p-3">
-        <p className="mb-2 text-xs font-medium uppercase text-muted">Lançar holerite</p>
+      <div className="rounded-xl border border-line bg-surface-2 p-3">
+        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">Lançar holerite</p>
         <div className="flex flex-wrap items-end gap-2">
           <Inp label="Mês" type="month" value={refMonth} onChange={setRefMonth} />
           <Inp label="Bruto (R$)" value={gross} onChange={setGross} />
           <Inp label="Líquido (R$)" value={net} onChange={setNet} />
-          <label className="cursor-pointer rounded border border-line px-3 py-1.5 text-xs hover:border-brand">
+          <label className="cursor-pointer rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">
             {uploading ? "Enviando..." : fileUrl ? "✓ PDF" : "+ PDF"}
             <input type="file" accept="application/pdf,image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.currentTarget.value = ""; }} />
           </label>
-          <button onClick={create} disabled={busy} className="rounded-lg bg-brand px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50">Salvar</button>
+          <button onClick={create} disabled={busy} className="btn-grad disabled:opacity-50">Salvar</button>
         </div>
       </div>
 
@@ -741,7 +741,7 @@ function Payslips({ employeeId }: { employeeId: string }) {
 
       <div className="space-y-1">
         {items.map((p) => (
-          <div key={p.id} className="flex items-center justify-between rounded border border-line/60 px-3 py-2 text-sm">
+          <div key={p.id} className="flex items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
             <span>{new Date(p.refMonth).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" })}</span>
             <span className="text-muted">{p.netCents != null ? brl(Number(p.netCents)) : "—"} {p.acknowledgedAt ? "· ✓ ciente" : "· pend. ciência"}</span>
           </div>
@@ -778,7 +778,7 @@ function EmpTrainings({ employeeId }: { employeeId: string }) {
   const today = new Date().toISOString().slice(0, 10);
   return (
     <div className="mt-4 space-y-3">
-      <div className="rounded-lg border border-line bg-bg/60 p-3">
+      <div className="rounded-xl border border-line bg-surface-2 p-3">
         <p className="mb-2 text-sm font-semibold">Novo treinamento / certificação</p>
         <div className="grid gap-2 sm:grid-cols-3">
           <div className="sm:col-span-2"><Inp label="Nome (ex.: NR-35 Trabalho em Altura)" value={f.name} onChange={(v) => setF((s: any) => ({ ...s, name: v }))} /></div>
@@ -788,8 +788,8 @@ function EmpTrainings({ employeeId }: { employeeId: string }) {
           <Inp label="Carga horária (h)" value={f.hours} onChange={(v) => setF((s: any) => ({ ...s, hours: v }))} />
         </div>
         <div className="mt-2 flex items-center gap-2">
-          <label className="cursor-pointer rounded border border-line px-3 py-1.5 text-xs hover:border-brand">{uploading ? "Enviando..." : f.fileUrl ? "✓ certificado anexado" : "+ Anexar certificado"}<input type="file" accept="application/pdf,image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); e.currentTarget.value = ""; }} /></label>
-          <button onClick={add} className="rounded bg-brand px-4 py-1.5 text-sm font-semibold text-white">Salvar</button>
+          <label className="cursor-pointer rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">{uploading ? "Enviando..." : f.fileUrl ? "✓ certificado anexado" : "+ Anexar certificado"}<input type="file" accept="application/pdf,image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); e.currentTarget.value = ""; }} /></label>
+          <button onClick={add} className="btn-grad">Salvar</button>
         </div>
       </div>
       <div className="space-y-1">
@@ -797,7 +797,7 @@ function EmpTrainings({ employeeId }: { employeeId: string }) {
           const due = x.dueDate ? String(x.dueDate).slice(0, 10) : null;
           const overdue = due && due < today;
           return (
-            <div key={x.id} className="flex items-center justify-between rounded border border-line/60 bg-bg/60 px-3 py-2 text-sm">
+            <div key={x.id} className="flex items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
               <div>
                 <p className="font-medium">{x.name}{x.hours ? <span className="ml-2 text-xs text-muted">{x.hours}h</span> : null}</p>
                 <p className="text-xs text-muted">{x.completedDate ? `realizado ${new Date(x.completedDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })}` : ""}{due ? ` · vence ${new Date(due + "T00:00:00Z").toLocaleDateString("pt-BR", { timeZone: "UTC" })}` : ""}{x.provider ? ` · ${x.provider}` : ""}</p>
@@ -843,26 +843,26 @@ function EmpExams({ employeeId }: { employeeId: string }) {
   const today = new Date().toISOString().slice(0, 10);
   return (
     <div className="mt-4 space-y-3">
-      <div className="rounded-lg border border-line bg-bg/60 p-3">
+      <div className="rounded-xl border border-line bg-surface-2 p-3">
         <p className="mb-2 text-sm font-semibold">Novo exame (ASO)</p>
         <div className="grid gap-2 sm:grid-cols-3">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Tipo</span>
-            <select value={f.kind} onChange={(e) => setF((s: any) => ({ ...s, kind: e.target.value }))} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">{Object.entries(EXAM_KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo</span>
+            <select value={f.kind} onChange={(e) => setF((s: any) => ({ ...s, kind: e.target.value }))} className="input-base">{Object.entries(EXAM_KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
           <Inp label="Data do exame" type="date" value={f.examDate} onChange={(v) => setF((s: any) => ({ ...s, examDate: v }))} />
           <Inp label="Vencimento (próximo)" type="date" value={f.dueDate} onChange={(v) => setF((s: any) => ({ ...s, dueDate: v }))} />
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Resultado</span>
-            <select value={f.result} onChange={(e) => setF((s: any) => ({ ...s, result: e.target.value }))} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm"><option value="apto">Apto</option><option value="apto_com_restricao">Apto c/ restrição</option><option value="inapto">Inapto</option></select></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Resultado</span>
+            <select value={f.result} onChange={(e) => setF((s: any) => ({ ...s, result: e.target.value }))} className="input-base"><option value="apto">Apto</option><option value="apto_com_restricao">Apto c/ restrição</option><option value="inapto">Inapto</option></select></label>
           <Inp label="Médico/Clínica" value={f.doctor} onChange={(v) => setF((s: any) => ({ ...s, doctor: v }))} />
-          <label className="cursor-pointer self-end rounded border border-line px-3 py-1.5 text-xs hover:border-brand">{uploading ? "Enviando..." : f.fileUrl ? "✓ ASO anexado" : "+ Anexar ASO"}<input type="file" accept="application/pdf,image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); e.currentTarget.value = ""; }} /></label>
+          <label className="cursor-pointer self-end rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">{uploading ? "Enviando..." : f.fileUrl ? "✓ ASO anexado" : "+ Anexar ASO"}<input type="file" accept="application/pdf,image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); e.currentTarget.value = ""; }} /></label>
         </div>
-        <button onClick={add} className="mt-2 rounded bg-brand px-4 py-1.5 text-sm font-semibold text-white">Salvar exame</button>
+        <button onClick={add} className="btn-grad mt-2">Salvar exame</button>
       </div>
       <div className="space-y-1">
         {items.map((x) => {
           const due = x.dueDate ? String(x.dueDate).slice(0, 10) : null;
           const overdue = due && due < today;
           return (
-            <div key={x.id} className="flex items-center justify-between rounded border border-line/60 bg-bg/60 px-3 py-2 text-sm">
+            <div key={x.id} className="flex items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
               <div>
                 <p className="font-medium">{EXAM_KIND[x.kind] ?? x.kind}{x.result ? <span className="ml-2 text-xs text-muted">{x.result}</span> : null}</p>
                 <p className="text-xs text-muted">{x.examDate ? `realizado ${new Date(x.examDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })}` : ""}{due ? ` · vence ${new Date(due + "T00:00:00Z").toLocaleDateString("pt-BR", { timeZone: "UTC" })}` : ""}{x.doctor ? ` · ${x.doctor}` : ""}</p>
@@ -907,25 +907,25 @@ function EmpWarnings({ employeeId }: { employeeId: string }) {
   async function del(id: string) { if (!window.confirm("Excluir esta ocorrência?")) return; await fetch(`/api/hr/warnings/${id}`, { method: "DELETE", credentials: "include" }); load(); }
   return (
     <div className="mt-4 space-y-3">
-      <div className="rounded-lg border border-line bg-bg/60 p-3">
+      <div className="rounded-xl border border-line bg-surface-2 p-3">
         <p className="mb-2 text-sm font-semibold">Nova advertência / ocorrência</p>
         <div className="grid gap-2 sm:grid-cols-3">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Tipo</span>
-            <select value={f.kind} onChange={(e) => setF((s: any) => ({ ...s, kind: e.target.value }))} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">{Object.entries(WARN_KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo</span>
+            <select value={f.kind} onChange={(e) => setF((s: any) => ({ ...s, kind: e.target.value }))} className="input-base">{Object.entries(WARN_KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
           <Inp label="Data" type="date" value={f.date} onChange={(v) => setF((s: any) => ({ ...s, date: v }))} />
           {f.kind === "suspensao" && <Inp label="Dias de suspensão" value={f.suspensionDays} onChange={(v) => setF((s: any) => ({ ...s, suspensionDays: v }))} />}
         </div>
-        <label className="mt-2 block"><span className="mb-1 block text-[10px] uppercase text-muted">Motivo</span>
-          <textarea value={f.reason} onChange={(e) => setF((s: any) => ({ ...s, reason: e.target.value }))} rows={2} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" /></label>
+        <label className="mt-2 block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Motivo</span>
+          <textarea value={f.reason} onChange={(e) => setF((s: any) => ({ ...s, reason: e.target.value }))} rows={2} className="input-base" /></label>
         <div className="mt-2 flex items-center gap-2">
-          <label className="cursor-pointer rounded border border-line px-3 py-1.5 text-xs hover:border-brand">{uploading ? "Enviando..." : f.fileUrl ? "✓ documento anexado" : "+ Anexar documento"}<input type="file" accept="application/pdf,image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); e.currentTarget.value = ""; }} /></label>
-          <button onClick={add} className="rounded bg-brand px-4 py-1.5 text-sm font-semibold text-white">Registrar</button>
+          <label className="cursor-pointer rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">{uploading ? "Enviando..." : f.fileUrl ? "✓ documento anexado" : "+ Anexar documento"}<input type="file" accept="application/pdf,image/*" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); e.currentTarget.value = ""; }} /></label>
+          <button onClick={add} className="btn-grad">Registrar</button>
         </div>
         <p className="mt-1 text-[11px] text-muted">O funcionário dá ciência (assinatura) pelo portal.</p>
       </div>
       <div className="space-y-1">
         {items.map((w) => (
-          <div key={w.id} className="flex items-center justify-between rounded border border-line/60 bg-bg/60 px-3 py-2 text-sm">
+          <div key={w.id} className="flex items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
             <div>
               <p className="font-medium">{WARN_KIND[w.kind] ?? w.kind}{w.kind === "suspensao" && w.suspensionDays ? ` (${w.suspensionDays} dias)` : ""}</p>
               <p className="text-xs text-muted">{new Date(w.date).toLocaleDateString("pt-BR", { timeZone: "UTC" })} · {w.reason}</p>
@@ -983,16 +983,16 @@ function EmpTermination({ employeeId }: { employeeId: string }) {
     <div className="mt-4 space-y-3">
       {finalized && <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">Desligamento finalizado em {t.finalizedAt ? new Date(t.finalizedAt).toLocaleDateString("pt-BR") : ""}. Funcionário inativado.</div>}
       <div className="grid gap-2 sm:grid-cols-3">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Motivo</span>
-          <select disabled={finalized} value={f.kind} onChange={(e) => setF((s: any) => ({ ...s, kind: e.target.value }))} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">{Object.entries(TERM_KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Aviso prévio</span>
-          <select disabled={finalized} value={f.noticeType} onChange={(e) => setF((s: any) => ({ ...s, noticeType: e.target.value }))} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm"><option value="trabalhado">Trabalhado</option><option value="indenizado">Indenizado</option><option value="dispensado">Dispensado</option></select></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Motivo</span>
+          <select disabled={finalized} value={f.kind} onChange={(e) => setF((s: any) => ({ ...s, kind: e.target.value }))} className="input-base">{Object.entries(TERM_KIND).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Aviso prévio</span>
+          <select disabled={finalized} value={f.noticeType} onChange={(e) => setF((s: any) => ({ ...s, noticeType: e.target.value }))} className="input-base"><option value="trabalhado">Trabalhado</option><option value="indenizado">Indenizado</option><option value="dispensado">Dispensado</option></select></label>
         <Inp label="Início do aviso" type="date" value={f.noticeDate} onChange={(v) => setF((s: any) => ({ ...s, noticeDate: v }))} />
         <Inp label="Data do desligamento" type="date" value={f.terminationDate} onChange={(v) => setF((s: any) => ({ ...s, terminationDate: v }))} />
       </div>
-      <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Observações</span>
-        <textarea disabled={finalized} value={f.reason} onChange={(e) => setF((s: any) => ({ ...s, reason: e.target.value }))} rows={2} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" /></label>
-      <div className="rounded-lg border border-line bg-bg/60 p-3">
+      <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Observações</span>
+        <textarea disabled={finalized} value={f.reason} onChange={(e) => setF((s: any) => ({ ...s, reason: e.target.value }))} rows={2} className="input-base" /></label>
+      <div className="rounded-xl border border-line bg-surface-2 p-3">
         <p className="mb-2 text-sm font-semibold">Checklist de desligamento</p>
         <div className="grid gap-1.5 sm:grid-cols-2">
           <Chk k="asoDone" label="Exame demissional (ASO)" />
@@ -1001,13 +1001,13 @@ function EmpTermination({ employeeId }: { employeeId: string }) {
           <Chk k="docsDelivered" label="Entrega de documentos (TRCT / guias)" />
         </div>
         <div className="mt-2 flex items-center gap-2">
-          <label className="cursor-pointer rounded border border-line px-3 py-1.5 text-xs hover:border-brand">{uploading ? "Enviando..." : f.termDocUrl ? "✓ termo anexado" : "+ Anexar termo assinado"}<input type="file" accept="application/pdf,image/*" className="hidden" disabled={finalized} onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); e.currentTarget.value = ""; }} /></label>
+          <label className="cursor-pointer rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">{uploading ? "Enviando..." : f.termDocUrl ? "✓ termo anexado" : "+ Anexar termo assinado"}<input type="file" accept="application/pdf,image/*" className="hidden" disabled={finalized} onChange={(e) => { const file = e.target.files?.[0]; if (file) upload(file); e.currentTarget.value = ""; }} /></label>
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
-        {!finalized && <button onClick={save} className="rounded-lg border border-line px-4 py-2 text-sm hover:border-brand">Salvar</button>}
-        <a href={`/api/hr/employees/${employeeId}/termination/pdf`} target="_blank" rel="noreferrer" className={`rounded-lg border border-line px-4 py-2 text-sm hover:border-brand ${!t ? "pointer-events-none opacity-40" : ""}`}>Comunicado (PDF)</a>
-        {!finalized && <button onClick={finalize} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white">Finalizar desligamento</button>}
+        {!finalized && <button onClick={save} className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Salvar</button>}
+        <a href={`/api/hr/employees/${employeeId}/termination/pdf`} target="_blank" rel="noreferrer" className={`rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand ${!t ? "pointer-events-none opacity-40" : ""}`}>Comunicado (PDF)</a>
+        {!finalized && <button onClick={finalize} className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">Finalizar desligamento</button>}
       </div>
     </div>
   );
@@ -1042,13 +1042,13 @@ function EmpDocs({ employeeId }: { employeeId: string }) {
     <div className="mt-4 space-y-3">
       <div className="flex items-end gap-2">
         <label className="block">
-          <span className="mb-1 block text-[10px] uppercase text-muted">Tipo</span>
-          <select value={docType} onChange={(e) => setDocType(e.target.value)} className="rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">
+          <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo</span>
+          <select value={docType} onChange={(e) => setDocType(e.target.value)} className="input-base">
             <option value="contract">Contrato</option><option value="ctps">CTPS</option><option value="rg">RG</option>
             <option value="cpf">CPF</option><option value="address">Comprovante</option><option value="aso">ASO</option><option value="other">Outro</option>
           </select>
         </label>
-        <label className="cursor-pointer rounded border border-line px-3 py-1.5 text-xs hover:border-brand">
+        <label className="cursor-pointer rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">
           {uploading ? "Enviando..." : "+ Anexar"}
           <input type="file" accept="application/pdf,image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.currentTarget.value = ""; }} />
         </label>
@@ -1148,7 +1148,7 @@ function EmpLoans({ employeeId, salaryCents }: { employeeId: string; salaryCents
 
   return (
     <div className="mt-4 space-y-3">
-      <div className="space-y-2 rounded-lg border border-line p-3">
+      <div className="space-y-2 rounded-xl border border-line bg-surface-2 p-3">
         <p className="text-sm font-medium">Novo empréstimo</p>
         <div className="flex flex-wrap items-end gap-2">
           <Inp label="Valor (R$)" value={principal} onChange={setPrincipal} />
@@ -1162,10 +1162,10 @@ function EmpLoans({ employeeId, salaryCents }: { employeeId: string; salaryCents
           </p>
         )}
         {msg && <p className="text-xs text-red-300">{msg}</p>}
-        <button onClick={create} disabled={busy || !principalCents || exceeds} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Conceder empréstimo</button>
+        <button onClick={create} disabled={busy || !principalCents || exceeds} className="btn-grad disabled:opacity-50">Conceder empréstimo</button>
       </div>
       {loans.map((l) => (
-        <div key={l.id} className="rounded-lg border border-line/60 p-3">
+        <div key={l.id} className="rounded-xl border border-line bg-surface-2 p-3">
           <p className="text-sm font-medium">{brl(Number(l.principalCents))} em {l.installmentsCount}x · {l.status === "paid" ? "quitado" : "ativo"}</p>
           <div className="mt-2 space-y-1">
             {(l.installments ?? []).map((i: any) => (
@@ -1207,10 +1207,10 @@ function Requests() {
           </button>
         ))}
       </div>
-      {items.length === 0 ? <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhuma solicitação.</p> : (
+      {items.length === 0 ? <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhuma solicitação.</p> : (
         <div className="space-y-2">
           {items.map((r) => (
-            <div key={r.id} className="rounded-lg border border-line bg-bg/60 p-4">
+            <div key={r.id} className="card">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium">{r.employeeName} · {KIND_LABEL[r.kind] ?? r.kind}
@@ -1264,13 +1264,13 @@ function Requests() {
 function PontoMoved() {
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-brand/40 bg-brand/10 p-5">
+      <div className="rounded-2xl border border-brand/40 bg-brand/10 p-5">
         <p className="text-sm font-semibold">O controle de ponto agora é o Ponto Eletrônico oficial</p>
         <p className="mt-1 text-sm text-muted">
           Batidas, espelho, escalas, divergências, justificativas/atestados e o arquivo AFD (REP-A, Portaria 671/2021)
           ficam todos no módulo oficial. O portal do funcionário e os atestados também refletem esse ponto.
         </p>
-        <a href="/app/ponto" className="mt-3 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Abrir Ponto Eletrônico →</a>
+        <a href="/app/ponto" className="btn-grad mt-3 inline-block">Abrir Ponto Eletrônico →</a>
       </div>
       <p className="text-xs text-muted">
         Dica: cadastre/edite as <strong>escalas</strong> e revise as <strong>justificativas</strong> dentro do Ponto Eletrônico.
@@ -1366,15 +1366,15 @@ function Escala({ employees, stores }: { employees: Employee[]; stores: Store[] 
   return (
     <div className="space-y-4">
       {/* Configuração da jornada por dia da semana */}
-      <div className="space-y-3 rounded-xl border border-line bg-bg/60 p-4">
+      <div className="card space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium">Jornada por dia da semana</p>
-          <button onClick={saveDefault} className="rounded-lg border border-line px-3 py-1.5 text-xs transition hover:border-brand">Salvar como padrão da empresa</button>
+          <button onClick={saveDefault} className="rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">Salvar como padrão da empresa</button>
         </div>
         <p className="text-xs text-muted">Configure cada dia (ex.: sábado meio período). Dias desativados viram folga. Feriados abaixo também viram folga.</p>
         <div className="space-y-1.5">
           {week.map((c) => (
-            <div key={c.weekday} className="flex flex-wrap items-center gap-2 rounded-lg border border-line/60 bg-bg/40 px-3 py-2">
+            <div key={c.weekday} className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2">
               <label className="flex w-28 items-center gap-2 text-sm">
                 <input type="checkbox" checked={c.enabled} onChange={(e) => setWd(c.weekday, { enabled: e.target.checked })} className="h-4 w-4" />
                 {WD_LABEL[c.weekday]}
@@ -1410,13 +1410,13 @@ function Escala({ employees, stores }: { employees: Employee[]; stores: Store[] 
       </div>
 
       {/* Feriados da empresa */}
-      <div className="space-y-2 rounded-xl border border-line bg-bg/60 p-4">
+      <div className="card space-y-2">
         <p className="text-sm font-medium">Feriados / folgas da empresa</p>
         <div className="flex flex-wrap items-end gap-2">
           <Inp label="Data" type="date" value={newHoliday.date} onChange={(v) => setNewHoliday({ ...newHoliday, date: v })} />
           <Inp label="Nome" value={newHoliday.name} onChange={(v) => setNewHoliday({ ...newHoliday, name: v })} />
           <label className="flex items-center gap-1 text-xs text-muted"><input type="checkbox" checked={newHoliday.recurring} onChange={(e) => setNewHoliday({ ...newHoliday, recurring: e.target.checked })} /> todo ano</label>
-          <button onClick={addHoliday} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand">+ Adicionar</button>
+          <button onClick={addHoliday} className="rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">+ Adicionar</button>
         </div>
         <div className="flex flex-wrap gap-1.5">
           {holidays.map((h) => (
@@ -1430,14 +1430,14 @@ function Escala({ employees, stores }: { employees: Employee[]; stores: Store[] 
       </div>
 
       {/* Gerar */}
-      <div className="flex flex-wrap items-end gap-2 rounded-xl border border-line bg-bg/60 p-4">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Funcionário</span>
-          <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">
+      <div className="card flex flex-wrap items-end gap-2">
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Funcionário</span>
+          <select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} className="rounded-lg border border-line bg-bg/60 px-2 py-1.5 text-sm">
             {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
           </select>
         </label>
         <Inp label="Mês" type="month" value={month} onChange={setMonth} />
-        <button onClick={generateMonth} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Gerando..." : "Gerar escala do mês"}</button>
+        <button onClick={generateMonth} disabled={busy} className="btn-grad disabled:opacity-50">{busy ? "Gerando..." : "Gerar escala do mês"}</button>
         {msg && <p className="w-full whitespace-pre-line text-xs text-muted">{msg}</p>}
       </div>
 
@@ -1445,7 +1445,7 @@ function Escala({ employees, stores }: { employees: Employee[]; stores: Store[] 
         <p className="mb-2 text-sm font-medium">Escala de {new Date(month + "-01T12:00:00Z").toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" })}</p>
         <div className="space-y-1">
           {items.map((s) => (
-            <div key={s.id} className="flex items-center justify-between rounded border border-line/60 bg-bg/60 px-3 py-2 text-sm">
+            <div key={s.id} className="flex items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
               <span>{new Date(s.shiftDate).toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC" })} · {empName(s.employeeId)} · {s.startTime}–{s.endTime}{s.breakMinutes ? ` (almoço ${s.breakMinutes}min)` : ""}</span>
               <button onClick={() => del(s.id)} className="text-xs text-muted hover:text-red-300">remover</button>
             </div>
@@ -1477,17 +1477,17 @@ function Mural({ stores }: { stores: Store[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="space-y-2 rounded-lg border border-line p-3">
+      <div className="card space-y-2">
         <Inp label="Título" value={f.title} onChange={(v) => setF({ ...f, title: v })} />
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Mensagem</span>
-          <textarea value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} rows={3} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Mensagem</span>
+          <textarea value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} rows={3} className="input-base" />
         </label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.pinned} onChange={(e) => setF({ ...f, pinned: e.target.checked })} /> Fixar no topo</label>
-        <button onClick={create} className="rounded-lg bg-brand px-4 py-1.5 text-sm font-semibold text-white">Publicar</button>
+        <button onClick={create} className="btn-grad">Publicar</button>
       </div>
       <div className="space-y-2">
         {items.map((n) => (
-          <div key={n.id} className="rounded-lg border border-line bg-bg/60 p-4">
+          <div key={n.id} className="card">
             <div className="flex items-center justify-between">
               <p className="font-medium">{n.pinned ? "📌 " : ""}{n.title}</p>
               <button onClick={() => del(n.id)} className="text-xs text-muted hover:text-red-300">remover</button>
@@ -1513,8 +1513,8 @@ function StatusPill({ status }: { status: string }) {
 function Inp({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-[10px] uppercase text-muted">{label}</span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+      <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">{label}</span>
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} className="input-base" />
     </label>
   );
 }

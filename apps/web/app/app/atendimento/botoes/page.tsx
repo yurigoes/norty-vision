@@ -50,23 +50,24 @@ export default function CallcenterButtonsConfig() {
 
   return (
     <main className="max-w-2xl">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Botões do Atendimento</h1>
+      <header className="mb-8">
+        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Atendimento</p>
+        <h1 className="mt-1 text-3xl font-semibold">Botões do Atendimento</h1>
         <p className="mt-2 text-muted">Escolha quais ações aparecem no atendimento desta empresa. Útil por nicho (ex.: loja esportiva sem "Agenda").</p>
       </header>
       {!loaded ? <p className="text-sm text-muted">Carregando…</p> : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {BUTTONS.map((b) => (
-            <label key={b.key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-bg/60 p-4">
-              <input type="checkbox" checked={!!enabled[b.key]} onChange={(e) => setEnabled((m) => ({ ...m, [b.key]: e.target.checked }))} className="mt-1" />
+            <label key={b.key} className="card flex cursor-pointer items-start gap-3">
+              <input type="checkbox" checked={!!enabled[b.key]} onChange={(e) => setEnabled((m) => ({ ...m, [b.key]: e.target.checked }))} className="mt-1 accent-brand" />
               <span>
-                <span className="block text-sm font-medium">{b.label}</span>
+                <span className="block text-sm font-medium text-fg">{b.label}</span>
                 <span className="block text-xs text-muted">{b.desc}</span>
               </span>
             </label>
           ))}
-          {msg && <p className="text-sm text-green-300">{msg}</p>}
-          <button onClick={save} disabled={busy} className="mt-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Salvar"}</button>
+          {msg && <p className="text-sm text-success">{msg}</p>}
+          <button onClick={save} disabled={busy} className="btn-grad mt-2 px-6 py-2.5 disabled:opacity-50">{busy ? "Salvando…" : "Salvar"}</button>
         </div>
       )}
     </main>

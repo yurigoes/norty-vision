@@ -351,7 +351,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const fields = schema?.fields ?? [];
 
   return (
-    <article className="rounded-xl border border-line bg-bg/60 p-5 backdrop-blur-sm">
+    <article className="card">
       <header className="flex items-start justify-between gap-3">
         <div className="flex-1">
           <div className="flex items-center gap-2">
@@ -359,8 +359,8 @@ function IntegrationCard({ integration }: { integration: Integration }) {
             <span
               className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
                 isActive
-                  ? "bg-green-500/20 text-green-300"
-                  : "bg-line text-muted"
+                  ? "bg-success/15 text-success"
+                  : "bg-surface-2 text-muted"
               }`}
             >
               {status}
@@ -396,7 +396,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
       {open && (
         <form onSubmit={save} className="mt-6 space-y-4 border-t border-line pt-6">
           {schema?.intro && (
-            <p className="rounded-md border border-line bg-bg/40 p-3 text-sm text-muted">
+            <p className="rounded-lg border border-line bg-surface-2 p-3 text-sm text-muted">
               {schema.intro}
             </p>
           )}
@@ -412,7 +412,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
             ))}
           </div>
 
-          <div className="rounded-lg border border-line p-4">
+          <div className="rounded-xl border border-line bg-surface-2 p-4">
             <label className="flex items-center gap-3 text-sm">
               <input
                 type="checkbox"
@@ -458,7 +458,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="rounded-lg border border-line bg-bg/60 px-3 py-1.5 text-sm"
+              className="input-base w-auto py-1.5"
             >
               <option value="disabled">disabled</option>
               <option value="active">active</option>
@@ -467,12 +467,12 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           </div>
 
           {error && (
-            <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
               {error}
             </p>
           )}
           {savedAt && (
-            <p className="rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-200">
+            <p className="rounded-lg border border-success/40 bg-success/10 px-3 py-2 text-sm text-success">
               Salvo às {savedAt.toLocaleTimeString("pt-BR")}.
             </p>
           )}
@@ -482,7 +482,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              className="btn-grad"
             >
               {saving ? "Salvando..." : "Salvar"}
             </button>
@@ -513,7 +513,7 @@ function Field({
         placeholder={def.placeholder}
         onChange={(e) => onChange(e.target.value)}
         autoComplete="off"
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none transition placeholder:text-muted focus:border-brand"
+        className="input-base"
       />
       {def.help && (
         <p className="mt-1 text-[11px] leading-snug text-muted">{def.help}</p>
@@ -549,12 +549,12 @@ function TestButton({ provider }: { provider: string }) {
         type="button"
         onClick={run}
         disabled={testing}
-        className="rounded-lg border border-line px-4 py-2 text-sm font-medium text-fg transition hover:border-brand disabled:opacity-50"
+        className="rounded-xl border border-line px-4 py-2 text-sm font-medium text-fg transition hover:border-brand disabled:opacity-50"
       >
         {testing ? "Testando..." : "Testar conexão"}
       </button>
       {result && (
-        <span className={`text-xs ${result.ok ? "text-green-300" : "text-red-300"}`}>
+        <span className={`text-xs ${result.ok ? "text-success" : "text-danger"}`}>
           {result.ok
             ? `✓ conexão OK (HTTP ${result.status})`
             : `✗ falhou${result.status ? ` (HTTP ${result.status})` : ""}: ${result.error ?? ""}`}

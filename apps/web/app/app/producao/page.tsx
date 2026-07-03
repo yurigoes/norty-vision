@@ -21,7 +21,7 @@ export default async function ProducaoPage() {
           <p className="mt-2 text-muted">Do pedido à entrega, com aprovação de arte e quadro do Design. O cliente é avisado quando fica pronto.</p>
         </div>
         {showFinanceiro && (
-          <Link href="/app/producao/financeiro" className="shrink-0 rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">📊 Financeiro</Link>
+          <Link href="/app/producao/financeiro" className="shrink-0 rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">📊 Financeiro</Link>
         )}
       </header>
       <ProducaoClient initial={res.data?.items ?? []} features={features} />

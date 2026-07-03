@@ -49,7 +49,7 @@ export default function PontoPage() {
         <h1 className="mt-1 text-2xl font-semibold">Ponto eletrônico</h1>
         <p className="mt-1 text-muted">Marcação imutável (horário do servidor + NSR + hash) e jornada derivada — Portaria 671 (Fases 0–1).</p>
       </header>
-      <nav className="mb-6 flex flex-wrap gap-1 rounded-lg border border-line bg-bg/60 p-1 text-sm print:hidden">
+      <nav className="mb-6 flex flex-wrap gap-1 rounded-xl border border-line bg-surface-2 p-1 text-sm print:hidden">
         {([["bater", "Bater ponto"], ["marcacoes", "Marcações"], ["tempo", "Tempo real"], ["espelho", "Espelho"], ["solicitacoes", "Solicitações"], ["escalas", "Escalas"], ["banco", "Banco de horas"], ["ferias", "Férias"], ["fechamento", "Fechamento"], ["eventos", "Eventos / Webhook"], ["funcionarios", "Funcionários (marcação)"], ["dispositivos", "Dispositivos"], ["avisos", "Avisos"], ["config", "Empregador"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className={`rounded-md px-3 py-1 ${tab === k ? "bg-brand text-white" : "text-muted hover:text-fg"}`}>{l}</button>
         ))}
@@ -165,17 +165,17 @@ function Bater({ emps, dialog }: { emps: Emp[]; dialog: any }) {
     } finally { setBusy(false); }
   }
   return (
-    <section className="rounded-xl border border-line bg-bg/60 p-5">
+    <section className="card">
       <div className="grid gap-3 sm:grid-cols-3">
-        <label className="block sm:col-span-2"><span className="mb-1 block text-[10px] uppercase text-muted">Funcionário</span>
-          <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+        <label className="block sm:col-span-2"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Funcionário</span>
+          <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="input-base">
             <option value="">— selecione —</option>
             {emps.filter((e) => e.active).map((e) => <option key={e.id} value={e.id}>{e.name}{e.matricula ? ` (${e.matricula})` : ""}</option>)}
           </select></label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">PIN (se exigido)</span>
-          <input value={pin} onChange={(e) => setPin(e.target.value)} inputMode="numeric" type="password" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">PIN (se exigido)</span>
+          <input value={pin} onChange={(e) => setPin(e.target.value)} inputMode="numeric" type="password" className="input-base" /></label>
       </div>
-      <button disabled={busy} onClick={punch} className="mt-4 w-full rounded-lg bg-brand py-3 text-base font-semibold text-white disabled:opacity-50">{busy ? "Registrando…" : "Registrar ponto"}</button>
+      <button disabled={busy} onClick={punch} className="btn-grad mt-4 w-full py-3 text-base disabled:opacity-50">{busy ? "Registrando…" : "Registrar ponto"}</button>
       {last && (
         <div className="mt-4 rounded-xl border border-green-500/40 bg-green-500/10 p-4 text-sm">
           <p className="font-semibold text-green-200">Comprovante de marcação</p>
@@ -212,24 +212,24 @@ function Marcacoes({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="input-base w-auto">
           <option value="">Todos os funcionários</option>
           {emps.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
-        <button onClick={baixarAfd} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand" title="Registros tipo 7 do AFD (marcações)">Baixar AFD (tipo 7)</button>
+        <button onClick={baixarAfd} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand" title="Registros tipo 7 do AFD (marcações)">Baixar AFD (tipo 7)</button>
       </div>
-      {items.length === 0 ? <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Sem marcações.</p> : (
-        <div className="overflow-hidden rounded-xl border border-line">
+      {items.length === 0 ? <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Sem marcações.</p> : (
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-bg/40 text-left text-[10px] uppercase tracking-wider text-muted"><tr><th className="px-3 py-2">NSR</th><th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Data/hora</th><th className="px-3 py-2">Origem</th><th className="px-3 py-2">Verificação</th></tr></thead>
+            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">NSR</th><th className="px-4 py-3 font-medium">Funcionário</th><th className="px-4 py-3 font-medium">Data/hora</th><th className="px-4 py-3 font-medium">Origem</th><th className="px-4 py-3 font-medium">Verificação</th></tr></thead>
             <tbody>
               {items.map((p) => (
-                <tr key={p.id} className="border-t border-line/60">
-                  <td className="px-3 py-2 font-mono">{p.nsr}</td>
-                  <td className="px-3 py-2">{nameOf(p.employeeId)}</td>
-                  <td className="px-3 py-2">{new Date(p.punchedAt).toLocaleString("pt-BR")}{p.offline ? " (offline)" : ""}</td>
-                  <td className="px-3 py-2 text-muted">{p.origin}</td>
-                  <td className="px-3 py-2 text-xs">
+                <tr key={p.id} className="border-t border-line transition hover:bg-surface-2">
+                  <td className="px-4 py-3 font-mono">{p.nsr}</td>
+                  <td className="px-4 py-3">{nameOf(p.employeeId)}</td>
+                  <td className="px-4 py-3">{new Date(p.punchedAt).toLocaleString("pt-BR")}{p.offline ? " (offline)" : ""}</td>
+                  <td className="px-4 py-3 text-muted">{p.origin}</td>
+                  <td className="px-4 py-3 text-xs">
                     {p.faceMatch === true && <span className="text-green-300" title={`similaridade ${p.faceScore ?? "?"}%`}>rosto ✓</span>}
                     {p.faceMatch === false && <span className="text-red-300" title={`similaridade ${p.faceScore ?? "?"}%`}>rosto ✗</span>}
                     {p.livenessOk === true && <span className="ml-1 text-green-300">vivo ✓</span>}
@@ -281,11 +281,11 @@ function Funcionarios({ emps, onChanged, dialog }: { emps: Emp[]; onChanged: () 
       <div className="mb-4 flex items-center justify-between gap-2">
         <p className="text-sm font-semibold">Funcionários (marcação)</p>
         <div className="flex items-center gap-2">
-          <button onClick={dedupe} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand">Unir duplicados (CPF)</button>
+          <button onClick={dedupe} className="rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">Unir duplicados (CPF)</button>
           <button onClick={zerarMarcacoes} className="rounded-lg border border-red-500/50 px-3 py-1.5 text-xs text-red-300 hover:border-red-400 hover:bg-red-500/10">Zerar marcações (migração)</button>
         </div>
       </div>
-      <div className="mb-4 rounded-xl border border-line bg-bg/60 p-5">
+      <div className="card mb-4">
         <p className="mb-3 text-sm font-semibold">Novo funcionário</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <Inp label="Nome" v={f.name} on={(v) => set("name", v)} />
@@ -297,11 +297,11 @@ function Funcionarios({ emps, onChanged, dialog }: { emps: Emp[]; onChanged: () 
           <Inp label="Cód. horário contratual" v={f.scheduleCode} on={(v) => set("scheduleCode", v)} />
           <Inp label="PIN (opcional)" v={f.pin} on={(v) => set("pin", v)} />
         </div>
-        <button onClick={save} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Salvar</button>
+        <button onClick={save} className="btn-grad mt-3">Salvar</button>
       </div>
       <div className="space-y-2">
         {emps.map((e) => (
-          <div key={e.id} className="flex items-center justify-between rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+          <div key={e.id} className="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2 text-sm">
             <span>{e.name} <span className="text-xs text-muted">{e.cargo ?? ""}{e.matricula ? ` · mat ${e.matricula}` : ""}</span>{e.faceEnrolled && <span className="ml-2 text-[10px] text-green-300">rosto ✓</span>}</span>
             <div className="flex items-center gap-2">
               {!e.active && <span className="text-[10px] text-muted">inativo</span>}
@@ -337,13 +337,13 @@ function FaceEnroll({ emp, onClose, onDone, dialog }: { emp: Emp; onClose: () =>
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <p className="mb-1 text-sm font-semibold">Cadastrar rosto — {emp.name}</p>
         <p className="mb-3 text-[11px] text-muted">Olhe para a câmera com o rosto bem iluminado e centralizado.</p>
         <video ref={videoRef} autoPlay playsInline muted className="aspect-square w-full rounded-xl bg-black object-cover" />
         <div className="mt-3 flex gap-2">
           <button onClick={onClose} className="flex-1 rounded-lg border border-line py-2 text-sm">Cancelar</button>
-          <button disabled={busy} onClick={capture} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Capturar"}</button>
+          <button disabled={busy} onClick={capture} className="btn-grad flex-1 py-2 disabled:opacity-50">{busy ? "Salvando…" : "Capturar"}</button>
         </div>
       </div>
     </div>
@@ -360,11 +360,11 @@ function Config({ dialog }: { dialog: any }) {
     dialog.toast("Config salva ✅", "success");
   }
   return (
-    <section className="rounded-xl border border-line bg-bg/60 p-5">
+    <section className="card">
       <p className="mb-3 text-sm font-semibold">Dados do empregador (cabeçalho do AFD/AEJ)</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Tipo</span>
-          <select value={c.tpIdtEmpregador} onChange={(e) => set("tpIdtEmpregador", Number(e.target.value))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"><option value={1}>CNPJ</option><option value={2}>CPF</option></select></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo</span>
+          <select value={c.tpIdtEmpregador} onChange={(e) => set("tpIdtEmpregador", Number(e.target.value))} className="input-base"><option value={1}>CNPJ</option><option value={2}>CPF</option></select></label>
         <Inp label="CNPJ/CPF" v={c.idtEmpregador} on={(v) => set("idtEmpregador", v)} />
         <Inp label="Razão social / nome" v={c.razaoOuNome} on={(v) => set("razaoOuNome", v)} />
         <Inp label="Nº processo convenção/acordo (REP-A)" v={c.repAProcesso} on={(v) => set("repAProcesso", v)} />
@@ -372,18 +372,18 @@ function Config({ dialog }: { dialog: any }) {
         <Inp label="CNO (se houver)" v={c.cno} on={(v) => set("cno", v)} />
         <Inp label="Local de prestação de serviços" v={c.localPrestacao} on={(v) => set("localPrestacao", v)} />
         <Inp label="CPF do responsável (inclusões/alterações)" v={c.responsavelCpf} on={(v) => set("responsavelCpf", v)} />
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Tipo ident. desenvolvedor (PTRP)</span>
-          <select value={c.devTpIdt ?? 1} onChange={(e) => set("devTpIdt", Number(e.target.value))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"><option value={1}>CNPJ</option><option value={2}>CPF</option></select></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo ident. desenvolvedor (PTRP)</span>
+          <select value={c.devTpIdt ?? 1} onChange={(e) => set("devTpIdt", Number(e.target.value))} className="input-base"><option value={1}>CNPJ</option><option value={2}>CPF</option></select></label>
         <Inp label="CNPJ/CPF do desenvolvedor (yugochat)" v={c.devIdt} on={(v) => set("devIdt", v)} />
       </div>
       <p className="mt-2 text-[11px] text-muted">Se não houver convenção/acordo depositado, deixe em branco — o AFD/AEJ usa "9"×17 automaticamente. O CNPJ do desenvolvedor (PTRP) é o da yugochat e vai no cabeçalho do AFD.</p>
 
       <p className="mb-3 mt-6 text-sm font-semibold">Reconhecimento facial e prova de vida (Fase 3)</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Provedor facial</span>
-          <select value={c.faceProvider ?? "none"} onChange={(e) => set("faceProvider", e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"><option value="none">Desligado</option><option value="http">Serviço HTTP (self-hosted/adaptador)</option></select></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Provedor facial</span>
+          <select value={c.faceProvider ?? "none"} onChange={(e) => set("faceProvider", e.target.value)} className="input-base"><option value="none">Desligado</option><option value="http">Serviço HTTP (self-hosted/adaptador)</option></select></label>
         <Inp label="URL do serviço facial" v={c.faceProviderUrl} on={(v) => set("faceProviderUrl", v)} />
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Chave do serviço {c.faceProviderKeySet ? "(definida — deixe vazio p/ manter)" : ""}</span><input type="password" value={c.faceProviderKey ?? ""} onChange={(e) => set("faceProviderKey", e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Chave do serviço {c.faceProviderKeySet ? "(definida — deixe vazio p/ manter)" : ""}</span><input type="password" value={c.faceProviderKey ?? ""} onChange={(e) => set("faceProviderKey", e.target.value)} className="input-base" /></label>
         <Inp label="Similaridade mínima (0-100)" v={String(c.faceThreshold ?? 60)} on={(v) => set("faceThreshold", Number(v) || 0)} />
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!c.requireFace} onChange={(e) => set("requireFace", e.target.checked)} /> Exigir reconhecimento facial</label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!c.requireLiveness} onChange={(e) => set("requireLiveness", e.target.checked)} /> Exigir prova de vida (liveness)</label>
@@ -420,11 +420,11 @@ function Config({ dialog }: { dialog: any }) {
       <p className="mb-3 mt-6 text-sm font-semibold">Webhook de eventos (Fase 5)</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Inp label="URL do webhook (POST a cada marcação)" v={c.webhookUrl} on={(v) => set("webhookUrl", v)} />
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Segredo {c.webhookSecretSet ? "(definido — vazio mantém)" : ""}</span><input type="password" value={c.webhookSecret ?? ""} onChange={(e) => set("webhookSecret", e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Segredo {c.webhookSecretSet ? "(definido — vazio mantém)" : ""}</span><input type="password" value={c.webhookSecret ?? ""} onChange={(e) => set("webhookSecret", e.target.value)} className="input-base" /></label>
       </div>
       <p className="mt-2 text-[11px] text-muted">Enviamos um POST JSON {`{ event, orgId, at, data }`} a cada marcação, assinado em HMAC-SHA256 no header <b>x-ponto-signature</b>. Evento: <code>ponto.punch.created</code>.</p>
 
-      <button onClick={save} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Salvar</button>
+      <button onClick={save} className="btn-grad mt-3">Salvar</button>
     </section>
   );
 }
@@ -457,9 +457,9 @@ function PontoBackground({ c, dialog, onSaved }: { c: any; dialog: any; onSaved:
       <div className="flex flex-wrap items-center gap-3">
         {c.bgImageUrl ? <img src={c.bgImageUrl} alt="fundo" className="h-20 w-36 rounded-lg border border-line object-cover" /> : <div className="flex h-20 w-36 items-center justify-center rounded-lg border border-dashed border-line text-[11px] text-muted">sem fundo</div>}
         <div className="flex flex-col gap-2">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Exibir até (opcional)</span><input type="date" value={until} onChange={(e) => setUntil(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Exibir até (opcional)</span><input type="date" value={until} onChange={(e) => setUntil(e.target.value)} className="input-base w-auto" /></label>
           <div className="flex gap-2">
-            <label className="cursor-pointer rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">{busy ? "Enviando…" : "Subir imagem"}<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onFile} /></label>
+            <label className="cursor-pointer rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">{busy ? "Enviando…" : "Subir imagem"}<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onFile} /></label>
             {c.bgImageUrl && <button onClick={remove} className="rounded-lg border border-red-500/50 px-3 py-2 text-sm text-red-300">Remover</button>}
           </div>
           {c.bgUntil && <span className="text-[11px] text-muted">Ativo até {new Date(c.bgUntil).toLocaleDateString("pt-BR")}</span>}
@@ -566,8 +566,8 @@ function SolicitacoesPonto({ dialog }: { dialog: any }) {
         <span className="ml-auto text-xs text-muted">{loading ? "Carregando…" : `${items.length} solicitação(ões)`}</span>
       </div>
       <div className="space-y-2">
-        {items.length === 0 ? <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Nada por aqui.</p> : items.map((j) => (
-          <div key={j.id} className="flex items-start justify-between gap-3 rounded-lg border border-line bg-bg/60 p-3 text-sm">
+        {items.length === 0 ? <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nada por aqui.</p> : items.map((j) => (
+          <div key={j.id} className="flex items-start justify-between gap-3 rounded-xl border border-line bg-surface p-3 text-sm">
             <div>
               <p className="font-medium">{j.employeeName || "—"} · {JKIND[j.kind] ?? j.kind} · {new Date(j.day).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</p>
               <p className="mt-0.5 whitespace-pre-wrap text-xs text-muted">{j.reason}</p>
@@ -619,20 +619,20 @@ function EspelhosContabil({ dialog }: { dialog: any }) {
     } finally { setBusy(false); }
   }
   return (
-    <section className="mb-4 rounded-xl border border-line bg-bg/60 p-4">
+    <section className="card mb-4">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm font-semibold">Espelhos do mês (contabilidade)</p>
-        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
-        {data && <span className="rounded-full bg-bg/40 px-3 py-1 text-xs text-muted">{data.signed}/{data.total} assinados</span>}
-        <a href={`/api/ponto/espelho/lote.pdf?refMonth=${month}`} target="_blank" rel="noreferrer" className="ml-auto rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Baixar lote (PDF)</a>
-        <button onClick={enviar} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Enviando…" : "Enviar à contabilidade"}</button>
-        <button onClick={() => setOpen((v) => !v)} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">{open ? "ocultar" : "ver lista"}</button>
+        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="input-base w-auto" />
+        {data && <span className="rounded-full bg-surface-2 px-3 py-1 text-xs text-muted">{data.signed}/{data.total} assinados</span>}
+        <a href={`/api/ponto/espelho/lote.pdf?refMonth=${month}`} target="_blank" rel="noreferrer" className="ml-auto rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Baixar lote (PDF)</a>
+        <button onClick={enviar} disabled={busy} className="btn-grad disabled:opacity-50">{busy ? "Enviando…" : "Enviar à contabilidade"}</button>
+        <button onClick={() => setOpen((v) => !v)} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">{open ? "ocultar" : "ver lista"}</button>
       </div>
       <p className="mt-1 text-[11px] text-muted">Gera um PDF único com o espelho de todos os funcionários ativos (com carimbo de assinatura e hash). Configure o e-mail do contador no Empregador.</p>
       {open && data && (
         <div className="mt-3 space-y-1">
           {data.items.map((i: any) => (
-            <div key={i.employeeId} className="flex items-center justify-between rounded border border-line/60 bg-bg/40 px-3 py-1.5 text-sm">
+            <div key={i.employeeId} className="flex items-center justify-between rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-sm">
               <span>{i.name}{i.cargo ? <span className="text-xs text-muted"> · {i.cargo}</span> : null}</span>
               <span className={`text-xs ${i.signed ? "text-green-300" : "text-amber-200"}`}>{i.signed ? `assinado${i.a1Signed ? " (A1)" : ""}${i.signedAt ? " · " + new Date(i.signedAt).toLocaleDateString("pt-BR") : ""}` : "pendente"}</span>
             </div>
@@ -814,16 +814,16 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-end gap-2 print:hidden">
-        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="input-base w-auto">
           <option value="">— funcionário —</option>
           {emps.filter((e) => e.active).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
         <label className="text-sm">De <input type="date" value={range.from} onChange={(e) => {
           const v = e.target.value; setRange((r) => ({ from: v, to: v && r.to && v > r.to ? v : r.to }));
-        }} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" /></label>
+        }} className="input-base w-auto" /></label>
         <label className="text-sm">Até <input type="date" value={range.to} onChange={(e) => {
           const v = e.target.value; setRange((r) => ({ from: v && r.from && v < r.from ? v : r.from, to: v }));
-        }} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" /></label>
+        }} className="input-base w-auto" /></label>
         <div className="flex flex-wrap items-center gap-1 text-[11px]">
           {[0, -1, -2].map((n) => (
             <button key={n} onClick={() => setRange(monthShift(n))} title={n === 0 ? "Mês atual" : n === -1 ? "Mês anterior" : `${-n} meses atrás`}
@@ -832,27 +832,27 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
             </button>
           ))}
         </div>
-        {data && <button onClick={() => csvEspelho(data, range)} className="ml-auto rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">CSV</button>}
-        {data && <button onClick={() => printEspelho(data, range)} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Imprimir / PDF</button>}
+        {data && <button onClick={() => csvEspelho(data, range)} className="ml-auto rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">CSV</button>}
+        {data && <button onClick={() => printEspelho(data, range)} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Imprimir / PDF</button>}
         {data && empId && <button onClick={() => {
           // Cache-buster por timestamp: o navegador (ou viewer inline de PDF) ama
           // cachear PDFs com URL idêntica. Cada clique abre uma URL diferente,
           // garantindo que se a funcionária reassinou, o PDF novo aparece.
           const ts = Math.floor(Date.now() / 1000);
           window.open(`/api/ponto/espelho/recibo.pdf?employeeId=${empId}&refMonth=${range.from.slice(0, 7)}&_ts=${ts}`, "_blank", "noreferrer");
-        }} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Espelho assinado</button>}
+        }} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Espelho assinado</button>}
       </div>
 
       {loadState.status === "loading" ? (
-        <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Carregando espelho…</p>
+        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Carregando espelho…</p>
       ) : loadState.status === "error" ? (
         <div className="rounded-xl border border-red-500/40 bg-red-500/5 p-4 text-sm">
           <p className="font-semibold text-red-300">Falha ao carregar o espelho</p>
           <p className="mt-1 text-muted">{loadState.error}</p>
           <p className="mt-2 text-[11px] text-muted">Se o erro menciona a coluna <code>voided</code>, aplique a migration <code>186_ponto_punch_voided.sql</code> no banco.</p>
         </div>
-      ) : !data ? <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Selecione um funcionário e o período.</p> : (
-        <div className="rounded-xl border border-line bg-bg/60 p-4 print:border-0 print:bg-white print:text-black">
+      ) : !data ? <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Selecione um funcionário e o período.</p> : (
+        <div className="rounded-2xl border border-line bg-surface p-4 shadow-sm print:border-0 print:bg-white print:text-black">
           <div className="mb-3">
             <p className="text-lg font-semibold">Espelho de ponto</p>
             <p className="text-sm text-muted print:text-black">{data.employer} · {data.employee.name}{data.employee.cargo ? ` — ${data.employee.cargo}` : ""}{data.schedule ? ` · escala ${data.schedule.name}` : " · sem escala"}</p>
@@ -883,7 +883,7 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
                     </td>
                   </tr>
                   {editDay === d.day && (
-                    <tr className="border-t border-line/40 bg-bg/40 print:hidden">
+                    <tr className="border-t border-line/40 bg-surface-2 print:hidden">
                       <td colSpan={10} className="px-2 py-3">
                         <div className="flex flex-wrap items-end gap-3">
                           <span className="w-full text-xs text-muted">Batidas do dia {d.day.slice(8)}/{d.day.slice(5, 7)}:</span>
@@ -901,7 +901,7 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
                           <label className="text-[10px] uppercase text-muted">Motivo da batida (opcional)
                             <input value={editMotivo} onChange={(e) => setEditMotivo(e.target.value)} placeholder="ex.: esqueceu de bater" className="mt-0.5 block w-[200px] rounded-lg border border-line bg-bg/60 px-2 py-1.5 text-sm outline-none focus:border-brand" />
                           </label>
-                          <button onClick={saveEdit} disabled={busy} className="ml-auto rounded-lg bg-brand px-4 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50">{busy ? "Salvando…" : "Alterar"}</button>
+                          <button onClick={saveEdit} disabled={busy} className="btn-grad ml-auto px-4 py-1.5 disabled:opacity-50">{busy ? "Salvando…" : "Alterar"}</button>
                         </div>
                         <p className="mt-1.5 text-[11px] text-muted">Reajustar substitui as batidas anteriores do dia (não duplica). As anuladas ficam guardadas para auditoria (Portaria 671 — nada é apagado).</p>
 
@@ -1008,19 +1008,19 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
       )}
 
       {empId && (
-        <div className="mt-4 rounded-xl border border-line bg-bg/60 p-4 print:hidden">
+        <div className="card mt-4 print:hidden">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-sm font-semibold">Lançar / ajustar batidas</p>
-            <button onClick={() => setBulkOpen((v) => !v)} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand">{bulkOpen ? "Fechar lançamento em massa" : "Lançamento em massa (migração)"}</button>
+            <button onClick={() => setBulkOpen((v) => !v)} className="rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">{bulkOpen ? "Fechar lançamento em massa" : "Lançamento em massa (migração)"}</button>
           </div>
           {!bulkOpen ? (
             <>
               <div className="grid gap-2 sm:grid-cols-4">
-                <input type="date" value={pday} onChange={(e) => setPday(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" />
-                <input value={ptimes} onChange={(e) => setPtimes(e.target.value)} placeholder="Horários: 08:00 12:00 13:00 18:00" className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm sm:col-span-3" />
+                <input type="date" value={pday} onChange={(e) => setPday(e.target.value)} className="input-base" />
+                <input value={ptimes} onChange={(e) => setPtimes(e.target.value)} placeholder="Horários: 08:00 12:00 13:00 18:00" className="input-base sm:col-span-3" />
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                <button onClick={lancarDia} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Lançar batidas do dia</button>
+                <button onClick={lancarDia} disabled={busy} className="btn-grad disabled:opacity-50">Lançar batidas do dia</button>
                 <label className="flex items-center gap-1.5 text-xs text-muted">
                   <input type="checkbox" checked={pReplace} onChange={(e) => setPReplace(e.target.checked)} className="h-3.5 w-3.5 rounded border-line" />
                   substituir as batidas anteriores do dia (recomendado)
@@ -1031,10 +1031,10 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
           ) : (
             <>
               <p className="mb-1 text-[11px] text-muted">Uma linha por dia: <code>DATA hora hora hora hora</code>. DATA = <code>2026-05-01</code> ou <code>01/05/2026</code>. Ex.:</p>
-              <textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={8} placeholder={"2026-05-01 08:00 12:00 13:00 18:00\n2026-05-02 08:00 12:00 13:00 18:00\n02/05/2026 08:00 12:00"} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 font-mono text-xs" />
+              <textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={8} placeholder={"2026-05-01 08:00 12:00 13:00 18:00\n2026-05-02 08:00 12:00 13:00 18:00\n02/05/2026 08:00 12:00"} className="input-base font-mono text-xs" />
               {(() => { const dd = parseLancamentoMassa(bulkText); const tot = dd.reduce((n, d) => n + d.times.length, 0); return <p className="mt-1 text-[11px] text-muted">Prévia: {dd.length} dia(s), {tot} batida(s).</p>; })()}
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                <button onClick={lancarMassa} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Lançar em massa</button>
+                <button onClick={lancarMassa} disabled={busy} className="btn-grad disabled:opacity-50">Lançar em massa</button>
                 <label className="flex items-center gap-1.5 text-xs text-muted">
                   <input type="checkbox" checked={bulkReplace} onChange={(e) => setBulkReplace(e.target.checked)} className="h-3.5 w-3.5 rounded border-line" />
                   substituir dias com batidas existentes
@@ -1046,16 +1046,16 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
       )}
 
       {empId && (
-        <div className="mt-4 rounded-xl border border-line bg-bg/60 p-4 print:hidden">
+        <div className="card mt-4 print:hidden">
           <p className="mb-2 text-sm font-semibold">Justificar divergência</p>
           <div className="grid gap-2 sm:grid-cols-4">
-            <input type="date" value={just.day} onChange={(e) => setJust((j) => ({ ...j, day: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" />
-            <select value={just.kind} onChange={(e) => setJust((j) => ({ ...j, kind: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm">
+            <input type="date" value={just.day} onChange={(e) => setJust((j) => ({ ...j, day: e.target.value }))} className="input-base" />
+            <select value={just.kind} onChange={(e) => setJust((j) => ({ ...j, kind: e.target.value }))} className="input-base">
               {["atraso", "falta", "saida_antecipada", "abono", "extra", "outro"].map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
-            <input value={just.reason} onChange={(e) => setJust((j) => ({ ...j, reason: e.target.value }))} placeholder="Motivo" className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm sm:col-span-2" />
+            <input value={just.reason} onChange={(e) => setJust((j) => ({ ...j, reason: e.target.value }))} placeholder="Motivo" className="input-base sm:col-span-2" />
           </div>
-          <button onClick={enviarJustificativa} className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Enviar justificativa</button>
+          <button onClick={enviarJustificativa} className="btn-grad mt-2">Enviar justificativa</button>
           <JustList employeeId={empId} dialog={dialog} />
         </div>
       )}
@@ -1076,7 +1076,7 @@ function JustList({ employeeId, dialog }: { employeeId: string; dialog: any }) {
   return (
     <div className="mt-3 space-y-1">
       {items.map((j) => (
-        <div key={j.id} className="flex items-center justify-between rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+        <div key={j.id} className="flex items-center justify-between rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm">
           <span>{String(j.day).slice(0, 10)} · <b>{j.kind}</b> · {j.reason} <span className={`text-[10px] ${j.status === "approved" ? "text-green-400" : j.status === "rejected" ? "text-red-400" : "text-amber-400"}`}>[{j.status}]</span></span>
           {j.status === "pending" && (
             <span className="flex gap-1">
@@ -1133,13 +1133,13 @@ function Escalas({ dialog }: { dialog: any }) {
   const setDay = (wd: number, i: number, v: string) => setF((s: any) => { const days = s.days.map((r: string[]) => [...r]); days[wd][i] = v; return { ...s, days }; });
   return (
     <section>
-      <div className="mb-4 rounded-xl border border-line bg-bg/60 p-5">
+      <div className="card mb-4">
         <p className="mb-3 text-sm font-semibold">{f.id ? `Editar escala ${f.code}` : "Nova escala"}{f.id && <button onClick={() => setF(empty)} className="ml-2 text-xs text-muted hover:text-fg">(cancelar edição)</button>}</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <Inp label="Código (casa com o do funcionário)" v={f.code} on={(v) => setF((s: any) => ({ ...s, code: v }))} />
           <Inp label="Nome" v={f.name} on={(v) => setF((s: any) => ({ ...s, name: v }))} />
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Tipo</span>
-            <select value={f.kind} onChange={(e) => setF((s: any) => ({ ...s, kind: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"><option value="fixa">Fixa (semanal)</option><option value="12x36">12x36</option><option value="plantao">Plantão (ciclo)</option><option value="home_office">Home office (flexível)</option><option value="intermitente">Intermitente</option></select></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo</span>
+            <select value={f.kind} onChange={(e) => setF((s: any) => ({ ...s, kind: e.target.value }))} className="input-base"><option value="fixa">Fixa (semanal)</option><option value="12x36">12x36</option><option value="plantao">Plantão (ciclo)</option><option value="home_office">Home office (flexível)</option><option value="intermitente">Intermitente</option></select></label>
           <Inp label="Tolerância (min)" v={String(f.toleranceMin)} on={(v) => setF((s: any) => ({ ...s, toleranceMin: v }))} />
           <Inp label="Início noturno" v={f.nightStart} on={(v) => setF((s: any) => ({ ...s, nightStart: v }))} />
           <Inp label="Fim noturno" v={f.nightEnd} on={(v) => setF((s: any) => ({ ...s, nightEnd: v }))} />
@@ -1165,17 +1165,17 @@ function Escalas({ dialog }: { dialog: any }) {
           <p className="mt-3 text-[11px] text-muted">Intermitente: sem jornada fixa. Conta só o que for batido (não gera falta). Use o banco de horas para ajustes.</p>
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Âncora (1º dia de trabalho)</span><input type="date" value={f.anchor} onChange={(e) => setF((s: any) => ({ ...s, anchor: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
-            <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Entrada</span><input type="time" value={f.anchorEnt} onChange={(e) => setF((s: any) => ({ ...s, anchorEnt: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
-            <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Saída</span><input type="time" value={f.anchorSai} onChange={(e) => setF((s: any) => ({ ...s, anchorSai: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+            <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Âncora (1º dia de trabalho)</span><input type="date" value={f.anchor} onChange={(e) => setF((s: any) => ({ ...s, anchor: e.target.value }))} className="input-base" /></label>
+            <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Entrada</span><input type="time" value={f.anchorEnt} onChange={(e) => setF((s: any) => ({ ...s, anchorEnt: e.target.value }))} className="input-base" /></label>
+            <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Saída</span><input type="time" value={f.anchorSai} onChange={(e) => setF((s: any) => ({ ...s, anchorSai: e.target.value }))} className="input-base" /></label>
             {f.kind === "plantao" && <><Inp label="Dias trabalhados (ciclo)" v={String(f.onDays)} on={(v) => setF((s: any) => ({ ...s, onDays: v }))} /><Inp label="Dias de folga (ciclo)" v={String(f.offDays)} on={(v) => setF((s: any) => ({ ...s, offDays: v }))} /></>}
           </div>
         )}
-        <button onClick={save} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">{f.id ? "Atualizar escala" : "Salvar escala"}</button>
+        <button onClick={save} className="btn-grad mt-3">{f.id ? "Atualizar escala" : "Salvar escala"}</button>
       </div>
       <div className="space-y-2">
         {items.map((s) => (
-          <div key={s.id} className="flex items-center justify-between rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+          <div key={s.id} className="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2 text-sm">
             <span className={s.active ? "" : "opacity-60"}><b>{s.code}</b> — {s.name} <span className="text-xs text-muted">{s.kind} · tol {s.toleranceMin}min</span>{!s.active && <span className="ml-2 text-[10px] text-muted">inativa</span>}</span>
             <span className="flex items-center gap-3 text-xs">
               <button onClick={() => editar(s)} className="text-brand hover:underline">editar</button>
@@ -1219,33 +1219,33 @@ function AtribuirEscala({ schedules, dialog }: { schedules: any[]; dialog: any }
     setSel({}); load();
   }
   return (
-    <div className="mt-6 rounded-xl border border-line bg-bg/60 p-5">
+    <div className="card mt-6">
       <p className="mb-1 text-sm font-semibold">Aplicar escala em massa</p>
       <p className="mb-3 text-[11px] text-muted">Filtre por loja/cargo, marque os funcionários e aplique a mesma escala a todos. "Sem escala" remove o vínculo.</p>
       <div className="grid gap-3 sm:grid-cols-4">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Escala</span>
-          <select value={code} onChange={(e) => setCode(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Escala</span>
+          <select value={code} onChange={(e) => setCode(e.target.value)} className="input-base">
             <option value="">— sem escala (remover) —</option>
             {schedules.filter((s) => s.active).map((s) => <option key={s.id} value={s.code}>{s.code} — {s.name}</option>)}
           </select>
         </label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Loja</span>
-          <select value={storeId} onChange={(e) => setStoreId(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Loja</span>
+          <select value={storeId} onChange={(e) => setStoreId(e.target.value)} className="input-base">
             <option value="">todas</option>
             {stores.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Cargo</span>
-          <select value={cargo} onChange={(e) => setCargo(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Cargo</span>
+          <select value={cargo} onChange={(e) => setCargo(e.target.value)} className="input-base">
             <option value="">todos</option>
             {cargos.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Buscar nome</span>
-          <input value={q} onChange={(e) => setQ(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Buscar nome</span>
+          <input value={q} onChange={(e) => setQ(e.target.value)} className="input-base" /></label>
       </div>
       <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-line/60">
-        <div className="flex items-center justify-between border-b border-line/60 bg-bg/40 px-3 py-2 text-xs">
+        <div className="flex items-center justify-between border-b border-line/60 bg-surface-2 px-3 py-2 text-xs">
           <label className="flex items-center gap-2"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} /> selecionar todos ({filtered.length})</label>
           <span className="text-muted">{selIds.length} selecionado(s)</span>
         </div>
@@ -1258,7 +1258,7 @@ function AtribuirEscala({ schedules, dialog }: { schedules: any[]; dialog: any }
         ))}
         {filtered.length === 0 && <p className="px-3 py-3 text-sm text-muted">Nenhum funcionário no filtro.</p>}
       </div>
-      <button onClick={apply} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Aplicar a {selIds.length} funcionário(s)</button>
+      <button onClick={apply} className="btn-grad mt-3">Aplicar a {selIds.length} funcionário(s)</button>
     </div>
   );
 }
@@ -1276,24 +1276,24 @@ function Feriados({ dialog }: { dialog: any }) {
   }
   async function remove(id: string) { await fetch(`/api/ponto/holidays/${id}/delete`, { method: "POST", credentials: "include" }); load(); }
   return (
-    <div className="mt-6 rounded-xl border border-line bg-bg/60 p-5">
+    <div className="card mt-6">
       <p className="mb-1 text-sm font-semibold">Feriados e pontos facultativos</p>
       <p className="mb-3 text-[11px] text-muted">Valem pra empresa/loja toda. No espelho viram dia abonado: não gera falta, não desconta, e o que for trabalhado conta como hora extra. Recorrente repete todo ano na mesma data. (Para folga premium de uma pessoa só, use "Lançar motivo" no editar-dia do espelho.)</p>
       <div className="flex flex-wrap items-end gap-2">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Data</span><input type="date" value={f.day} onChange={(e) => setF((s) => ({ ...s, day: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Tipo</span>
-          <select value={f.kind} onChange={(e) => setF((s) => ({ ...s, kind: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Data</span><input type="date" value={f.day} onChange={(e) => setF((s) => ({ ...s, day: e.target.value }))} className="input-base w-auto" /></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo</span>
+          <select value={f.kind} onChange={(e) => setF((s) => ({ ...s, kind: e.target.value }))} className="input-base w-auto">
             <option value="feriado">Feriado</option>
             <option value="facultativo">Ponto facultativo</option>
           </select>
         </label>
-        <label className="block flex-1 min-w-[180px]"><span className="mb-1 block text-[10px] uppercase text-muted">Nome</span><input value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} placeholder="ex.: Natal, Quarta de cinzas" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+        <label className="block flex-1 min-w-[180px]"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Nome</span><input value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} placeholder="ex.: Natal, Quarta de cinzas" className="input-base" /></label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.recurring} onChange={(e) => setF((s) => ({ ...s, recurring: e.target.checked }))} /> repete todo ano</label>
-        <button onClick={add} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">+ Adicionar</button>
+        <button onClick={add} className="btn-grad">+ Adicionar</button>
       </div>
       <div className="mt-3 space-y-1">
         {items.map((h) => (
-          <div key={h.id} className="flex items-center justify-between rounded-lg border border-line/60 bg-bg/40 px-3 py-2 text-sm">
+          <div key={h.id} className="flex items-center justify-between rounded-lg border border-line/60 bg-surface-2 px-3 py-2 text-sm">
             <span>{new Date(h.day).toLocaleDateString("pt-BR", { timeZone: "UTC" })} — {h.name}<span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${h.kind === "facultativo" ? "bg-sky-500/15 text-sky-300" : "bg-amber-500/15 text-amber-300"}`}>{h.kind === "facultativo" ? "facultativo" : "feriado"}</span>{h.recurring && <span className="ml-2 text-[10px] uppercase text-muted">anual</span>}</span>
             <button onClick={() => remove(h.id)} className="text-xs text-muted hover:text-red-300">remover</button>
           </div>
@@ -1331,7 +1331,7 @@ function Dispositivos({ dialog }: { dialog: any }) {
   }
   return (
     <section>
-      <div className="mb-4 rounded-xl border border-line bg-bg/60 p-5">
+      <div className="card mb-4">
         <p className="mb-1 text-sm font-semibold">Novo dispositivo (tablet/celular no balcão)</p>
         <p className="mb-3 text-[11px] text-muted">Gera um link com token. Abra esse link no aparelho da filial e instale como app (PWA). O funcionário bate o ponto por PIN, sem login.</p>
         <div className="grid gap-3 sm:grid-cols-3">
@@ -1343,8 +1343,8 @@ function Dispositivos({ dialog }: { dialog: any }) {
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.requireSelfie} onChange={(e) => setF((s: any) => ({ ...s, requireSelfie: e.target.checked }))} /> Exigir selfie</label>
         </div>
         <div className="mt-3 flex gap-2">
-          <button onClick={usarMinhaLocalizacao} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Usar minha localização</button>
-          <button onClick={create} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Gerar dispositivo</button>
+          <button onClick={usarMinhaLocalizacao} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Usar minha localização</button>
+          <button onClick={create} className="btn-grad">Gerar dispositivo</button>
         </div>
         {newLink && (
           <div className="mt-3 rounded-xl border border-green-500/40 bg-green-500/10 p-3 text-sm">
@@ -1356,7 +1356,7 @@ function Dispositivos({ dialog }: { dialog: any }) {
       </div>
       <div className="space-y-2">
         {items.map((d) => (
-          <div key={d.id} className="flex items-center justify-between rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+          <div key={d.id} className="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2 text-sm">
             <span>{d.name} <span className="text-xs text-muted">{d.requireGeo ? "· GPS" : ""}{d.requireSelfie ? " · selfie" : ""}{d.lastSeenAt ? ` · visto ${new Date(d.lastSeenAt).toLocaleString("pt-BR")}` : " · nunca usado"}</span></span>
             <button onClick={() => toggleRevoke(d.id, d.revoked)} className={`rounded border px-2 py-0.5 text-xs ${d.revoked ? "border-green-500/50 text-green-300" : "border-red-500/50 text-red-300"}`}>{d.revoked ? "Reativar" : "Revogar"}</button>
           </div>
@@ -1386,23 +1386,23 @@ function Avisos({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   }
   return (
     <section>
-      <div className="mb-4 rounded-xl border border-line bg-bg/60 p-5">
+      <div className="card mb-4">
         <p className="mb-1 text-sm font-semibold">Novo aviso ao bater o ponto</p>
         <p className="mb-3 text-[11px] text-muted">Aparece no painel quando o funcionário registra o ponto. Escolha um funcionário específico ou deixe "Geral" para todos.</p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Destinatário</span>
-            <select value={f.employeeId} onChange={(e) => setF((s) => ({ ...s, employeeId: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Destinatário</span>
+            <select value={f.employeeId} onChange={(e) => setF((s) => ({ ...s, employeeId: e.target.value }))} className="input-base">
               <option value="">Geral (todos)</option>
               {emps.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select></label>
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Exibir até (opcional)</span><input type="date" value={f.until} onChange={(e) => setF((s) => ({ ...s, until: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Exibir até (opcional)</span><input type="date" value={f.until} onChange={(e) => setF((s) => ({ ...s, until: e.target.value }))} className="input-base" /></label>
         </div>
-        <textarea value={f.message} onChange={(e) => setF((s) => ({ ...s, message: e.target.value }))} rows={2} placeholder="Mensagem do aviso" className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
-        <button onClick={create} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Publicar aviso</button>
+        <textarea value={f.message} onChange={(e) => setF((s) => ({ ...s, message: e.target.value }))} rows={2} placeholder="Mensagem do aviso" className="input-base mt-3" />
+        <button onClick={create} className="btn-grad mt-3">Publicar aviso</button>
       </div>
       <div className="space-y-2">
         {items.filter((n) => n.active).map((n) => (
-          <div key={n.id} className="flex items-start justify-between rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+          <div key={n.id} className="flex items-start justify-between rounded-xl border border-line bg-surface px-3 py-2 text-sm">
             <div><span className="text-xs font-semibold text-brand">{nameOf(n.employeeId)}</span><p>{n.message}</p>{n.until && <span className="text-[10px] text-muted">até {new Date(n.until).toLocaleDateString("pt-BR")}</span>}</div>
             <button onClick={() => del(n.id)} className="rounded border border-red-500/50 px-2 py-0.5 text-xs text-red-300">Remover</button>
           </div>
@@ -1435,13 +1435,13 @@ function TempoReal({ dialog }: { dialog: any }) {
         <Kpi title="Atualiza a cada" value="15s" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-line bg-bg/60 p-4">
+        <div className="card">
           <p className="mb-2 text-sm font-semibold">Trabalhando agora ({rt?.present?.length ?? 0})</p>
           {(rt?.present ?? []).length === 0 ? <p className="text-sm text-muted">Ninguém com ponto aberto.</p> : (
             <ul className="space-y-1 text-sm">{rt.present.map((p: any) => <li key={p.id} className="flex justify-between"><span>🟢 {p.name}</span><span className="text-muted">desde {new Date(p.since).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span></li>)}</ul>
           )}
         </div>
-        <div className="rounded-xl border border-line bg-bg/60 p-4">
+        <div className="card">
           <p className="mb-2 text-sm font-semibold">Últimas marcações</p>
           {(rt?.lastPunches ?? []).length === 0 ? <p className="text-sm text-muted">Sem marcações hoje.</p> : (
             <ul className="space-y-1 text-sm">{rt.lastPunches.map((p: any, i: number) => <li key={i} className="flex justify-between"><span>{p.name} <span className="text-[10px] text-muted">{p.origin}</span></span><span className="text-muted">{new Date(p.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span></li>)}</ul>
@@ -1451,14 +1451,14 @@ function TempoReal({ dialog }: { dialog: any }) {
       <div className="mt-4 rounded-xl border border-brand/30 bg-brand/5 p-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold">IA de absenteísmo — {ref}</p>
-          <button onClick={carregarIa} className="rounded-lg border border-line px-3 py-1 text-sm hover:border-brand">Analisar com IA</button>
+          <button onClick={carregarIa} className="rounded-xl border border-line px-3 py-1 text-sm transition hover:border-brand/60 hover:text-brand">Analisar com IA</button>
         </div>
         {abs?.loading && <p className="mt-2 text-sm text-muted">Analisando…</p>}
         {abs?.insight && <p className="mt-2 text-sm leading-relaxed">{abs.insight}</p>}
         {abs && !abs.loading && !abs.insight && <p className="mt-2 text-sm text-muted">{abs.ranked?.length ? "IA indisponível — mostrando ranking abaixo." : "Sem dados no mês."}</p>}
         {abs?.ranked?.length > 0 && (
           <div className="mt-3 grid gap-1 text-xs sm:grid-cols-2">
-            {abs.ranked.slice(0, 8).map((r: any, i: number) => <div key={i} className="flex justify-between rounded border border-line bg-bg/40 px-2 py-1"><span>{r.name}</span><span className="text-muted">{hmMin(r.faltaMin)} falta · {r.lateMin}min atraso</span></div>)}
+            {abs.ranked.slice(0, 8).map((r: any, i: number) => <div key={i} className="flex justify-between rounded-lg border border-line bg-surface-2 px-2 py-1"><span>{r.name}</span><span className="text-muted">{hmMin(r.faltaMin)} falta · {r.lateMin}min atraso</span></div>)}
           </div>
         )}
       </div>
@@ -1468,7 +1468,7 @@ function TempoReal({ dialog }: { dialog: any }) {
 
 function Kpi({ title, value, tone }: { title: string; value: string; tone?: "green" | "amber" }) {
   const c = tone === "green" ? "text-green-300" : tone === "amber" ? "text-amber-300" : "";
-  return <div className="rounded-xl border border-line bg-bg/60 p-4"><p className="text-[10px] uppercase tracking-wider text-muted">{title}</p><p className={`mt-1 text-2xl font-semibold ${c}`}>{value}</p></div>;
+  return <div className="card"><p className="text-[10px] uppercase tracking-wider text-muted">{title}</p><p className={`mt-1 text-2xl font-semibold ${c}`}>{value}</p></div>;
 }
 
 function hmMin(min: number) { const s = min < 0 ? "-" : ""; const a = Math.abs(min); return `${s}${String(Math.floor(a / 60)).padStart(2, "0")}:${String(a % 60).padStart(2, "0")}`; }
@@ -1498,15 +1498,15 @@ function Banco({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="input-base w-auto">
           <option value="">Selecione o funcionário</option>
           {emps.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
         {data && <span className={`rounded-full px-3 py-1 text-sm font-semibold ${data.balanceMin >= 0 ? "bg-green-500/15 text-green-300" : "bg-red-500/15 text-red-300"}`}>Saldo: {hmMin(data.balanceMin)}</span>}
-        {data && data.expiringMin > 0 && <><span className="rounded-full bg-amber-500/15 px-3 py-1 text-sm font-semibold text-amber-200" title={`créditos anteriores a ${data.cutoff}`}>A vencer: {hmMin(data.expiringMin)}</span><button onClick={expirar} className="rounded-lg border border-line px-3 py-1 text-xs hover:border-brand">lançar baixa</button></>}
+        {data && data.expiringMin > 0 && <><span className="rounded-full bg-amber-500/15 px-3 py-1 text-sm font-semibold text-amber-200" title={`créditos anteriores a ${data.cutoff}`}>A vencer: {hmMin(data.expiringMin)}</span><button onClick={expirar} className="rounded-xl border border-line px-3 py-1 text-xs transition hover:border-brand/60 hover:text-brand">lançar baixa</button></>}
       </div>
       {empId && (
-        <div className="mb-4 rounded-xl border border-line bg-bg/60 p-4">
+        <div className="card mb-4">
           <p className="mb-2 text-sm font-semibold">Lançar no banco de horas</p>
           <div className="grid gap-2 sm:grid-cols-4">
             <Inp label="Data" v={f.day} on={(v) => setF((s) => ({ ...s, day: v }))} />
@@ -1514,21 +1514,21 @@ function Banco({ emps, dialog }: { emps: Emp[]; dialog: any }) {
             <div className="sm:col-span-2"><Inp label="Motivo" v={f.reason} on={(v) => setF((s) => ({ ...s, reason: v }))} /></div>
           </div>
           <p className="mt-1 text-[11px] text-muted">Ex.: <b>1.5</b> = +1h30 (crédito); <b>-2</b> = compensou 2h (débito).</p>
-          <button onClick={add} className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Adicionar</button>
+          <button onClick={add} className="btn-grad mt-2">Adicionar</button>
         </div>
       )}
       {data?.items?.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-line">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-bg/40 text-left text-[10px] uppercase tracking-wider text-muted"><tr><th className="px-3 py-2">Data</th><th className="px-3 py-2">Horas</th><th className="px-3 py-2">Tipo</th><th className="px-3 py-2">Motivo</th><th></th></tr></thead>
+            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">Data</th><th className="px-4 py-3 font-medium">Horas</th><th className="px-4 py-3 font-medium">Tipo</th><th className="px-4 py-3 font-medium">Motivo</th><th className="px-4 py-3 font-medium"></th></tr></thead>
             <tbody>
               {data.items.map((m: any) => (
-                <tr key={m.id} className="border-t border-line/60">
-                  <td className="px-3 py-2">{new Date(m.day).toLocaleDateString("pt-BR")}</td>
-                  <td className={`px-3 py-2 ${m.minutes >= 0 ? "text-green-300" : "text-red-300"}`}>{hmMin(m.minutes)}</td>
-                  <td className="px-3 py-2 text-muted">{m.kind}</td>
-                  <td className="px-3 py-2 text-muted">{m.reason ?? ""}</td>
-                  <td className="px-3 py-2 text-right"><button onClick={() => del(m.id)} className="text-xs text-red-300">remover</button></td>
+                <tr key={m.id} className="border-t border-line transition hover:bg-surface-2">
+                  <td className="px-4 py-3">{new Date(m.day).toLocaleDateString("pt-BR")}</td>
+                  <td className={`px-4 py-3 ${m.minutes >= 0 ? "text-green-300" : "text-red-300"}`}>{hmMin(m.minutes)}</td>
+                  <td className="px-4 py-3 text-muted">{m.kind}</td>
+                  <td className="px-4 py-3 text-muted">{m.reason ?? ""}</td>
+                  <td className="px-4 py-3 text-right"><button onClick={() => del(m.id)} className="text-xs text-red-300">remover</button></td>
                 </tr>
               ))}
             </tbody>
@@ -1564,21 +1564,21 @@ function Ferias({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="input-base w-auto">
           <option value="">Selecione o funcionário</option>
           {emps.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
       </div>
       {bal && (
         <div className="mb-4 grid gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-line bg-bg/60 p-4"><p className="text-[10px] uppercase tracking-wider text-muted">Saldo de férias</p><p className={`mt-1 text-xl font-semibold ${bal.balanceDays != null && bal.balanceDays < 0 ? "text-red-300" : "text-green-300"}`}>{bal.balanceDays != null ? `${bal.balanceDays} dias` : "—"}</p></div>
-          <div className="rounded-xl border border-line bg-bg/60 p-4"><p className="text-[10px] uppercase tracking-wider text-muted">Direito acumulado</p><p className="mt-1 text-xl font-semibold">{bal.accruedDays != null ? `${bal.accruedDays} dias` : "—"}</p><p className="mt-0.5 text-[11px] text-muted">{bal.completedPeriods} período(s)</p></div>
-          <div className="rounded-xl border border-line bg-bg/60 p-4"><p className="text-[10px] uppercase tracking-wider text-muted">Já agendado/gozado</p><p className="mt-1 text-xl font-semibold">{bal.usedDays} dias</p></div>
-          <div className="rounded-xl border border-line bg-bg/60 p-4"><p className="text-[10px] uppercase tracking-wider text-muted">Próx. período vence</p><p className="mt-1 text-sm font-semibold">{bal.nextPeriodStart ? new Date(bal.nextPeriodStart).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"}</p>{!bal.admissionDate && <p className="mt-0.5 text-[11px] text-muted">sem admissão no cadastro</p>}</div>
+          <div className="card"><p className="text-[10px] uppercase tracking-wider text-muted">Saldo de férias</p><p className={`mt-1 text-xl font-semibold ${bal.balanceDays != null && bal.balanceDays < 0 ? "text-danger" : "text-success"}`}>{bal.balanceDays != null ? `${bal.balanceDays} dias` : "—"}</p></div>
+          <div className="card"><p className="text-[10px] uppercase tracking-wider text-muted">Direito acumulado</p><p className="mt-1 text-xl font-semibold">{bal.accruedDays != null ? `${bal.accruedDays} dias` : "—"}</p><p className="mt-0.5 text-[11px] text-muted">{bal.completedPeriods} período(s)</p></div>
+          <div className="card"><p className="text-[10px] uppercase tracking-wider text-muted">Já agendado/gozado</p><p className="mt-1 text-xl font-semibold">{bal.usedDays} dias</p></div>
+          <div className="card"><p className="text-[10px] uppercase tracking-wider text-muted">Próx. período vence</p><p className="mt-1 text-sm font-semibold">{bal.nextPeriodStart ? new Date(bal.nextPeriodStart).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"}</p>{!bal.admissionDate && <p className="mt-0.5 text-[11px] text-muted">sem admissão no cadastro</p>}</div>
         </div>
       )}
       {empId && (
-        <div className="mb-4 rounded-xl border border-line bg-bg/60 p-4">
+        <div className="card mb-4">
           <p className="mb-2 text-sm font-semibold">Agendar férias</p>
           <div className="grid gap-2 sm:grid-cols-4">
             <Inp label="Início" v={f.startDate} on={(v) => setF((s) => ({ ...s, startDate: v }))} />
@@ -1587,20 +1587,20 @@ function Ferias({ emps, dialog }: { emps: Emp[]; dialog: any }) {
           </div>
           <label className="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={f.thirteenthAdvance} onChange={(e) => setF((s) => ({ ...s, thirteenthAdvance: e.target.checked }))} /> Adiantar 1ª parcela do 13º junto</label>
           <p className="mt-1 text-[11px] text-muted">Período: {f.startDate ? `${new Date(f.startDate + "T00:00:00Z").toLocaleDateString("pt-BR", { timeZone: "UTC" })} até ${endOf(f.startDate, parseInt(f.days || "30", 10) || 30)}` : ""}.</p>
-          <button onClick={add} className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Agendar</button>
+          <button onClick={add} className="btn-grad mt-2">Agendar</button>
         </div>
       )}
       {items.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-line">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-bg/40 text-left text-[10px] uppercase tracking-wider text-muted"><tr><th className="px-3 py-2">Período</th><th className="px-3 py-2">Dias</th><th className="px-3 py-2">Status</th><th className="px-3 py-2"></th></tr></thead>
+            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">Período</th><th className="px-4 py-3 font-medium">Dias</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium"></th></tr></thead>
             <tbody>
               {items.map((v) => (
-                <tr key={v.id} className="border-t border-line/60">
-                  <td className="px-3 py-2">{new Date(v.startDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })} – {endOf(String(v.startDate).slice(0, 10), v.days)}{v.thirteenthAdvance && <span className="ml-2 text-[10px] uppercase text-muted">+13º</span>}</td>
-                  <td className="px-3 py-2">{v.days}</td>
-                  <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${(STATUS[v.status] ?? STATUS.scheduled!).c}`}>{(STATUS[v.status] ?? STATUS.scheduled!).l}</span></td>
-                  <td className="px-3 py-2 text-right">
+                <tr key={v.id} className="border-t border-line transition hover:bg-surface-2">
+                  <td className="px-4 py-3">{new Date(v.startDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })} – {endOf(String(v.startDate).slice(0, 10), v.days)}{v.thirteenthAdvance && <span className="ml-2 text-[10px] uppercase text-muted">+13º</span>}</td>
+                  <td className="px-4 py-3">{v.days}</td>
+                  <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${(STATUS[v.status] ?? STATUS.scheduled!).c}`}>{(STATUS[v.status] ?? STATUS.scheduled!).l}</span></td>
+                  <td className="px-4 py-3 text-right">
                     <span className="flex items-center justify-end gap-3 text-xs">
                       <a href={`/api/ponto/ferias/${v.id}/recibo.pdf`} target="_blank" rel="noreferrer" className="text-brand hover:underline">recibo</a>
                       {v.status === "scheduled" && <button onClick={() => setStatus(v.id, "taken")} className="text-green-300 hover:underline">marcar gozada</button>}
@@ -1655,38 +1655,38 @@ function Fechamento({ dialog }: { dialog: any }) {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input type="month" value={ref} onChange={(e) => setRef(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
-        <span className={`rounded-full px-3 py-1 text-xs ${st === "closed" ? "bg-green-500/15 text-green-300" : st === "manager" ? "bg-amber-500/15 text-amber-300" : "bg-bg/60 text-muted"}`}>{st === "closed" ? "fechado (RH)" : st === "manager" ? "aprovado pelo gestor" : "aberto"}</span>
+        <input type="month" value={ref} onChange={(e) => setRef(e.target.value)} className="input-base w-auto" />
+        <span className={`rounded-full px-3 py-1 text-xs ${st === "closed" ? "bg-green-500/15 text-green-300" : st === "manager" ? "bg-amber-500/15 text-amber-300" : "bg-surface-2 text-muted"}`}>{st === "closed" ? "fechado (RH)" : st === "manager" ? "aprovado pelo gestor" : "aberto"}</span>
         <div className="ml-auto flex gap-2">
-          {st === "open" && <button onClick={() => act("aprovar-gestor", "Aprovado pelo gestor")} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Aprovar (gestor)</button>}
-          {st === "manager" && <button onClick={() => act("fechar-rh", "Fechado pelo RH")} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white">Fechar (RH)</button>}
-          {st !== "open" && <button onClick={() => act("reabrir", "Reaberto")} className="rounded-lg border border-line px-3 py-2 text-sm">Reabrir</button>}
-          <button onClick={baixarCsv} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Export CSV</button>
-          <button onClick={baixarAej} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Gerar AEJ</button>
+          {st === "open" && <button onClick={() => act("aprovar-gestor", "Aprovado pelo gestor")} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Aprovar (gestor)</button>}
+          {st === "manager" && <button onClick={() => act("fechar-rh", "Fechado pelo RH")} className="btn-grad px-3">Fechar (RH)</button>}
+          {st !== "open" && <button onClick={() => act("reabrir", "Reaberto")} className="rounded-xl border border-line px-3 py-2 text-sm">Reabrir</button>}
+          <button onClick={baixarCsv} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Export CSV</button>
+          <button onClick={baixarAej} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Gerar AEJ</button>
         </div>
       </div>
       {sum?.rows?.length > 0 ? (
-        <div className="overflow-x-auto rounded-xl border border-line">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-bg/40 text-left text-[10px] uppercase tracking-wider text-muted"><tr><th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Prev.</th><th className="px-3 py-2">Trab.</th><th className="px-3 py-2">Extras</th><th className="px-3 py-2">Not.</th><th className="px-3 py-2">Atraso</th><th className="px-3 py-2">Faltas</th><th className="px-3 py-2">Saldo</th><th className="px-3 py-2">Banco</th></tr></thead>
+            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">Funcionário</th><th className="px-4 py-3 font-medium">Prev.</th><th className="px-4 py-3 font-medium">Trab.</th><th className="px-4 py-3 font-medium">Extras</th><th className="px-4 py-3 font-medium">Not.</th><th className="px-4 py-3 font-medium">Atraso</th><th className="px-4 py-3 font-medium">Faltas</th><th className="px-4 py-3 font-medium">Saldo</th><th className="px-4 py-3 font-medium">Banco</th></tr></thead>
             <tbody>
               {sum.rows.map((r: any) => (
-                <tr key={r.employeeId} className="border-t border-line/60">
-                  <td className="px-3 py-2">{r.name}</td>
-                  <td className="px-3 py-2">{hmMin(r.expectedMin)}</td>
-                  <td className="px-3 py-2">{hmMin(r.workedMin)}</td>
-                  <td className="px-3 py-2 text-green-300">{hmMin(r.extraMin)}</td>
-                  <td className="px-3 py-2">{hmMin(r.nightMin)}</td>
-                  <td className="px-3 py-2 text-amber-300">{hmMin(r.lateMin)}</td>
-                  <td className="px-3 py-2 text-red-300">{hmMin(r.faltaMin)}</td>
-                  <td className={`px-3 py-2 ${r.balanceMin >= 0 ? "text-green-300" : "text-red-300"}`}>{hmMin(r.balanceMin)}</td>
-                  <td className="px-3 py-2">{hmMin(r.bankBalanceMin)}</td>
+                <tr key={r.employeeId} className="border-t border-line transition hover:bg-surface-2">
+                  <td className="px-4 py-3">{r.name}</td>
+                  <td className="px-4 py-3">{hmMin(r.expectedMin)}</td>
+                  <td className="px-4 py-3">{hmMin(r.workedMin)}</td>
+                  <td className="px-4 py-3 text-green-300">{hmMin(r.extraMin)}</td>
+                  <td className="px-4 py-3">{hmMin(r.nightMin)}</td>
+                  <td className="px-4 py-3 text-amber-300">{hmMin(r.lateMin)}</td>
+                  <td className="px-4 py-3 text-red-300">{hmMin(r.faltaMin)}</td>
+                  <td className={`px-4 py-3 ${r.balanceMin >= 0 ? "text-green-300" : "text-red-300"}`}>{hmMin(r.balanceMin)}</td>
+                  <td className="px-4 py-3">{hmMin(r.bankBalanceMin)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      ) : <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Sem dados no mês.</p>}
+      ) : <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Sem dados no mês.</p>}
       <p className="mt-2 text-[11px] text-muted">Fluxo: gestor aprova → RH fecha → exporta. O <b>AEJ</b> sai assinado em .p7s se o certificado A1 estiver configurado. Conformidade final (DSR, leiaute) deve ser validada no verificador oficial + contador.</p>
     </section>
   );
@@ -1722,7 +1722,7 @@ function PontoCert({ dialog }: { dialog: any }) {
       <p className="mb-1 text-sm font-semibold">Certificado digital A1 (ICP-Brasil) — assinatura do AFD/AEJ</p>
       <p className="mb-3 text-[11px] text-muted">Envie o <b>e-CNPJ A1 (.pfx/.p12)</b> + senha. O arquivo fica cifrado no servidor e assina o AFD/AEJ em <b>.p7s</b> (PKCS#7). A senha nunca é exibida de volta.</p>
       {st.configured ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-bg/40 p-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-2 p-3 text-sm">
           <span className={st.expired ? "text-red-300" : "text-green-300"}>{st.expired ? "⚠ vencido" : "✓ ativo"}</span>
           <span><b>{st.subject}</b></span>
           {st.notAfter && <span className="text-muted">válido até {new Date(st.notAfter).toLocaleDateString("pt-BR")}</span>}
@@ -1730,8 +1730,8 @@ function PontoCert({ dialog }: { dialog: any }) {
         </div>
       ) : <p className="text-[11px] text-muted">Nenhum certificado configurado — o AFD sai sem assinatura.</p>}
       <div className="mt-3 flex flex-wrap items-end gap-2">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Senha do certificado</span><input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
-        <label className="cursor-pointer rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">{busy ? "Validando…" : st.configured ? "Trocar .pfx" : "Subir .pfx"}<input type="file" accept=".pfx,.p12,application/x-pkcs12" className="hidden" onChange={onFile} /></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Senha do certificado</span><input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} className="input-base w-auto" /></label>
+        <label className="cursor-pointer rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">{busy ? "Validando…" : st.configured ? "Trocar .pfx" : "Subir .pfx"}<input type="file" accept=".pfx,.p12,application/x-pkcs12" className="hidden" onChange={onFile} /></label>
       </div>
     </div>
   );
@@ -1758,31 +1758,31 @@ function Eventos({ dialog }: { dialog: any }) {
   const copy = (s: string) => { navigator.clipboard?.writeText(s); dialog.toast("Copiado", "success"); };
   return (
     <section>
-      <div className="mb-4 rounded-xl border border-line bg-bg/60 p-5">
+      <div className="card mb-4">
         <p className="mb-1 text-sm font-semibold">Webhook de eventos — pronto pra esta empresa</p>
         <p className="mb-3 text-[11px] text-muted">Todo evento (ex.: ponto batido) já fica gravado aqui no feed abaixo — você <b>não precisa</b> de servidor externo. Se quiser empurrar pra outro sistema (ex.: seu ERP), informe uma URL externa.</p>
         <div className="grid gap-3">
           <div>
-            <span className="mb-1 block text-[10px] uppercase text-muted">Segredo (HMAC) desta empresa</span>
+            <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Segredo (HMAC) desta empresa</span>
             <div className="flex items-center gap-2">
-              <code className="flex-1 truncate rounded-lg border border-line bg-bg/40 px-3 py-2 text-xs">{info?.secret ?? "…"}</code>
-              <button onClick={() => info?.secret && copy(info.secret)} className="rounded-lg border border-line px-3 py-2 text-xs hover:border-brand">Copiar</button>
-              <button onClick={regen} className="rounded-lg border border-line px-3 py-2 text-xs hover:border-brand">Gerar novo</button>
+              <code className="flex-1 truncate rounded-lg border border-line bg-surface-2 px-3 py-2 text-xs">{info?.secret ?? "…"}</code>
+              <button onClick={() => info?.secret && copy(info.secret)} className="rounded-xl border border-line px-3 py-2 text-xs transition hover:border-brand/60 hover:text-brand">Copiar</button>
+              <button onClick={regen} className="rounded-xl border border-line px-3 py-2 text-xs transition hover:border-brand/60 hover:text-brand">Gerar novo</button>
             </div>
             <p className="mt-1 text-[10px] text-muted">Assinatura enviada no header <code>x-ponto-signature = sha256(segredo + corpo)</code>.</p>
           </div>
           <div>
-            <span className="mb-1 block text-[10px] uppercase text-muted">Consultar eventos (puxar do seu sistema)</span>
+            <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Consultar eventos (puxar do seu sistema)</span>
             <div className="flex items-center gap-2">
-              <code className="flex-1 truncate rounded-lg border border-line bg-bg/40 px-3 py-2 text-xs">GET {origin}/api/ponto/eventos</code>
-              <button onClick={() => copy(`${origin}/api/ponto/eventos`)} className="rounded-lg border border-line px-3 py-2 text-xs hover:border-brand">Copiar</button>
+              <code className="flex-1 truncate rounded-lg border border-line bg-surface-2 px-3 py-2 text-xs">GET {origin}/api/ponto/eventos</code>
+              <button onClick={() => copy(`${origin}/api/ponto/eventos`)} className="rounded-xl border border-line px-3 py-2 text-xs transition hover:border-brand/60 hover:text-brand">Copiar</button>
             </div>
           </div>
           <div>
-            <span className="mb-1 block text-[10px] uppercase text-muted">URL externa (opcional — empurra cada evento via POST)</span>
+            <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">URL externa (opcional — empurra cada evento via POST)</span>
             <div className="flex items-center gap-2">
-              <input value={pushUrl} onChange={(e) => setPushUrl(e.target.value)} placeholder="https://seu-sistema.com/webhook" className="flex-1 rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
-              <button onClick={savePush} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Salvar</button>
+              <input value={pushUrl} onChange={(e) => setPushUrl(e.target.value)} placeholder="https://seu-sistema.com/webhook" className="input-base flex-1" />
+              <button onClick={savePush} className="btn-grad">Salvar</button>
             </div>
             <p className="mt-1 text-[10px] text-muted">Pra testar grátis, gere uma URL em webhook.site e cole aqui.</p>
           </div>
@@ -1790,17 +1790,17 @@ function Eventos({ dialog }: { dialog: any }) {
       </div>
 
       <p className="mb-2 text-sm font-semibold">Feed de eventos (atualiza sozinho)</p>
-      {items.length === 0 ? <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum evento ainda. Bata um ponto e ele aparece aqui.</p> : (
-        <div className="overflow-hidden rounded-xl border border-line">
+      {items.length === 0 ? <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhum evento ainda. Bata um ponto e ele aparece aqui.</p> : (
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
           <table className="w-full text-sm">
-            <thead className="bg-bg/40 text-left text-[10px] uppercase tracking-wider text-muted"><tr><th className="px-3 py-2">Quando</th><th className="px-3 py-2">Evento</th><th className="px-3 py-2">Dados</th><th className="px-3 py-2">Externo</th></tr></thead>
+            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">Quando</th><th className="px-4 py-3 font-medium">Evento</th><th className="px-4 py-3 font-medium">Dados</th><th className="px-4 py-3 font-medium">Externo</th></tr></thead>
             <tbody>
               {items.map((e) => (
-                <tr key={e.id} className="border-t border-line/60">
-                  <td className="px-3 py-2 whitespace-nowrap text-muted">{new Date(e.createdAt).toLocaleString("pt-BR")}</td>
-                  <td className="px-3 py-2"><code className="text-xs">{e.event}</code></td>
-                  <td className="px-3 py-2 text-xs text-muted">{e.payload?.employeeName ?? ""}{e.payload?.nsr ? ` · NSR ${e.payload.nsr}` : ""}</td>
-                  <td className="px-3 py-2 text-xs">{e.targetUrl ? (e.delivered ? <span className="text-green-300">entregue {e.statusCode ?? ""}</span> : <span className="text-red-300">falhou {e.statusCode ?? ""}</span>) : <span className="text-muted">—</span>}</td>
+                <tr key={e.id} className="border-t border-line transition hover:bg-surface-2">
+                  <td className="px-4 py-3 whitespace-nowrap text-muted">{new Date(e.createdAt).toLocaleString("pt-BR")}</td>
+                  <td className="px-4 py-3"><code className="text-xs">{e.event}</code></td>
+                  <td className="px-4 py-3 text-xs text-muted">{e.payload?.employeeName ?? ""}{e.payload?.nsr ? ` · NSR ${e.payload.nsr}` : ""}</td>
+                  <td className="px-4 py-3 text-xs">{e.targetUrl ? (e.delivered ? <span className="text-green-300">entregue {e.statusCode ?? ""}</span> : <span className="text-red-300">falhou {e.statusCode ?? ""}</span>) : <span className="text-muted">—</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -1815,7 +1815,7 @@ function FaceTestButton({ dialog }: { dialog: any }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)} className="mt-3 rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Testar reconhecimento</button>
+      <button onClick={() => setOpen(true)} className="mt-3 rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Testar reconhecimento</button>
       {open && <FaceTestModal onClose={() => setOpen(false)} dialog={dialog} />}
     </>
   );
@@ -1843,7 +1843,7 @@ function FaceTestModal({ onClose, dialog }: { onClose: () => void; dialog: any }
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <p className="mb-1 text-sm font-semibold">Testar reconhecimento facial</p>
         <p className="mb-3 text-[11px] text-muted">Não bate ponto — só mostra quem o sistema reconhece e a pontuação ({res ? `${res.candidates} rostos cadastrados` : "calibração"}).</p>
         <video ref={videoRef} autoPlay playsInline muted className="aspect-square w-full rounded-xl bg-black object-cover" />
@@ -1855,7 +1855,7 @@ function FaceTestModal({ onClose, dialog }: { onClose: () => void; dialog: any }
         )}
         <div className="mt-3 flex gap-2">
           <button onClick={onClose} className="flex-1 rounded-lg border border-line py-2 text-sm">Fechar</button>
-          <button disabled={busy} onClick={testar} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Analisando…" : "Capturar e testar"}</button>
+          <button disabled={busy} onClick={testar} className="btn-grad flex-1 py-2 disabled:opacity-50">{busy ? "Analisando…" : "Capturar e testar"}</button>
         </div>
       </div>
     </div>
@@ -1863,5 +1863,5 @@ function FaceTestModal({ onClose, dialog }: { onClose: () => void; dialog: any }
 }
 
 function Inp({ label, v, on }: { label: string; v: string; on: (v: string) => void }) {
-  return <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">{label}</span><input value={v ?? ""} onChange={(e) => on(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>;
+  return <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">{label}</span><input value={v ?? ""} onChange={(e) => on(e.target.value)} className="input-base" /></label>;
 }

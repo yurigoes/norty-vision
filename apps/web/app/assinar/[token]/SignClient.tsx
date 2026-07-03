@@ -87,8 +87,8 @@ export function SignClient({
 
   if (done) {
     return (
-      <div className="rounded-xl border border-green-500/40 bg-green-500/10 p-8 text-center">
-        <h2 className="text-2xl font-semibold text-green-100">
+      <div className="rounded-2xl border border-success/40 bg-success/10 p-8 text-center">
+        <h2 className="text-2xl font-semibold text-success">
           ✓ Assinatura registrada
         </h2>
         <p className="mt-3 text-sm text-muted">
@@ -101,7 +101,7 @@ export function SignClient({
 
   return (
     <form onSubmit={onSubmit} className="space-y-8">
-      <section className="rounded-xl border border-line bg-bg/60 p-6">
+      <section className="rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow-sm)]">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
           Seus dados
         </h2>
@@ -128,7 +128,7 @@ export function SignClient({
       </section>
 
       {contract.template.fieldsSchema.length > 0 && (
-        <section className="rounded-xl border border-line bg-bg/60 p-6">
+        <section className="rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow-sm)]">
           <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
             Campos do contrato
           </h2>
@@ -147,7 +147,7 @@ export function SignClient({
         </section>
       )}
 
-      <section className="rounded-xl border border-line bg-bg/60 p-6">
+      <section className="rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow-sm)]">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
           Texto do contrato
         </h2>
@@ -158,7 +158,7 @@ export function SignClient({
         />
       </section>
 
-      <label className="flex items-start gap-3 rounded-xl border border-line bg-bg/60 p-5">
+      <label className="flex items-start gap-3 rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-sm)] transition hover:border-brand/50">
         <input
           type="checkbox"
           checked={accepted}
@@ -173,7 +173,7 @@ export function SignClient({
       </label>
 
       {error && (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <p className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
           {error}
         </p>
       )}
@@ -182,7 +182,7 @@ export function SignClient({
         <button
           type="submit"
           disabled={loading || !accepted}
-          className="rounded-lg bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          className="btn-grad px-6 py-3 text-sm shadow-[0_10px_28px_-10px_rgb(var(--brand)/0.7)]"
         >
           {loading ? "Assinando..." : "Aceitar e assinar"}
         </button>
@@ -208,7 +208,7 @@ function DynamicField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           required={field.required}
-          className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+          className="input-base"
         >
           <option value="">— selecione —</option>
           {(field.options ?? []).map((o) => (
@@ -229,7 +229,7 @@ function DynamicField({
           onChange={(e) => onChange(e.target.value)}
           required={field.required}
           rows={4}
-          className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+          className="input-base"
         />
       </label>
     );
@@ -292,7 +292,7 @@ function Field({
         onChange={(e) => onChange(e.target.value)}
         required={required}
         autoComplete="off"
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       />
     </label>
   );

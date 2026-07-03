@@ -93,7 +93,7 @@ export function LensOrdersClient({
         <TabBtn active={tab === "pedidos"} onClick={() => setTab("pedidos")}>Pedidos</TabBtn>
         <TabBtn active={tab === "lotes"} onClick={() => setTab("lotes")}>Lotes</TabBtn>
       </div>
-      {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p>}
+      {err && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{err}</p>}
 
       {tab === "pedidos" ? (
         <OrdersTab orders={initialOrders} doctors={doctors} labs={labs} customers={customers} products={products} act={act} />
@@ -150,7 +150,7 @@ function OrdersTab({ orders, doctors, labs, customers, products, act }: {
           ))}
         </div>
         {!creating && (
-          <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+          <button onClick={() => setCreating(true)} className="btn-grad">
             Novo pedido
           </button>
         )}
@@ -162,23 +162,23 @@ function OrdersTab({ orders, doctors, labs, customers, products, act }: {
       )}
 
       {selected.size > 0 && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-brand/40 bg-brand/10 px-4 py-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-brand/40 bg-brand/10 px-4 py-3 text-sm">
           <span>{selected.size} pedido(s) selecionado(s)</span>
-          <select value={batchLab} onChange={(e) => setBatchLab(e.target.value)} className="rounded border border-line bg-bg/60 px-2 py-1 text-sm">
+          <select value={batchLab} onChange={(e) => setBatchLab(e.target.value)} className="input-base w-auto">
             <option value="">— laboratório —</option>
             {labs.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
-          <button onClick={createBatch} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white">Criar lote</button>
+          <button onClick={createBatch} className="btn-grad px-3 py-1.5 text-xs">Criar lote</button>
           <button onClick={() => setSelected(new Set())} className="text-xs text-muted hover:text-fg">limpar</button>
         </div>
       )}
 
       {list.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum pedido.</p>
+        <p className="card p-6 text-sm text-muted">Nenhum pedido.</p>
       ) : (
         <div className="space-y-2">
           {list.map((o) => (
-            <div key={o.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg/60 px-4 py-3">
+            <div key={o.id} className="card flex items-center justify-between gap-3 px-4 py-3">
               <div className="flex min-w-0 items-center gap-3">
                 {o.status === "medido" && (
                   <input type="checkbox" checked={selected.has(o.id)} onChange={() => toggle(o.id)} className="accent-brand" />
@@ -374,8 +374,8 @@ function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-brand/40 bg-bg/60 p-5">
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Novo pedido de lente</h2>
+    <section className="card space-y-4 border-brand/40 p-5">
+      <h2 className="text-sm font-semibold uppercase tracking-wider text-brand">Novo pedido de lente</h2>
 
       {/* cliente */}
       <div>
@@ -387,7 +387,7 @@ function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
           </div>
         ) : (
           <div className="relative">
-            <input value={custQuery} onChange={(e) => setCustQuery(e.target.value)} placeholder="Buscar por nome ou CPF" className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+            <input value={custQuery} onChange={(e) => setCustQuery(e.target.value)} placeholder="Buscar por nome ou CPF" className="input-base" />
             {matches.length > 0 && (
               <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-line bg-bg shadow-xl">
                 {matches.map((c) => (
@@ -432,14 +432,14 @@ function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Médico</span>
-          <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm">
+          <select value={doctorId} onChange={(e) => setDoctorId(e.target.value)} className="input-base">
             <option value="">—</option>
             {doctors.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>
         </label>
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Laboratório</span>
-          <select value={labId} onChange={(e) => setLabId(e.target.value)} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm">
+          <select value={labId} onChange={(e) => setLabId(e.target.value)} className="input-base">
             <option value="">—</option>
             {labs.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>
@@ -447,14 +447,14 @@ function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
       </div>
 
       {/* medidas */}
-      <div className="rounded-lg border border-line bg-bg/40 p-3">
+      <div className="rounded-xl border border-line bg-surface-2 p-3">
         <span className="mb-2 block text-[10px] uppercase text-muted">Medidas</span>
         <EyeRow label="OD" v={od} set={setOd} />
         <EyeRow label="OE" v={oe} set={setOe} />
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
-          <input value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="Tipo de lente" className="rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
-          <input value={tratamentos} onChange={(e) => setTratamentos(e.target.value)} placeholder="Tratamentos" className="rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
-          <input value={armacao} onChange={(e) => setArmacao(e.target.value)} placeholder="Armação" className="rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+          <input value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="Tipo de lente" className="input-base" />
+          <input value={tratamentos} onChange={(e) => setTratamentos(e.target.value)} placeholder="Tratamentos" className="input-base" />
+          <input value={armacao} onChange={(e) => setArmacao(e.target.value)} placeholder="Armação" className="input-base" />
         </div>
       </div>
 
@@ -462,7 +462,7 @@ function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Óculos / armação (estoque)</span>
-          <select value={frameProductId} onChange={(e) => setFrameProductId(e.target.value)} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm">
+          <select value={frameProductId} onChange={(e) => setFrameProductId(e.target.value)} className="input-base">
             <option value="">—</option>
             {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
@@ -470,7 +470,7 @@ function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
         </label>
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Lente (produto)</span>
-          <select value={lensProductId} onChange={(e) => pickLens(e.target.value)} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm">
+          <select value={lensProductId} onChange={(e) => pickLens(e.target.value)} className="input-base">
             <option value="">—</option>
             {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
@@ -478,7 +478,7 @@ function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
         </label>
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">OS manual (opcional)</span>
-          <input value={osNumber} onChange={(e) => setOsNumber(e.target.value)} placeholder="nº da OS feita à mão" className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+          <input value={osNumber} onChange={(e) => setOsNumber(e.target.value)} placeholder="nº da OS feita à mão" className="input-base" />
         </label>
       </div>
 
@@ -490,11 +490,11 @@ function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Valor cobrado (R$)</span>
-          <input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" disabled={!!lensProductId && !outroValor} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm disabled:opacity-50" />
+          <input value={price} onChange={(e) => setPrice(e.target.value)} inputMode="decimal" disabled={!!lensProductId && !outroValor} className="input-base disabled:opacity-50" />
         </label>
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Custo lab (R$)</span>
-          <input value={cost} onChange={(e) => setCost(e.target.value)} inputMode="decimal" disabled={!!lensProductId && !outroValor} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm disabled:opacity-50" />
+          <input value={cost} onChange={(e) => setCost(e.target.value)} inputMode="decimal" disabled={!!lensProductId && !outroValor} className="input-base disabled:opacity-50" />
         </label>
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Exame (upload)</span>
@@ -504,14 +504,14 @@ function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
       </div>
 
       {/* produto / óculos pronto (mostrado ao cliente no portal quando entregue) */}
-      <div className="rounded-lg border border-line bg-bg/40 p-3">
+      <div className="rounded-xl border border-line bg-surface-2 p-3">
         <span className="mb-2 block text-[10px] uppercase text-muted">Produto / óculos</span>
         <textarea
           value={productDescription}
           onChange={(e) => setProductDescription(e.target.value)}
           rows={2}
           placeholder="Descrição do óculos pronto (modelo da armação, lente, cor...)"
-          className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm"
+          className="input-base"
         />
         <div className="mt-2 flex items-center gap-2">
           {productPhotoUrl ? (
@@ -538,15 +538,15 @@ function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
 
       <label className="block">
         <span className="mb-1 block text-[10px] uppercase text-muted">Observações</span>
-        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="input-base" />
       </label>
 
-      {err && <p className="text-xs text-red-300">{err}</p>}
+      {err && <p className="text-xs text-danger">{err}</p>}
       <div className="flex gap-2">
-        <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
+        <button onClick={save} disabled={busy} className="btn-grad">
           {busy ? "Salvando..." : "Salvar pedido"}
         </button>
-        <button onClick={onCancel} className="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand">Cancelar</button>
+        <button onClick={onCancel} className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:border-brand hover:text-brand">Cancelar</button>
       </div>
     </section>
   );
@@ -574,14 +574,14 @@ function BatchesTab({ batches, orders, labs, act }: {
   const labName = (id: string | null) => labs.find((l) => l.id === id)?.name ?? "—";
 
   if (batches.length === 0) {
-    return <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum lote. Crie um na aba Pedidos selecionando pedidos medidos.</p>;
+    return <p className="card p-6 text-sm text-muted">Nenhum lote. Crie um na aba Pedidos selecionando pedidos medidos.</p>;
   }
   return (
     <div className="space-y-2">
       {batches.map((b) => {
         const items = orders.filter((o) => o.labBatchId === b.id);
         return (
-          <div key={b.id} className="rounded-lg border border-line bg-bg/60 p-4">
+          <div key={b.id} className="card p-4">
             <div className="flex items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-medium">
@@ -593,9 +593,9 @@ function BatchesTab({ batches, orders, labs, act }: {
                 <p className="text-xs text-muted">{labName(b.labSupplierId)} · {b._count?.orders ?? items.length} pedido(s)</p>
               </div>
               <div className="flex gap-2">
-                <a href={`/api/optical/batches/${b.id}/sheet`} target="_blank" rel="noreferrer" className="rounded border border-line px-3 py-1 text-xs transition hover:border-brand">Imprimir folha</a>
+                <a href={`/api/optical/batches/${b.id}/sheet`} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-1 text-xs font-semibold transition hover:border-brand hover:text-brand">Imprimir folha</a>
                 {b.status !== "recebido" && (
-                  <button onClick={() => setOpenId(openId === b.id ? null : b.id)} className="rounded bg-brand px-3 py-1 text-xs font-semibold text-white">
+                  <button onClick={() => setOpenId(openId === b.id ? null : b.id)} className="btn-grad px-3 py-1 text-xs">
                     {openId === b.id ? "Fechar" : "Conferir"}
                   </button>
                 )}
@@ -626,7 +626,7 @@ function Confer({ batch, items, act, onDone }: {
   }
 
   return (
-    <div className="mt-3 space-y-2 border-t border-line/50 pt-3">
+    <div className="mt-3 space-y-2 border-t border-line pt-3">
       {items.map((o) => (
         <div key={o.id} className="flex flex-wrap items-center gap-2 text-sm">
           <span className="min-w-0 flex-1 truncate">{o.customerName ?? "Sem cliente"} {o.status !== "solicitado" && <span className="text-[10px] text-muted">({o.status})</span>}</span>
@@ -637,7 +637,7 @@ function Confer({ batch, items, act, onDone }: {
           )}
         </div>
       ))}
-      <button onClick={submit} className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+      <button onClick={submit} className="btn-grad mt-2">
         Salvar conferência
       </button>
     </div>

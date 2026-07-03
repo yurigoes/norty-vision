@@ -47,19 +47,20 @@ export default function PortalClienteConfig() {
 
   return (
     <main className="max-w-2xl">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold">Portal do cliente</h1>
+      <header className="mb-8">
+        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Configuração · Portal</p>
+        <h1 className="mt-1 text-3xl font-semibold">Portal do cliente</h1>
         <p className="mt-2 text-muted">Escolha quais recursos seus clientes veem no portal. "Meus dados", "Ajuda" e avaliação ficam sempre visíveis.</p>
       </header>
       {!loaded ? <p className="text-sm text-muted">Carregando…</p> : (
         <div className="space-y-2">
           {FEATURES.map((f) => (
-            <label key={f.key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-bg/60 p-4">
+            <label key={f.key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-line bg-surface p-4 transition hover:border-brand/50">
               <input
                 type="checkbox"
                 checked={!!enabled[f.key]}
                 onChange={(e) => setEnabled((m) => ({ ...m, [f.key]: e.target.checked }))}
-                className="mt-1"
+                className="mt-1 accent-brand"
               />
               <span>
                 <span className="block text-sm font-medium">{f.label}</span>
@@ -67,8 +68,8 @@ export default function PortalClienteConfig() {
               </span>
             </label>
           ))}
-          {msg && <p className="text-sm text-green-300">{msg}</p>}
-          <button onClick={save} disabled={busy} className="mt-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+          {msg && <p className="text-sm text-success">{msg}</p>}
+          <button onClick={save} disabled={busy} className="btn-grad mt-2 px-5 py-2.5">
             {busy ? "Salvando…" : "Salvar configuração"}
           </button>
         </div>

@@ -31,7 +31,7 @@ export default function PainelOtica() {
   if (niche !== undefined && niche !== "otica") {
     return (
       <main className="max-w-2xl">
-        <div className="rounded-2xl border border-line bg-bg/60 p-8 text-center">
+        <div className="card p-8 text-center">
           <h1 className="text-2xl font-semibold">Painel de BI da ótica</h1>
           <p className="mt-2 text-muted">Este acompanhamento (agenda, exames) é específico do nicho ótica. Para a gráfica, use <a href="/app/producao" className="text-brand hover:underline">Produção / Pedidos</a> (aba Financeiro) e os painéis de TV em Configuração › Lojas.</p>
         </div>
@@ -50,7 +50,7 @@ export default function PainelOtica() {
           <h1 className="mt-1 text-3xl font-semibold">Acompanhamento</h1>
           <p className="mt-1 text-muted">Agenda, vendas e projeção — atualiza em tempo real.</p>
         </div>
-        <div className="flex gap-1 rounded-lg border border-line bg-bg/60 p-1 text-sm">
+        <div className="flex gap-1 rounded-lg border border-line bg-surface-2 p-1 text-sm">
           {[30, 90, 180].map((d) => (
             <button key={d} onClick={() => setDays(d)} className={`rounded-md px-3 py-1 ${days === d ? "bg-brand text-white" : "text-muted hover:text-fg"}`}>{d}d</button>
           ))}
@@ -158,7 +158,7 @@ export default function PainelOtica() {
             {s.byPaymentMethod.length === 0 ? <Empty /> : (
               <div className="flex flex-wrap gap-2">
                 {s.byPaymentMethod.sort((x: any, y: any) => y.totalCents - x.totalCents).map((p: any, i: number) => (
-                  <span key={p.method} className="rounded-full border border-line bg-bg/60 px-3 py-1 text-sm" style={{ borderColor: PALETTE[i % PALETTE.length] }}>
+                  <span key={p.method} className="rounded-full border border-line bg-surface-2 px-3 py-1 text-sm" style={{ borderColor: PALETTE[i % PALETTE.length] }}>
                     {PAY_LABEL[p.method] ?? p.method}: <b>{brl(p.totalCents)}</b>
                   </span>
                 ))}
@@ -182,7 +182,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function ChartBox({ h, children }: { h: number; children: React.ReactElement }) {
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-3" style={{ height: h }}>
+    <div className="rounded-xl border border-line bg-surface-2 p-3" style={{ height: h }}>
       <ResponsiveContainer width="100%" height="100%">{children}</ResponsiveContainer>
     </div>
   );
@@ -191,7 +191,7 @@ function ChartBox({ h, children }: { h: number; children: React.ReactElement }) 
 function Kpi({ title, value, sub, highlight, tone }: { title: string; value: string; sub?: string; highlight?: boolean; tone?: "green" | "amber" | "red" }) {
   const toneClass = tone === "green" ? "text-green-300" : tone === "amber" ? "text-amber-300" : tone === "red" ? "text-red-300" : highlight ? "text-brand" : "";
   return (
-    <div className={`rounded-xl border p-4 ${highlight ? "border-brand/40 bg-brand/10" : "border-line bg-bg/60"}`}>
+    <div className={`rounded-xl border p-4 ${highlight ? "border-brand/40 bg-brand/10" : "border-line bg-surface-2"}`}>
       <p className="text-[10px] uppercase tracking-wider text-muted">{title}</p>
       <p className={`mt-1 text-2xl font-semibold ${toneClass}`}>{value}</p>
       {sub && <p className="text-[11px] text-muted">{sub}</p>}
@@ -199,4 +199,4 @@ function Kpi({ title, value, sub, highlight, tone }: { title: string; value: str
   );
 }
 
-function Empty() { return <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Sem dados no período.</p>; }
+function Empty() { return <p className="rounded-xl border border-line bg-surface-2 p-6 text-sm text-muted">Sem dados no período.</p>; }

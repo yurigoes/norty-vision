@@ -68,26 +68,26 @@ export function NichesAdminClient({ initial }: { initial: Niche[] }) {
   return (
     <div className="space-y-6">
       {!formOpen && (
-        <button onClick={openCreate} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white">+ Novo nicho</button>
+        <button onClick={openCreate} className="btn-grad px-5 py-2">+ Novo nicho</button>
       )}
 
       {formOpen && (
-        <div className="space-y-5 rounded-xl border border-line bg-bg/60 p-6">
+        <div className="card space-y-5 p-6">
           <h2 className="text-lg font-semibold">{editing ? `Editar — ${editing.label}` : "Novo nicho"}</h2>
 
           <div className="grid gap-4 sm:grid-cols-3">
             <label className="block">
               <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Chave (slug)</span>
-              <input value={key} disabled={!!editing} onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} placeholder="joalheria" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm disabled:opacity-60" />
+              <input value={key} disabled={!!editing} onChange={(e) => setKey(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ""))} placeholder="joalheria" className="input-base disabled:opacity-60" />
               <span className="mt-1 block text-[10px] text-muted">{editing ? "não pode mudar" : "2-40 caracteres: minúsculas, números, hífen"}</span>
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Nome</span>
-              <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Joalheria" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+              <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Joalheria" className="input-base" />
             </label>
             <label className="block">
               <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Ordem</span>
-              <input type="number" value={order} onChange={(e) => setOrder(parseInt(e.target.value || "0", 10) || 0)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+              <input type="number" value={order} onChange={(e) => setOrder(parseInt(e.target.value || "0", 10) || 0)} className="input-base" />
             </label>
           </div>
 
@@ -100,7 +100,7 @@ export function NichesAdminClient({ initial }: { initial: Niche[] }) {
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {MODULE_GROUPS.map((g) => (
-                <div key={g.group} className="rounded-lg border border-line p-3">
+                <div key={g.group} className="rounded-xl border border-line bg-surface-2 p-3">
                   <p className="mb-2 text-[10px] uppercase tracking-wider text-muted">{g.group}</p>
                   <div className="space-y-1.5">
                     {g.modules.map((m) => (
@@ -122,19 +122,19 @@ export function NichesAdminClient({ initial }: { initial: Niche[] }) {
           </label>
 
           <div className="flex items-center gap-2">
-            <button onClick={closeForm} className="rounded-lg border border-line px-4 py-2 text-sm">Cancelar</button>
-            <button onClick={save} disabled={busy || (creating && key.length < 2) || label.length < 2} className="ml-auto rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Salvar"}</button>
+            <button onClick={closeForm} className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand">Cancelar</button>
+            <button onClick={save} disabled={busy || (creating && key.length < 2) || label.length < 2} className="btn-grad ml-auto px-5 py-2">{busy ? "Salvando…" : "Salvar"}</button>
           </div>
         </div>
       )}
 
       {initial.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum nicho cadastrado.</p>
+        <p className="card text-sm text-muted">Nenhum nicho cadastrado.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+        <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
+              <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
                 <th className="px-4 py-3">Nome</th>
                 <th className="px-4 py-3">Chave</th>
                 <th className="px-4 py-3">Módulos visíveis</th>
@@ -144,7 +144,7 @@ export function NichesAdminClient({ initial }: { initial: Niche[] }) {
             </thead>
             <tbody>
               {initial.map((n) => (
-                <tr key={n.id} className="border-t border-line/50">
+                <tr key={n.id} className="border-t border-line transition hover:bg-surface-2">
                   <td className="px-4 py-3 font-medium">{n.label}</td>
                   <td className="px-4 py-3 font-mono text-xs text-muted">{n.key}</td>
                   <td className="px-4 py-3 text-xs text-muted">{totalModules - (n.hiddenModuleKeys?.length ?? 0)}/{totalModules}</td>

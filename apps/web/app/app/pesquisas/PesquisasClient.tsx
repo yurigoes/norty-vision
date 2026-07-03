@@ -62,7 +62,7 @@ export function PesquisasClient() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-4">
-        <div className="rounded-xl border border-brand/50 bg-brand/10 p-4">
+        <div className="rounded-xl border border-brand/40 bg-brand/10 p-4">
           <p className="text-[10px] uppercase tracking-wider text-muted">NPS</p>
           <p className={`mt-1 text-2xl font-semibold ${npsColor}`}>{metrics?.nps ?? "—"}</p>
         </div>
@@ -74,12 +74,12 @@ export function PesquisasClient() {
       {loading ? (
         <p className="text-sm text-muted">Carregando...</p>
       ) : items.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhuma pesquisa no período.</p>
+        <p className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">Nenhuma pesquisa no período.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
+              <tr className="border-b border-line bg-surface-2 text-left text-[10px] uppercase tracking-wider text-muted">
                 <th className="px-4 py-3">Origem</th>
                 <th className="px-4 py-3">NPS</th>
                 <th className="px-4 py-3">Vendedor</th>
@@ -90,7 +90,7 @@ export function PesquisasClient() {
             </thead>
             <tbody>
               {items.map((it) => (
-                <tr key={it.id} className="border-t border-line/50">
+                <tr key={it.id} className="border-t border-line/50 transition hover:bg-surface-2">
                   <td className="px-4 py-3 text-xs text-muted">{KIND_LABEL[it.kind] ?? it.kind}</td>
                   <td className="px-4 py-3">
                     {it.npsScore == null ? (
@@ -115,7 +115,7 @@ export function PesquisasClient() {
 
 function Card({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-4">
+    <div className="rounded-xl border border-line bg-surface p-4">
       <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
       <p className="mt-1 text-xl font-semibold">{value}</p>
     </div>

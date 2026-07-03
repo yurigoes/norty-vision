@@ -123,7 +123,7 @@ export function ProfessionalsClient({
       {!creating && !editing && !tplForProfessional && (
         <button
           onClick={() => setCreating(true)}
-          className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white"
+          className="btn-grad"
         >
           + Novo profissional
         </button>
@@ -132,7 +132,7 @@ export function ProfessionalsClient({
       {(creating || editing) && (
         <form
           onSubmit={onSubmit}
-          className="space-y-4 rounded-xl border border-line bg-bg/60 p-6"
+          className="card space-y-4"
         >
           <h2 className="text-lg font-semibold">
             {editing ? `Editar — ${editing.name}` : "Novo profissional"}
@@ -146,7 +146,7 @@ export function ProfessionalsClient({
                 <select
                   name="storeId"
                   required
-                  className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                  className="input-base"
                 >
                   {stores.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -181,7 +181,7 @@ export function ProfessionalsClient({
             />
           </div>
           {error && (
-            <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
               {error}
             </p>
           )}
@@ -193,14 +193,14 @@ export function ProfessionalsClient({
                 setEditing(null);
                 setError(null);
               }}
-              className="rounded-lg border border-line px-4 py-2 text-sm"
+              className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:bg-surface-2"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="btn-grad"
             >
               Salvar
             </button>
@@ -219,7 +219,7 @@ export function ProfessionalsClient({
         />
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+      <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
@@ -243,7 +243,7 @@ export function ProfessionalsClient({
               initialProfessionals.map((p) => {
                 const tpl = templates.find((t) => t.professionalId === p.id);
                 return (
-                  <tr key={p.id} className="border-t border-line/50">
+                  <tr key={p.id} className="border-t border-line/50 transition hover:bg-surface-2">
                     <td className="px-4 py-3 font-medium">
                       {p.displayName || p.name}
                     </td>
@@ -381,7 +381,7 @@ function TemplateEditor({
   }
 
   return (
-    <div className="space-y-4 rounded-xl border border-brand/40 bg-bg/60 p-6">
+    <div className="card space-y-4 border-brand/40">
       <h2 className="text-lg font-semibold">
         Jornada de {professional.displayName ?? professional.name}
       </h2>
@@ -396,7 +396,7 @@ function TemplateEditor({
             <select
               value={b.weekday}
               onChange={(e) => update(i, { weekday: Number(e.target.value) })}
-              className="rounded border border-line bg-bg/60 px-2 py-1.5 text-xs"
+              className="input-base"
             >
               {WEEKDAYS.map((d, idx) => (
                 <option key={idx} value={idx}>
@@ -408,13 +408,13 @@ function TemplateEditor({
               type="time"
               value={b.start}
               onChange={(e) => update(i, { start: e.target.value })}
-              className="rounded border border-line bg-bg/60 px-2 py-1.5 text-xs"
+              className="input-base"
             />
             <input
               type="time"
               value={b.end}
               onChange={(e) => update(i, { end: e.target.value })}
-              className="rounded border border-line bg-bg/60 px-2 py-1.5 text-xs"
+              className="input-base"
             />
             <input
               type="number"
@@ -422,13 +422,13 @@ function TemplateEditor({
               min={5}
               max={480}
               onChange={(e) => update(i, { slotMinutes: Number(e.target.value) })}
-              className="rounded border border-line bg-bg/60 px-2 py-1.5 text-xs"
+              className="input-base"
               placeholder="min"
             />
             <button
               type="button"
               onClick={() => remove(i)}
-              className="text-xs text-muted hover:text-red-300"
+              className="text-xs font-medium text-muted transition hover:text-danger"
             >
               remover
             </button>
@@ -444,7 +444,7 @@ function TemplateEditor({
       </button>
 
       {error && (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}
@@ -453,7 +453,7 @@ function TemplateEditor({
         <button
           type="button"
           onClick={onClose}
-          className="rounded-lg border border-line px-4 py-2 text-sm"
+          className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:bg-surface-2"
         >
           Cancelar
         </button>
@@ -461,7 +461,7 @@ function TemplateEditor({
           type="button"
           onClick={onSave}
           disabled={saving}
-          className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="btn-grad"
         >
           {saving ? "Salvando..." : "Salvar jornada"}
         </button>
@@ -497,7 +497,7 @@ function Field({
         required={required}
         placeholder={placeholder}
         defaultValue={defaultValue}
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+        className="input-base"
       />
     </label>
   );

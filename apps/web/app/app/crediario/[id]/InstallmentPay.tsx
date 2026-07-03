@@ -50,7 +50,7 @@ export function InstallmentPay({
         Pagar ▾
       </button>
       {open && (
-        <div className="absolute right-0 z-10 mt-1 w-72 rounded-lg border border-line bg-bg p-2 shadow-xl">
+        <div className="absolute right-0 z-10 mt-1 w-72 rounded-xl border border-line bg-surface p-2 shadow-xl">
           {view === "menu" && (
             <>
               <button disabled={busy} onClick={() => action("pix")} className="block w-full rounded px-3 py-1.5 text-left text-xs hover:bg-line">
@@ -165,10 +165,10 @@ function DiscountFlow({ installmentId, onDone, onBack }: { installmentId: string
         <>
           <p className="text-xs font-medium">Desconto de juros</p>
           <input value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="Valor do desconto (R$)"
-            className="mt-2 w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-xs outline-none focus:border-brand" />
+            className="input-base mt-2" />
           <p className="mt-2 text-[10px] text-muted">Autorizado por:</p>
           <select value={adminId} onChange={(e) => setAdminId(e.target.value)}
-            className="mt-1 w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-xs outline-none focus:border-brand">
+            className="input-base mt-1">
             <option value="">Selecione…</option>
             {admins.map((a) => (
               <option key={a.membershipId} value={a.membershipId} disabled={!a.hasWhatsapp}>
@@ -177,7 +177,7 @@ function DiscountFlow({ installmentId, onDone, onBack }: { installmentId: string
             ))}
           </select>
           {err && <p className="mt-1 text-[10px] text-red-300">{err}</p>}
-          <button disabled={busy} onClick={requestCode} className="mt-2 w-full rounded bg-brand py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+          <button disabled={busy} onClick={requestCode} className="btn-grad mt-2 w-full disabled:opacity-50">
             {busy ? "Enviando…" : "Enviar código ao admin"}
           </button>
         </>
@@ -188,7 +188,7 @@ function DiscountFlow({ installmentId, onDone, onBack }: { installmentId: string
           <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))} placeholder="0000" inputMode="numeric"
             className="mt-2 w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-center font-mono text-sm tracking-widest outline-none focus:border-brand" />
           {err && <p className="mt-1 text-[10px] text-red-300">{err}</p>}
-          <button disabled={busy || code.length !== 4} onClick={confirm} className="mt-2 w-full rounded bg-brand py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+          <button disabled={busy || code.length !== 4} onClick={confirm} className="btn-grad mt-2 w-full disabled:opacity-50">
             {busy ? "Confirmando…" : "Confirmar baixa com desconto"}
           </button>
         </>
@@ -225,13 +225,13 @@ function AdjustDueFlow({ installmentId, dueDate, onDone, onBack }: { installment
       <button onClick={onBack} className="mb-2 text-[10px] text-muted hover:text-fg">‹ voltar</button>
       <p className="text-xs font-medium">Ajustar vencimento</p>
       <input type="date" value={newDate} onChange={(e) => setNewDate(e.target.value)}
-        className="mt-2 w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-xs outline-none focus:border-brand" />
+        className="input-base mt-2" />
       <input value={tolerance} onChange={(e) => setTolerance(e.target.value.replace(/\D/g, ""))} placeholder="Tolerância (dias) — opcional" inputMode="numeric"
-        className="mt-2 w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-xs outline-none focus:border-brand" />
+        className="input-base mt-2" />
       <textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Motivo" rows={2}
-        className="mt-2 w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-xs outline-none focus:border-brand" />
+        className="input-base mt-2" />
       {err && <p className="mt-1 text-[10px] text-red-300">{err}</p>}
-      <button disabled={busy} onClick={save} className="mt-2 w-full rounded bg-brand py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+      <button disabled={busy} onClick={save} className="btn-grad mt-2 w-full disabled:opacity-50">
         {busy ? "Salvando…" : "Salvar novo vencimento"}
       </button>
     </div>

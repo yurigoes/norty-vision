@@ -118,31 +118,31 @@ function NewSettlement({ suppliers, onSaved }: { suppliers: Supplier[]; onSaved:
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
         <label className="block">
-          <span className="mb-1 block text-[10px] uppercase text-muted">Fornecedor</span>
-          <select value={supplierId} onChange={(e) => loadPending(e.target.value)} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm">
+          <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Fornecedor</span>
+          <select value={supplierId} onChange={(e) => loadPending(e.target.value)} className="input-base">
             <option value="">— selecione —</option>
             {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name} ({s.type === "laboratorio" ? "lab" : s.type})</option>)}
           </select>
         </label>
         <label className="block">
-          <span className="mb-1 block text-[10px] uppercase text-muted">Período (início)</span>
-          <input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+          <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Período (início)</span>
+          <input type="date" value={periodStart} onChange={(e) => setPeriodStart(e.target.value)} className="input-base" />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[10px] uppercase text-muted">Período (fim)</span>
-          <input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+          <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Período (fim)</span>
+          <input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} className="input-base" />
         </label>
       </div>
 
       {loaded && (
-        <div className="rounded-lg border border-line bg-bg/60 p-4">
-          <p className="mb-2 text-xs uppercase text-muted">Itens pendentes</p>
+        <div className="card p-4">
+          <p className="mb-2 text-xs uppercase tracking-wider text-muted">Itens pendentes</p>
           {items.length === 0 ? (
             <p className="text-sm text-muted">Nada pendente para esse fornecedor.</p>
           ) : (
             <div className="space-y-1">
               {items.map((it, i) => (
-                <label key={i} className="flex items-center justify-between gap-2 rounded px-2 py-1 text-sm hover:bg-line/40">
+                <label key={i} className="flex items-center justify-between gap-2 rounded-lg px-2 py-1 text-sm hover:bg-surface-2">
                   <span className="flex items-center gap-2">
                     <input type="checkbox" checked={picked.has(i)} onChange={() => setPicked((p) => { const n = new Set(p); n.has(i) ? n.delete(i) : n.add(i); return n; })} className="accent-brand" />
                     {it.description}{it.sourceType === "manual" && <span className="text-[10px] text-muted"> (manual)</span>}
@@ -153,22 +153,22 @@ function NewSettlement({ suppliers, onSaved }: { suppliers: Supplier[]; onSaved:
             </div>
           )}
 
-          <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-line/50 pt-3">
-            <input value={manualDesc} onChange={(e) => setManualDesc(e.target.value)} placeholder="Item manual (ex.: exame 12/05)" className="flex-1 rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
-            <input value={manualVal} onChange={(e) => setManualVal(e.target.value)} placeholder="R$" inputMode="decimal" className="w-24 rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
-            <button onClick={addManual} className="rounded border border-line px-3 py-1 text-xs transition hover:border-brand">+ adicionar</button>
+          <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-line pt-3">
+            <input value={manualDesc} onChange={(e) => setManualDesc(e.target.value)} placeholder="Item manual (ex.: exame 12/05)" className="input-base flex-1" />
+            <input value={manualVal} onChange={(e) => setManualVal(e.target.value)} placeholder="R$" inputMode="decimal" className="input-base w-24" />
+            <button onClick={addManual} className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand">+ adicionar</button>
           </div>
 
           <p className="mt-3 flex items-center justify-between text-lg font-semibold">
             <span>Total</span><span>{brl(total)}</span>
           </p>
-          {err && <p className="text-xs text-red-300">{err}</p>}
-          <button onClick={save} disabled={busy || chosen.length === 0} className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
+          {err && <p className="text-xs text-danger">{err}</p>}
+          <button onClick={save} disabled={busy || chosen.length === 0} className="btn-grad mt-2 disabled:opacity-50">
             {busy ? "Criando..." : "Criar fechamento"}
           </button>
         </div>
       )}
-      {err && !loaded && <p className="text-xs text-red-300">{err}</p>}
+      {err && !loaded && <p className="text-xs text-danger">{err}</p>}
     </div>
   );
 }
@@ -212,42 +212,42 @@ function SettlementsList({ settlements, supName, onChanged }: {
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   }
 
-  if (settlements.length === 0) return <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum fechamento.</p>;
+  if (settlements.length === 0) return <p className="card p-6 text-sm text-muted">Nenhum fechamento.</p>;
   return (
     <div className="space-y-2">
-      {err && <p className="text-xs text-red-300">{err}</p>}
+      {err && <p className="text-xs text-danger">{err}</p>}
       {settlements.map((s) => (
-        <div key={s.id} className="rounded-lg border border-line bg-bg/60 p-4">
+        <div key={s.id} className="card p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-medium">
                 {supName(s.supplierId)} · {brl(s.totalCents)}
-                <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${s.status === "paid" ? "bg-green-500/20 text-green-300" : "bg-orange-500/20 text-orange-300"}`}>
+                <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${s.status === "paid" ? "bg-success/15 text-success" : "bg-warn/15 text-warn"}`}>
                   {s.status === "paid" ? "pago" : "pendente"}
                 </span>
               </p>
               <p className="text-xs text-muted">{s.items.length} item(ns){s.paymentMethod ? ` · ${s.paymentMethod}` : ""}</p>
             </div>
             <div className="flex gap-2">
-              <a href={`/api/payouts/settlements/${s.id}/receipt`} target="_blank" rel="noreferrer" className="rounded border border-line px-3 py-1 text-xs transition hover:border-brand">Recibo</a>
+              <a href={`/api/payouts/settlements/${s.id}/receipt`} target="_blank" rel="noreferrer" className="rounded-xl border border-line px-3 py-1 text-xs transition hover:border-brand/60 hover:text-brand">Recibo</a>
               {s.status !== "paid" && (
-                <button onClick={() => setPayId(payId === s.id ? null : s.id)} className="rounded bg-brand px-3 py-1 text-xs font-semibold text-white">
+                <button onClick={() => setPayId(payId === s.id ? null : s.id)} className="btn-grad px-3 py-1 text-xs">
                   {payId === s.id ? "Fechar" : "Registrar pagamento"}
                 </button>
               )}
             </div>
           </div>
           {payId === s.id && (
-            <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-line/50 pt-3">
+            <div className="mt-3 flex flex-wrap items-end gap-2 border-t border-line pt-3">
               <label className="block">
-                <span className="mb-1 block text-[10px] uppercase text-muted">Forma</span>
-                <select value={method} onChange={(e) => setMethod(e.target.value)} className="rounded border border-line bg-bg/60 px-2 py-1 text-sm">
+                <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Forma</span>
+                <select value={method} onChange={(e) => setMethod(e.target.value)} className="input-base w-auto">
                   <option value="pix">Pix</option><option value="transferencia">Transferência</option>
                   <option value="dinheiro">Dinheiro</option><option value="cartao">Cartão</option>
                 </select>
               </label>
-              <input value={pid} onChange={(e) => setPid(e.target.value)} placeholder="ID do pagamento" className="rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
-              <label className="cursor-pointer rounded border border-line px-3 py-1.5 text-xs transition hover:border-brand">
+              <input value={pid} onChange={(e) => setPid(e.target.value)} placeholder="ID do pagamento" className="input-base w-auto" />
+              <label className="cursor-pointer rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">
                 {uploading ? "Enviando..." : proof ? "✓ comprovante" : "+ comprovante"}
                 <input
                   type="file"
@@ -257,7 +257,7 @@ function SettlementsList({ settlements, supName, onChanged }: {
                 />
               </label>
               {proof && <a href={proof} target="_blank" rel="noreferrer" className="text-xs text-brand hover:underline">ver</a>}
-              <button onClick={() => pay(s.id)} disabled={busy || uploading} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              <button onClick={() => pay(s.id)} disabled={busy || uploading} className="btn-grad disabled:opacity-50">
                 {busy ? "..." : "Confirmar pago"}
               </button>
             </div>
@@ -285,9 +285,9 @@ function ProfitView({ profit }: { profit: Profit }) {
 
 function Card({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className={`rounded-xl border p-4 ${highlight ? "border-brand/50 bg-brand/10" : "border-line bg-bg/60"}`}>
+    <div className={`rounded-2xl border p-4 ${highlight ? "border-brand/50 bg-brand/10" : "border-line bg-surface"}`}>
       <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
-      <p className={`mt-1 text-xl font-semibold ${highlight ? "text-brand" : ""}`}>{value}</p>
+      <p className={`mt-1 text-2xl font-semibold ${highlight ? "text-brand" : ""}`}>{value}</p>
     </div>
   );
 }

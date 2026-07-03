@@ -13,9 +13,9 @@ function competenceLabel(c: string): string {
   return `${months[mi]}/${y}`;
 }
 const STATUS: Record<string, { label: string; cls: string }> = {
-  pending: { label: "Em aberto", cls: "bg-amber-500/15 text-amber-300" },
-  paid: { label: "Paga", cls: "bg-green-500/15 text-green-300" },
-  canceled: { label: "Cancelada", cls: "bg-line text-muted" },
+  pending: { label: "Em aberto", cls: "bg-warn/15 text-warn" },
+  paid: { label: "Paga", cls: "bg-success/15 text-success" },
+  canceled: { label: "Cancelada", cls: "bg-surface-2 text-muted" },
 };
 
 export function FinanceiroClient() {
@@ -88,47 +88,47 @@ export function FinanceiroClient() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-line bg-bg/60 p-4">
+      <section className="card">
         <h2 className="text-sm font-semibold">Lançar mensalidade</h2>
         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <select value={orgId} onChange={(e) => setOrgId(e.target.value)} className="rounded border border-line bg-bg/40 px-2 py-1.5 text-sm lg:col-span-2">
+          <select value={orgId} onChange={(e) => setOrgId(e.target.value)} className="input-base py-1.5 lg:col-span-2">
             <option value="">Empresa…</option>
             {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
-          <input type="month" value={competence} onChange={(e) => setCompetence(e.target.value)} className="rounded border border-line bg-bg/40 px-2 py-1.5 text-sm" />
-          <input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="Valor (R$)" className="rounded border border-line bg-bg/40 px-2 py-1.5 text-sm" />
-          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="rounded border border-line bg-bg/40 px-2 py-1.5 text-sm" />
+          <input type="month" value={competence} onChange={(e) => setCompetence(e.target.value)} className="input-base py-1.5" />
+          <input value={valor} onChange={(e) => setValor(e.target.value)} placeholder="Valor (R$)" className="input-base py-1.5" />
+          <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input-base py-1.5" />
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-4">
           <label className="flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={markPaid} onChange={(e) => setMarkPaid(e.target.checked)} /> já paga</label>
-          <button disabled={busy} onClick={create} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "..." : "Lançar"}</button>
+          <button disabled={busy} onClick={create} className="btn-grad">{busy ? "..." : "Lançar"}</button>
           <span className="text-line">·</span>
-          <button disabled={busy} onClick={generateMonth} className="rounded-lg border border-line px-4 py-2 text-sm hover:border-brand disabled:opacity-50">Gerar mensalidades do mês</button>
-          <button disabled={busy} onClick={runDunning} className="rounded-lg border border-line px-4 py-2 text-sm hover:border-brand disabled:opacity-50">Rodar cobrança agora</button>
+          <button disabled={busy} onClick={generateMonth} className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand disabled:opacity-50">Gerar mensalidades do mês</button>
+          <button disabled={busy} onClick={runDunning} className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand disabled:opacity-50">Rodar cobrança agora</button>
         </div>
         <p className="mt-2 text-[11px] text-muted">A geração mensal e a régua de cobrança também rodam sozinhas (automático). Os botões são pra disparar na hora.</p>
       </section>
 
       {items === null ? <p className="text-sm text-muted">Carregando…</p> : items.length === 0 ? (
-        <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-muted">Nenhuma mensalidade lançada.</p>
+        <p className="card p-8 text-center text-muted">Nenhuma mensalidade lançada.</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {items.map((inv) => {
-            const st = STATUS[inv.status] ?? { label: inv.status, cls: "bg-line text-muted" };
+            const st = STATUS[inv.status] ?? { label: inv.status, cls: "bg-surface-2 text-muted" };
             return (
-              <div key={inv.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-bg/60 p-4">
+              <div key={inv.id} className="card flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="font-medium">{inv.organization?.name ?? "—"} <span className="ml-1 text-xs text-muted">{competenceLabel(inv.competence)}</span></p>
                   <p className="text-xs text-muted">{brl(inv.amountCents)}{inv.paidAt ? ` · paga em ${new Date(inv.paidAt).toLocaleDateString("pt-BR")}` : ""}{inv.paymentMethod ? ` · ${inv.paymentMethod}` : ""}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${st.cls}`}>{st.label}</span>
-                  {inv.status !== "paid" && <button onClick={() => pay(inv.id)} className="rounded-md border border-line px-3 py-1 text-xs text-green-300 hover:border-green-400">Marcar paga</button>}
-                  {inv.status === "paid" && <a href={`/api/subscription-invoices/${inv.id}/receipt`} target="_blank" rel="noreferrer" className="rounded-md border border-line px-3 py-1 text-xs hover:border-brand">Recibo</a>}
+                  {inv.status !== "paid" && <button onClick={() => pay(inv.id)} className="rounded-lg border border-line px-3 py-1 text-xs text-success transition hover:border-success">Marcar paga</button>}
+                  {inv.status === "paid" && <a href={`/api/subscription-invoices/${inv.id}/receipt`} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-1 text-xs transition hover:border-brand">Recibo</a>}
                   {inv.nfUrl
-                    ? <a href={inv.nfUrl} target="_blank" rel="noreferrer" className="rounded-md border border-line px-3 py-1 text-xs text-sky-300 hover:border-brand">Ver NF</a>
-                    : <label className="cursor-pointer rounded-md border border-line px-3 py-1 text-xs hover:border-brand">Subir NF<input type="file" className="hidden" accept="application/pdf,image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadNf(inv.id, f); e.currentTarget.value = ""; }} /></label>}
-                  <button onClick={() => remove(inv.id)} className="rounded-md border border-line px-3 py-1 text-xs text-red-300 hover:border-red-400">Excluir</button>
+                    ? <a href={inv.nfUrl} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-1 text-xs text-brand transition hover:border-brand">Ver NF</a>
+                    : <label className="cursor-pointer rounded-lg border border-line px-3 py-1 text-xs transition hover:border-brand">Subir NF<input type="file" className="hidden" accept="application/pdf,image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadNf(inv.id, f); e.currentTarget.value = ""; }} /></label>}
+                  <button onClick={() => remove(inv.id)} className="rounded-lg border border-line px-3 py-1 text-xs text-danger transition hover:border-danger">Excluir</button>
                 </div>
               </div>
             );

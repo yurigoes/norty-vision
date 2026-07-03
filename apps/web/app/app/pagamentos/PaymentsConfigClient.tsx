@@ -70,7 +70,7 @@ export function PaymentsConfigClient({
 
   return (
     <div className="space-y-6">
-      <form onSubmit={save} className="space-y-5 rounded-xl border border-line bg-bg/60 p-6">
+      <form onSubmit={save} className="card space-y-5 p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Credenciais</h2>
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
@@ -88,7 +88,7 @@ export function PaymentsConfigClient({
             name="accessToken"
             type="password"
             placeholder={initial?.hasToken ? "•••••• (deixe vazio pra manter)" : "APP_USR-..."}
-            className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+            className="input-base"
           />
           <p className="mt-1 text-[11px] text-muted">
             Em mercadopago.com.br/developers → sua aplicação → Credenciais de
@@ -104,7 +104,7 @@ export function PaymentsConfigClient({
             name="publicKey"
             defaultValue={initial?.publicKey ?? ""}
             placeholder="APP_USR-xxxx"
-            className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+            className="input-base"
           />
         </label>
 
@@ -117,23 +117,23 @@ export function PaymentsConfigClient({
         {saved && <p className="rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-200">Salvo.</p>}
 
         <div className="flex items-center justify-between gap-3">
-          <button type="button" onClick={test} className="rounded-lg border border-line px-4 py-2 text-sm hover:border-brand">
+          <button type="button" onClick={test} className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand">
             Testar conexão
           </button>
           {testResult && <span className="text-xs text-muted">{testResult}</span>}
-          <button type="submit" disabled={isPending} className="ml-auto rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <button type="submit" disabled={isPending} className="btn-grad ml-auto disabled:opacity-50">
             Salvar
           </button>
         </div>
       </form>
 
-      <form onSubmit={save} className="rounded-xl border border-line bg-bg/60 p-6">
+      <form onSubmit={save} className="card p-6">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">Webhook</h3>
         <p className="mt-2 text-sm text-muted">
           1) Cole esta URL no painel do Mercado Pago em <strong>Sua aplicação →
           Webhooks → Produção</strong>, eventos <code className="font-mono text-xs">payment</code>:
         </p>
-        <code className="mt-3 block break-all rounded-lg border border-line bg-bg/40 px-3 py-2 font-mono text-xs">
+        <code className="mt-3 block break-all rounded-lg border border-line bg-surface-2 px-3 py-2 font-mono text-xs">
           {webhookUrl}
         </code>
         <label className="mt-4 block">
@@ -145,7 +145,7 @@ export function PaymentsConfigClient({
             name="webhookSecret"
             type="password"
             placeholder={initial?.hasWebhookSecret ? "•••••• (deixe vazio pra manter)" : "cole a chave secreta do webhook"}
-            className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+            className="input-base"
           />
           <p className="mt-1 text-[11px] text-muted">
             Usada pra validar que a notificação veio mesmo do Mercado Pago.
@@ -153,7 +153,7 @@ export function PaymentsConfigClient({
           </p>
         </label>
         <div className="mt-4 flex justify-end">
-          <button type="submit" disabled={isPending} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <button type="submit" disabled={isPending} className="btn-grad disabled:opacity-50">
             Salvar webhook
           </button>
         </div>

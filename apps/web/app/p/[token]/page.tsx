@@ -154,16 +154,16 @@ export default function SurveyPage({ params }: { params: Promise<{ token: string
               rows={3}
               maxLength={1000}
               placeholder="Conte o que achou..."
-              className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+              className="input-base"
             />
           </div>
 
-          {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{err}</p>}
+          {err && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
 
           <button
             onClick={submit}
             disabled={busy}
-            className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+            className="btn-grad w-full py-2.5 text-sm"
           >
             {busy ? "Enviando..." : "Enviar avaliação"}
           </button>

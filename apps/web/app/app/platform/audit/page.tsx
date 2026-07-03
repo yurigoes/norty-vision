@@ -37,10 +37,10 @@ export default async function AuditPage() {
         <p className="mt-2 text-muted">Ações sensíveis (impersonação e operações de plataforma).</p>
       </header>
 
-      <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+      <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
+            <tr className="border-b border-line text-left text-[10px] uppercase tracking-wider text-muted">
               <th className="px-4 py-3">Quando</th>
               <th className="px-4 py-3">Ação</th>
               <th className="px-4 py-3">Quem</th>
@@ -52,10 +52,10 @@ export default async function AuditPage() {
             {rows.length === 0 ? (
               <tr><td colSpan={5} className="px-4 py-8 text-center text-sm text-muted">Nenhum registro ainda.</td></tr>
             ) : rows.map((r, i) => (
-              <tr key={i} className="border-t border-line/50">
+              <tr key={i} className="border-t border-line/60 transition hover:bg-surface-2">
                 <td className="px-4 py-3 whitespace-nowrap">{new Date(r.created_at).toLocaleString("pt-BR")}</td>
                 <td className="px-4 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${r.severity === "warn" ? "bg-amber-500/20 text-amber-300" : "bg-line text-muted"}`}>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${r.severity === "warn" ? "bg-warn/15 text-warn" : "bg-surface-2 text-muted"}`}>
                     {ACTION_LABEL[r.action] ?? r.action}
                   </span>
                 </td>

@@ -57,7 +57,7 @@ function RedefinirSenhaInner() {
 
   if (!token) {
     return (
-      <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+      <p className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
         Link inválido. <Link href="/recuperar-senha" className="underline">Pedir novo link</Link>.
       </p>
     );
@@ -65,7 +65,7 @@ function RedefinirSenhaInner() {
 
   if (success) {
     return (
-      <div className="rounded-lg border border-green-500/40 bg-green-500/10 p-6 text-sm text-green-100">
+      <div className="rounded-xl border border-success/40 bg-success/10 p-6 text-sm text-success">
         <p className="font-semibold">Senha redefinida com sucesso!</p>
         <p className="mt-2">Redirecionando para o login...</p>
       </div>
@@ -85,7 +85,7 @@ function RedefinirSenhaInner() {
           minLength={12}
           autoFocus
           autoComplete="new-password"
-          className="w-full rounded-lg border border-line bg-bg/60 px-4 py-3 text-fg outline-none transition focus:border-brand"
+          className="input-base py-3"
         />
       </label>
       <label className="block">
@@ -98,18 +98,18 @@ function RedefinirSenhaInner() {
           required
           minLength={12}
           autoComplete="new-password"
-          className="w-full rounded-lg border border-line bg-bg/60 px-4 py-3 text-fg outline-none transition focus:border-brand"
+          className="input-base py-3"
         />
       </label>
       {error && (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <p className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
           {error}
         </p>
       )}
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-brand py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+        className="btn-grad w-full py-3 text-sm shadow-[0_10px_28px_-10px_rgb(var(--brand)/0.7)]"
       >
         {loading ? "Salvando..." : "Redefinir senha"}
       </button>
@@ -120,21 +120,23 @@ function RedefinirSenhaInner() {
 export default function RedefinirSenhaPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6">
-      <Link href="/" className="mb-12 self-center transition-opacity hover:opacity-80">
-        <BrandLogoClient size="md" />
+      <Link href="/" className="mb-8 self-center transition-opacity hover:opacity-80">
+        <BrandLogoClient size="lg" />
       </Link>
-      <h1 className="text-2xl font-semibold text-center">Nova senha</h1>
-      <p className="mt-2 text-center text-sm text-muted">
-        Defina uma senha forte. Ela vai substituir a anterior imediatamente.
-      </p>
-      <div className="mt-10">
-        <Suspense fallback={<p className="text-center text-muted">Carregando...</p>}>
-          <RedefinirSenhaInner />
-        </Suspense>
+      <div className="glass rounded-2xl p-8">
+        <h1 className="text-center text-2xl font-extrabold tracking-tight">Nova senha</h1>
+        <p className="mt-2 text-center text-sm text-muted">
+          Defina uma senha forte. Ela vai substituir a anterior imediatamente.
+        </p>
+        <div className="mt-8">
+          <Suspense fallback={<p className="text-center text-muted">Carregando...</p>}>
+            <RedefinirSenhaInner />
+          </Suspense>
+        </div>
       </div>
       <Link
         href="/login"
-        className="mt-6 text-center text-sm text-muted hover:text-fg"
+        className="mt-6 text-center text-sm text-muted transition-colors hover:text-fg"
       >
         ← voltar para login
       </Link>

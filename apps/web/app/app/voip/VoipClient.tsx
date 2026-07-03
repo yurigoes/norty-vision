@@ -20,7 +20,7 @@ export function VoipClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-bg/60 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-surface p-4">
         <div>
           <p className="text-xs text-muted">Seu ramal {cfg?.mode === "sip" ? "· PABX" : cfg?.mode === "p2p" ? "· P2P" : ""}</p>
           <p className="text-2xl font-semibold">{cfg?.extension ?? "…"}</p>
@@ -28,19 +28,19 @@ export function VoipClient() {
         </div>
         <div className="flex items-center gap-3">
           <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold ${
-            status === "online" ? "bg-green-500/15 text-green-600" : status === "connecting" ? "bg-amber-500/15 text-amber-600" : status === "failed" ? "bg-red-500/15 text-red-600" : "bg-muted/15 text-muted"}`}>
-            <span className={`h-2 w-2 rounded-full ${status === "online" ? "bg-green-500" : status === "connecting" ? "bg-amber-500 animate-pulse" : status === "failed" ? "bg-red-500" : "bg-muted"}`} />
+            status === "online" ? "bg-success/15 text-success" : status === "connecting" ? "bg-warn/15 text-warn" : status === "failed" ? "bg-danger/15 text-danger" : "bg-muted/15 text-muted"}`}>
+            <span className={`h-2 w-2 rounded-full ${status === "online" ? "bg-success" : status === "connecting" ? "bg-warn animate-pulse" : status === "failed" ? "bg-danger" : "bg-muted"}`} />
             {status === "online" ? "Conectado" : status === "connecting" ? "Conectando…" : status === "failed" ? "Falha" : "Desligado"}
           </span>
           {status === "off" || status === "failed" ? (
-            <button onClick={connect} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Conectar</button>
+            <button onClick={connect} className="btn-grad">Conectar</button>
           ) : (
-            <button onClick={disconnect} className="rounded-lg border border-line px-4 py-2 text-sm font-semibold">Desconectar</button>
+            <button onClick={disconnect} className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:border-brand">Desconectar</button>
           )}
         </div>
       </div>
 
-      {error && <p className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-600">{error}</p>}
+      {error && <p className="rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{error}</p>}
 
       {status === "online" && (
         <p className="text-xs text-muted">
@@ -51,7 +51,7 @@ export function VoipClient() {
       )}
 
       {canDialPstn && (
-        <div className="rounded-xl border border-line bg-bg/60 p-4">
+        <div className="rounded-xl border border-line bg-surface p-4">
           <h2 className="mb-2 text-sm font-semibold">Discar para número externo</h2>
           <div className="flex gap-2">
             <input
@@ -60,13 +60,13 @@ export function VoipClient() {
               onKeyDown={(e) => { if (e.key === "Enter") dial(); }}
               inputMode="numeric"
               placeholder="Ex.: 7133334444 (DDD + número)"
-              className="flex-1 rounded-lg border border-line bg-bg px-3 py-2 text-sm"
+              className="input-base flex-1 w-auto"
               disabled={status !== "online" || callState !== "idle"}
             />
             <button
               onClick={dial}
               disabled={status !== "online" || callState !== "idle" || dialNumber.replace(/\D/g, "").length < 8}
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              className="btn-grad disabled:opacity-40"
             >📞 Ligar</button>
           </div>
           <p className="mt-2 text-xs text-muted">
@@ -75,15 +75,15 @@ export function VoipClient() {
         </div>
       )}
 
-      <div className="rounded-xl border border-line bg-bg/60 p-4">
+      <div className="rounded-xl border border-line bg-surface p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold">Ligar para um operador</h2>
           <div className="flex items-center gap-2">
-            <button onClick={openConference} disabled={status !== "online"} className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold disabled:opacity-40">🎙️ Conferência</button>
-            <button onClick={refreshDir} disabled={status !== "online"} className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold disabled:opacity-40">Atualizar</button>
+            <button onClick={openConference} disabled={status !== "online"} className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold transition hover:border-brand disabled:opacity-40">🎙️ Conferência</button>
+            <button onClick={refreshDir} disabled={status !== "online"} className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold transition hover:border-brand disabled:opacity-40">Atualizar</button>
           </div>
         </div>
-        <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Buscar por nome ou ramal…" className="mb-3 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm" />
+        <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Buscar por nome ou ramal…" className="input-base mb-3" />
         {status !== "online" ? (
           <p className="py-6 text-center text-sm text-muted">Clique em <b>Conectar</b> pra ver os operadores online e ligar.</p>
         ) : filtered.length === 0 ? (
@@ -93,10 +93,10 @@ export function VoipClient() {
             {filtered.map((o) => (
               <li key={o.extension} className="flex items-center justify-between py-2.5">
                 <span className="flex items-center gap-2 text-sm">
-                  <span className={`h-2 w-2 rounded-full ${o.online ? "bg-green-500" : "bg-muted/50"}`} title={o.online ? "online" : "offline"} />
+                  <span className={`h-2 w-2 rounded-full ${o.online ? "bg-success" : "bg-muted/50"}`} title={o.online ? "online" : "offline"} />
                   <span className="font-medium">{o.name}</span> <span className="text-xs text-muted">ramal {o.extension}</span>
                 </span>
-                <button onClick={() => startCall(o)} disabled={callState !== "idle"} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40">📞 Ligar</button>
+                <button onClick={() => startCall(o)} disabled={callState !== "idle"} className="btn-grad px-3 py-1.5 text-xs disabled:opacity-40">📞 Ligar</button>
               </li>
             ))}
           </ul>

@@ -88,51 +88,60 @@ export function SupplierLoginForm({ slug: slugProp }: { slug?: string }) {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm space-y-4 rounded-2xl border border-line bg-bg/60 p-8">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(680px 460px at 78% 6%, rgba(37,99,235,.16), transparent 60%), radial-gradient(560px 460px at 12% 96%, rgba(6,182,212,.14), transparent 58%)",
+        }}
+      />
+      <div className="card relative w-full max-w-sm space-y-5 p-8 shadow-[0_24px_50px_-18px_rgba(15,23,42,0.22)]">
         <div className="text-center">
           {brand?.logoUrl ? (
             <img src={brand.logoUrl} alt={brand.name} className="mx-auto mb-3 h-12 w-auto max-w-[200px] object-contain" />
-          ) : null}
-          <h1 className="text-2xl font-semibold">Portal do fornecedor</h1>
+          ) : (
+            <img src="/brand/norty-vision.png" alt="Norty Vision" className="mx-auto mb-3 h-9 w-auto object-contain" />
+          )}
+          <h1 className="text-2xl font-extrabold tracking-tight">Portal do fornecedor</h1>
           <p className="mt-1 text-sm text-muted">{brand?.name ? `${brand.name} — médicos e laboratórios.` : "Acesso para médicos e laboratórios."}</p>
         </div>
 
-        <div className="flex gap-1 rounded-lg border border-line p-1 text-xs">
-          <button onClick={() => { setMode("otp"); setErr(null); }} className={`flex-1 rounded-md px-3 py-1.5 font-medium transition ${mode === "otp" ? "bg-brand text-white" : "text-muted hover:text-fg"}`}>Código por WhatsApp</button>
-          <button onClick={() => { setMode("password"); setErr(null); }} className={`flex-1 rounded-md px-3 py-1.5 font-medium transition ${mode === "password" ? "bg-brand text-white" : "text-muted hover:text-fg"}`}>Senha</button>
+        <div className="flex gap-1 rounded-xl border border-line bg-surface-2 p-1 text-xs">
+          <button onClick={() => { setMode("otp"); setErr(null); }} className={`flex-1 rounded-lg px-3 py-2 font-semibold transition ${mode === "otp" ? "text-white shadow-sm" : "text-muted hover:text-fg"}`} style={mode === "otp" ? { background: "var(--grad-brand)" } : undefined}>Código por WhatsApp</button>
+          <button onClick={() => { setMode("password"); setErr(null); }} className={`flex-1 rounded-lg px-3 py-2 font-semibold transition ${mode === "password" ? "text-white shadow-sm" : "text-muted hover:text-fg"}`} style={mode === "password" ? { background: "var(--grad-brand)" } : undefined}>Senha</button>
         </div>
 
         <label className="block">
-          <span className="mb-1 block text-xs uppercase text-muted">CPF/CNPJ ou telefone</span>
-          <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <span className="mb-1.5 block text-xs font-semibold text-muted">CPF/CNPJ ou telefone</span>
+          <input value={identifier} onChange={(e) => setIdentifier(e.target.value)} className="input-base" />
         </label>
 
         {mode === "password" ? (
           <form onSubmit={submitPassword} className="space-y-4">
             <label className="block">
-              <span className="mb-1 block text-xs uppercase text-muted">Senha</span>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
-              <span className="mt-1 block text-[11px] text-muted">No primeiro acesso, use seu CPF/CNPJ (só números).</span>
+              <span className="mb-1.5 block text-xs font-semibold text-muted">Senha</span>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-base" />
+              <span className="mt-1.5 block text-[11px] text-text-3">No primeiro acesso, use seu CPF/CNPJ (só números).</span>
             </label>
-            {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{err}</p>}
-            <button type="submit" disabled={busy} className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">{busy ? "Entrando..." : "Entrar"}</button>
+            {err && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{err}</p>}
+            <button type="submit" disabled={busy} className="btn-grad w-full py-3 text-[15px]">{busy ? "Entrando..." : "Entrar"}</button>
           </form>
         ) : !otpSent ? (
           <div className="space-y-4">
-            {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{err}</p>}
-            <button onClick={requestOtp} disabled={busy || !identifier.trim()} className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">{busy ? "Enviando..." : "Enviar código por WhatsApp"}</button>
+            {err && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{err}</p>}
+            <button onClick={requestOtp} disabled={busy || !identifier.trim()} className="btn-grad w-full py-3 text-[15px]">{busy ? "Enviando..." : "Enviar código por WhatsApp"}</button>
           </div>
         ) : (
           <form onSubmit={verifyOtp} className="space-y-4">
             <p className="text-xs text-muted">Enviamos um código para o WhatsApp {phoneMasked}.</p>
             <label className="block">
-              <span className="mb-1 block text-xs uppercase text-muted">Código</span>
-              <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={6} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-center text-lg tracking-widest" />
+              <span className="mb-1.5 block text-xs font-semibold text-muted">Código</span>
+              <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={6} className="input-base text-center text-2xl tracking-widest" />
             </label>
-            {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{err}</p>}
-            <button type="submit" disabled={busy} className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">{busy ? "Verificando..." : "Entrar"}</button>
-            <button type="button" onClick={requestOtp} disabled={busy} className="w-full text-xs text-muted hover:text-fg">Reenviar código</button>
+            {err && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{err}</p>}
+            <button type="submit" disabled={busy} className="btn-grad w-full py-3 text-[15px]">{busy ? "Verificando..." : "Entrar"}</button>
+            <button type="button" onClick={requestOtp} disabled={busy} className="w-full text-xs text-muted transition-colors hover:text-fg">Reenviar código</button>
           </form>
         )}
       </div>

@@ -71,18 +71,19 @@ export default function AtendimentoRelatorios() {
   return (
     <div className="max-w-4xl">
       <style dangerouslySetInnerHTML={{ __html: "@media print { @page { margin: 0; } html, body { background:#fff !important; } .no-print { display:none !important; } .print-only { display:block !important; } .print-report { padding: 14mm !important; } }" }} />
-      <header className="no-print mb-6 flex items-center justify-between">
+      <header className="no-print mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <Link href="/app/atendimento" className="text-sm text-brand hover:underline">← Atendimento</Link>
-          <h1 className="mt-1 text-2xl font-semibold">Relatórios de atendimento</h1>
-          <p className="text-sm text-muted">Tabulações no período — onde está o gargalo.</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-brand">Atendimento</p>
+          <h1 className="mt-1 text-3xl font-semibold">Relatórios de atendimento</h1>
+          <p className="mt-2 text-muted">Tabulações no período — onde está o gargalo.</p>
         </div>
         <div className="flex items-end gap-2 text-sm">
           <label className="block"><span className="block text-[10px] uppercase text-muted">De</span>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded-lg border border-line bg-bg/60 px-2 py-1.5" /></label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input-base mt-1 w-auto" /></label>
           <label className="block"><span className="block text-[10px] uppercase text-muted">Até</span>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded-lg border border-line bg-bg/60 px-2 py-1.5" /></label>
-          <button onClick={() => window.print()} className="rounded-lg bg-brand px-4 py-2 font-semibold text-white transition hover:opacity-90">🖨️ PDF / Imprimir</button>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input-base mt-1 w-auto" /></label>
+          <button onClick={() => window.print()} className="btn-grad">🖨️ PDF / Imprimir</button>
         </div>
       </header>
 
@@ -118,12 +119,12 @@ export default function AtendimentoRelatorios() {
         </div>
       </div>
 
-      <p className="no-print mb-4 rounded-xl border border-line bg-bg/60 p-4 text-sm">
+      <p className="no-print card mb-4 text-sm">
         Total de atendimentos finalizados e tabulados: <strong>{rep?.total ?? 0}</strong>
       </p>
 
       {/* Visão geral (PR6) */}
-      <section className="no-print mb-6 rounded-xl border border-line bg-bg/60 p-5">
+      <section className="no-print card mb-6">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Visão geral</h2>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label="Atendimentos" value={String(ov?.totals.total ?? 0)} />
@@ -139,7 +140,7 @@ export default function AtendimentoRelatorios() {
       </section>
 
       {/* Ranking por operador (PR6) */}
-      <section className="no-print mb-6 rounded-xl border border-line bg-bg/60 p-5">
+      <section className="no-print card mb-6">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Ranking por operador</h2>
         {agents.length === 0 ? <p className="text-xs text-muted">Sem dados no período.</p> : (
           <table className="w-full text-sm">
@@ -148,7 +149,7 @@ export default function AtendimentoRelatorios() {
             </thead>
             <tbody>
               {agents.map((a) => (
-                <tr key={a.membershipId} className="border-t border-line/60">
+                <tr key={a.membershipId} className="border-t border-line">
                   <td className="py-1">{a.name}</td>
                   <td className="text-right font-medium">{a.atendimentos}</td>
                   <td className="text-right text-muted">{fmtSec(a.avgFirstResponseS)}</td>
@@ -162,12 +163,12 @@ export default function AtendimentoRelatorios() {
       </section>
 
       {/* Volume por hora/dia (PR6) */}
-      <section className="no-print mb-6 rounded-xl border border-line bg-bg/60 p-5">
+      <section className="no-print card mb-6">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Volume de mensagens recebidas</h2>
           <div className="flex gap-1">
-            <button onClick={() => setVolGroup("hour")} className={`rounded-md px-2 py-1 text-xs ${volGroup === "hour" ? "bg-brand/15 text-brand" : "text-muted"}`}>Por hora</button>
-            <button onClick={() => setVolGroup("day")} className={`rounded-md px-2 py-1 text-xs ${volGroup === "day" ? "bg-brand/15 text-brand" : "text-muted"}`}>Por dia</button>
+            <button onClick={() => setVolGroup("hour")} className={`rounded-md px-2 py-1 text-xs transition ${volGroup === "hour" ? "bg-brand/15 text-brand" : "text-muted hover:text-fg"}`}>Por hora</button>
+            <button onClick={() => setVolGroup("day")} className={`rounded-md px-2 py-1 text-xs transition ${volGroup === "day" ? "bg-brand/15 text-brand" : "text-muted hover:text-fg"}`}>Por dia</button>
           </div>
         </div>
         {volume.length === 0 ? <p className="text-xs text-muted">Sem mensagens no período.</p> : (
@@ -186,36 +187,36 @@ export default function AtendimentoRelatorios() {
       </section>
 
       <div className="no-print grid gap-6 sm:grid-cols-2">
-        <section className="rounded-xl border border-line bg-bg/60 p-5">
+        <section className="card">
           <h2 className="mb-3 text-sm font-semibold">Por motivo (tabulação)</h2>
           {(rep?.byTabulation.length ?? 0) === 0 ? <p className="text-xs text-muted">Sem dados no período.</p> : rep!.byTabulation.map((r) => (
             <div key={r.id} className="mb-2">
               <div className="flex items-center justify-between text-xs"><span>{r.name}</span><span className="text-muted">{r.count}</span></div>
-              <div className="mt-1 h-2 rounded-full bg-line"><div className="h-2 rounded-full bg-brand" style={{ width: `${(r.count / maxTab) * 100}%` }} /></div>
+              <div className="mt-1 h-2 rounded-full bg-surface-2"><div className="h-2 rounded-full bg-brand" style={{ width: `${(r.count / maxTab) * 100}%` }} /></div>
             </div>
           ))}
         </section>
-        <section className="rounded-xl border border-line bg-bg/60 p-5">
+        <section className="card">
           <h2 className="mb-3 text-sm font-semibold">Por atendente</h2>
           {(rep?.byAgent.length ?? 0) === 0 ? <p className="text-xs text-muted">Sem dados no período.</p> : rep!.byAgent.map((r) => (
             <div key={r.id} className="mb-2">
               <div className="flex items-center justify-between text-xs"><span>{r.name}</span><span className="text-muted">{r.count}</span></div>
-              <div className="mt-1 h-2 rounded-full bg-line"><div className="h-2 rounded-full bg-green-500/70" style={{ width: `${(r.count / maxAg) * 100}%` }} /></div>
+              <div className="mt-1 h-2 rounded-full bg-surface-2"><div className="h-2 rounded-full bg-success/70" style={{ width: `${(r.count / maxAg) * 100}%` }} /></div>
             </div>
           ))}
         </section>
       </div>
 
-      <section className="no-print mt-6 rounded-xl border border-line bg-bg/60 p-5">
+      <section className="no-print card mt-6">
         <h2 className="mb-3 text-sm font-semibold">Tabulações cadastradas</h2>
         <div className="mb-3 flex flex-wrap gap-2">
-          <input value={newTab} onChange={(e) => setNewTab(e.target.value)} placeholder="Nova tabulação (motivo)" className="flex-1 rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
-          <input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="Grupo (opcional)" className="w-40 rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
-          <button onClick={addTab} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Adicionar</button>
+          <input value={newTab} onChange={(e) => setNewTab(e.target.value)} placeholder="Nova tabulação (motivo)" className="input-base flex-1" />
+          <input value={newGroup} onChange={(e) => setNewGroup(e.target.value)} placeholder="Grupo (opcional)" className="input-base w-40" />
+          <button onClick={addTab} className="btn-grad">Adicionar</button>
         </div>
         <div className="flex flex-wrap gap-2">
           {tabs.map((t) => (
-            <span key={t.id} className="rounded-full border border-line px-3 py-1 text-xs">{t.groupName ? `${t.groupName} · ` : ""}{t.name}</span>
+            <span key={t.id} className="rounded-full border border-line bg-surface-2 px-3 py-1 text-xs">{t.groupName ? `${t.groupName} · ` : ""}{t.name}</span>
           ))}
           {tabs.length === 0 && <p className="text-xs text-muted">Nenhuma tabulação ainda. Cadastre os motivos que sua equipe usa.</p>}
         </div>
@@ -227,7 +228,7 @@ export default function AtendimentoRelatorios() {
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "green" | "amber" | "sky" }) {
   const cls = tone === "green" ? "text-green-300" : tone === "amber" ? "text-amber-300" : tone === "sky" ? "text-sky-300" : "text-fg";
   return (
-    <div className="rounded-lg border border-line bg-bg/40 p-3">
+    <div className="rounded-xl border border-line bg-surface-2 p-3">
       <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
       <p className={`mt-1 text-lg font-semibold ${cls}`}>{value}</p>
     </div>

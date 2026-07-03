@@ -49,12 +49,12 @@ export default function ModuloPage({ params }: { params: Promise<{ key: string }
   return (
     <main className="mx-auto max-w-2xl">
       <Link href="/app/billing" className="text-sm text-muted hover:text-fg">← Assinatura</Link>
-      <div className="mt-4 rounded-2xl border border-line bg-bg/60 p-6">
+      <div className="card mt-4 p-6">
         <span className="rounded-full bg-line px-2 py-0.5 text-[10px] font-semibold uppercase text-muted">🔒 Não liberado no seu plano</span>
         <h1 className="mt-3 text-2xl font-semibold">{label}</h1>
         <p className="mt-2 text-muted">{desc}</p>
 
-        <div className="mt-6 rounded-xl border border-line bg-bg/40 p-4">
+        <div className="mt-6 rounded-xl border border-line bg-surface-2 p-4">
           {hasPrice ? (
             <p className="text-sm">À la carte por <span className="text-xl font-semibold text-brand">{brl(price!.priceCents)}</span><span className="text-muted">/mês</span></p>
           ) : (
@@ -64,15 +64,15 @@ export default function ModuloPage({ params }: { params: Promise<{ key: string }
 
         <div className="mt-6 flex flex-wrap gap-3">
           {hasPrice ? (
-            <button onClick={() => setPayOpen(true)} className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">
+            <button onClick={() => setPayOpen(true)} className="btn-grad px-5 py-2.5">
               Comprar à la carte
             </button>
           ) : (
-            <Link href="/app/billing" className="rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">Quero este módulo</Link>
+            <Link href="/app/billing" className="btn-grad px-5 py-2.5">Quero este módulo</Link>
           )}
           <Link
             href="/app/billing"
-            className="rounded-lg border border-line px-5 py-2.5 text-sm transition hover:border-brand"
+            className="rounded-xl border border-line px-5 py-2.5 text-sm font-semibold transition hover:border-brand"
           >
             Alterar meu plano
           </Link>
@@ -82,21 +82,21 @@ export default function ModuloPage({ params }: { params: Promise<{ key: string }
 
       {payOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => { setPayOpen(false); setPix(null); }}>
-          <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
             {pix ? (
               <>
                 <h3 className="text-base font-semibold">Pix gerado</h3>
                 <p className="mt-1 text-xs text-muted">Pague e o módulo é liberado automaticamente.</p>
                 {pix.qrCodeBase64 ? <img src={`data:image/png;base64,${pix.qrCodeBase64}`} alt="QR Pix" className="mx-auto mt-4 h-56 w-56 rounded-lg bg-white p-2" /> : <p className="mt-4 text-xs text-muted">QR indisponível — use o código.</p>}
-                {pix.qrCode && <button onClick={() => navigator.clipboard?.writeText(pix.qrCode!).then(() => dialog.toast("Código copiado", "success"))} className="mt-4 w-full break-all rounded-lg border border-line bg-bg/60 px-3 py-2 text-[11px] text-muted hover:border-brand">{pix.qrCode}</button>}
-                <button onClick={() => { setPayOpen(false); setPix(null); }} className="mt-3 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-white">Concluir</button>
+                {pix.qrCode && <button onClick={() => navigator.clipboard?.writeText(pix.qrCode!).then(() => dialog.toast("Código copiado", "success"))} className="mt-4 w-full break-all rounded-lg border border-line bg-surface-2 px-3 py-2 text-[11px] text-muted transition hover:border-brand">{pix.qrCode}</button>}
+                <button onClick={() => { setPayOpen(false); setPix(null); }} className="btn-grad mt-3 w-full">Concluir</button>
               </>
             ) : (
               <>
                 <h3 className="text-base font-semibold">Como deseja pagar {price ? brl(price.priceCents) : ""}?</h3>
                 <div className="mt-4 grid gap-2">
-                  <button disabled={busy} onClick={() => buy("pix")} className="rounded-lg border border-line bg-bg/60 p-3 text-left transition hover:border-brand disabled:opacity-50"><span className="block text-sm font-medium">Pix</span><span className="block text-xs text-muted">QR na hora, liberação automática.</span></button>
-                  <button disabled={busy} onClick={() => buy("card")} className="rounded-lg border border-line bg-bg/60 p-3 text-left transition hover:border-brand disabled:opacity-50"><span className="block text-sm font-medium">Cartão</span><span className="block text-xs text-muted">Abre o checkout do Mercado Pago.</span></button>
+                  <button disabled={busy} onClick={() => buy("pix")} className="rounded-xl border border-line bg-surface-2 p-3 text-left transition hover:border-brand disabled:opacity-50"><span className="block text-sm font-medium">Pix</span><span className="block text-xs text-muted">QR na hora, liberação automática.</span></button>
+                  <button disabled={busy} onClick={() => buy("card")} className="rounded-xl border border-line bg-surface-2 p-3 text-left transition hover:border-brand disabled:opacity-50"><span className="block text-sm font-medium">Cartão</span><span className="block text-xs text-muted">Abre o checkout do Mercado Pago.</span></button>
                 </div>
                 <button onClick={() => setPayOpen(false)} className="mt-3 w-full text-center text-xs text-muted hover:text-fg">cancelar</button>
               </>

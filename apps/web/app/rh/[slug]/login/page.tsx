@@ -51,28 +51,35 @@ export default function EmployeeSlugLogin({ params }: { params: Promise<{ slug: 
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <form onSubmit={submit} className="w-full max-w-sm rounded-2xl border border-line bg-bg/60 p-6">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(680px 460px at 78% 6%, rgba(37,99,235,.16), transparent 60%), radial-gradient(560px 460px at 12% 96%, rgba(6,182,212,.14), transparent 58%)",
+        }}
+      />
+      <form onSubmit={submit} className="card relative w-full max-w-sm p-8 shadow-[0_24px_50px_-18px_rgba(15,23,42,0.22)]">
         <div className="mb-5 flex justify-center">
           {brand?.logoUrl ? (
             <img src={brand.logoUrl} alt={brand.name} className="h-12 w-auto max-w-[200px] object-contain" />
           ) : (
-            <span className="text-lg font-bold" style={{ color: "rgb(var(--brand))" }}>{brand?.name ?? "Portal do funcionário"}</span>
+            <span className="text-lg font-extrabold tracking-tight" style={{ color: "rgb(var(--brand))" }}>{brand?.name ?? "Portal do funcionário"}</span>
           )}
         </div>
-        <h1 className="text-2xl font-semibold">Portal do funcionário</h1>
+        <h1 className="text-2xl font-extrabold tracking-tight">Portal do funcionário</h1>
         <p className="mt-1 text-sm text-muted">{brand?.name ? `Equipe ${brand.name} — entre com seu CPF e senha.` : "Entre com seu CPF e senha."}</p>
         <label className="mt-5 block">
-          <span className="mb-1 block text-xs uppercase text-muted">CPF</span>
-          <input value={cpf} onChange={(e) => setCpf(e.target.value)} inputMode="numeric" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <span className="mb-1.5 block text-xs font-semibold text-muted">CPF</span>
+          <input value={cpf} onChange={(e) => setCpf(e.target.value)} inputMode="numeric" className="input-base" />
         </label>
         <label className="mt-3 block">
-          <span className="mb-1 block text-xs uppercase text-muted">Senha</span>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <span className="mb-1.5 block text-xs font-semibold text-muted">Senha</span>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-base" />
         </label>
-        {err && <p className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p>}
-        <button disabled={busy} className="mt-5 w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Entrando..." : "Entrar"}</button>
-        <p className="mt-3 text-center text-xs text-muted">Primeiro acesso? Use o CPF como senha.</p>
+        {err && <p className="mt-3 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{err}</p>}
+        <button disabled={busy} className="btn-grad mt-5 w-full py-3 text-[15px]">{busy ? "Entrando..." : "Entrar"}</button>
+        <p className="mt-4 text-center text-xs text-text-3">Primeiro acesso? Use o CPF como senha.</p>
       </form>
     </main>
   );

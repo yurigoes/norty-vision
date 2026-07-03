@@ -93,33 +93,33 @@ export function CaixaClient({ stores }: { stores: Store[] }) {
   return (
     <div className="space-y-6">
       {stores.length > 1 && (
-        <select value={storeId} onChange={(e) => setStoreId(e.target.value)} className="rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+        <select value={storeId} onChange={(e) => setStoreId(e.target.value)} className="input-base w-auto">
           {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
       )}
 
-      {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p>}
+      {err && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{err}</p>}
 
       {loading ? (
         <p className="text-sm text-muted">Carregando...</p>
       ) : !register ? (
-        <div className="rounded-xl border border-line bg-bg/60 p-6">
+        <div className="card p-6">
           <p className="text-sm text-muted">Nenhum caixa aberto nesta loja.</p>
           <div className="mt-4 flex items-end gap-3">
             <label className="block">
               <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Troco inicial (R$)</span>
-              <input value={openingFloat} onChange={(e) => setOpeningFloat(e.target.value)} inputMode="decimal" className="w-40 rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+              <input value={openingFloat} onChange={(e) => setOpeningFloat(e.target.value)} inputMode="decimal" className="input-base w-40" />
             </label>
-            <button onClick={openRegister} disabled={busy} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            <button onClick={openRegister} disabled={busy} className="btn-grad px-5 py-2.5">
               {busy ? "Abrindo..." : "Abrir caixa"}
             </button>
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-green-500/40 bg-bg/60 p-6">
+        <div className="card border-success/40 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-green-300">● Caixa aberto</p>
+              <p className="text-sm font-semibold text-success">● Caixa aberto</p>
               <p className="text-xs text-muted">desde {new Date(register.openedAt).toLocaleString("pt-BR")} · troco {brl(register.openingFloatCents)}</p>
             </div>
             <button onClick={load} className="text-xs text-muted hover:text-fg">↻ atualizar</button>
@@ -155,22 +155,22 @@ export function CaixaClient({ stores }: { stores: Store[] }) {
             </>
           )}
 
-          <div className="mt-5 rounded-lg border border-line bg-bg/40 p-4">
+          <div className="mt-5 rounded-xl border border-line bg-surface-2 p-4">
             <p className="text-sm font-medium">Fechar caixa</p>
             <p className="mt-1 text-xs text-muted">Esperado em dinheiro (troco + vendas dinheiro): <strong>{brl(expectedCash)}</strong></p>
             <div className="mt-3 flex flex-wrap items-end gap-3">
               <label className="block">
                 <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Dinheiro contado (R$)</span>
-                <input value={counted} onChange={(e) => setCounted(e.target.value)} inputMode="decimal" placeholder="0,00" className="w-40 rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+                <input value={counted} onChange={(e) => setCounted(e.target.value)} inputMode="decimal" placeholder="0,00" className="input-base w-40" />
               </label>
               {diff !== null && (
-                <span className={`text-sm font-semibold ${diff === 0 ? "text-green-300" : diff > 0 ? "text-blue-300" : "text-red-300"}`}>
+                <span className={`text-sm font-semibold ${diff === 0 ? "text-success" : diff > 0 ? "text-brand-2" : "text-danger"}`}>
                   {diff === 0 ? "Bate certinho" : diff > 0 ? `Sobra ${brl(diff)}` : `Falta ${brl(-diff)}`}
                 </span>
               )}
             </div>
-            <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observação (opcional)" className="mt-3 w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
-            <button onClick={closeRegister} disabled={busy} className="mt-3 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Observação (opcional)" className="input-base mt-3" />
+            <button onClick={closeRegister} disabled={busy} className="btn-grad mt-3 px-5 py-2.5">
               {busy ? "Fechando..." : "Fechar caixa"}
             </button>
           </div>
@@ -186,7 +186,7 @@ export function CaixaClient({ stores }: { stores: Store[] }) {
               const cnt = h.closingCountedCents != null ? Number(h.closingCountedCents) : null;
               const d = cnt != null ? cnt - exp : null;
               return (
-                <div key={h.id} className="rounded-lg border border-line bg-bg/60 p-4 text-sm">
+                <div key={h.id} className="card p-4 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{h.closedAt ? new Date(h.closedAt).toLocaleString("pt-BR") : "—"}</span>
                     <div className="flex items-center gap-3">
@@ -210,9 +210,9 @@ export function CaixaClient({ stores }: { stores: Store[] }) {
 
 function Tile({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
   return (
-    <div className={`rounded-lg border p-3 ${highlight ? "border-brand/40 bg-brand/10" : "border-line bg-bg/40"}`}>
+    <div className={`rounded-xl border p-3 ${highlight ? "border-brand/40 bg-brand/10" : "border-line bg-surface-2"}`}>
       <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
-      <p className="mt-1 text-lg font-semibold">{brl(value)}</p>
+      <p className={`mt-1 text-2xl font-semibold ${highlight ? "text-brand" : ""}`}>{brl(value)}</p>
     </div>
   );
 }

@@ -225,12 +225,12 @@ export function ClientesClient({ initial }: { initial: Customer[] }) {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Buscar por nome, CPF/CNPJ, telefone ou e-mail"
-          className="flex-1 rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+          className="input-base flex-1"
         />
-        <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
+        <button onClick={() => setCreating(true)} className="btn-grad">
           + Novo cliente
         </button>
-        <label className="cursor-pointer rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand">
+        <label className="cursor-pointer rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand">
           {importing ? "Importando..." : "Importar CSV"}
           <input type="file" accept=".csv,text/csv" className="hidden" disabled={importing}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) importCsv(f); e.currentTarget.value = ""; }} />
@@ -242,22 +242,22 @@ export function ClientesClient({ initial }: { initial: Customer[] }) {
       {msg && <p className="rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-200">{msg}</p>}
 
       {list.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum cliente.</p>
+        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhum cliente.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
-                <th className="px-4 py-3">Nome</th>
-                <th className="px-4 py-3">Documento</th>
-                <th className="px-4 py-3">Contato</th>
-                <th className="px-4 py-3">Cidade</th>
-                <th className="px-4 py-3">Portal</th>
+              <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
+                <th className="px-4 py-3 font-medium">Nome</th>
+                <th className="px-4 py-3 font-medium">Documento</th>
+                <th className="px-4 py-3 font-medium">Contato</th>
+                <th className="px-4 py-3 font-medium">Cidade</th>
+                <th className="px-4 py-3 font-medium">Portal</th>
               </tr>
             </thead>
             <tbody>
               {list.map((c) => (
-                <tr key={c.id} className="border-t border-line/50">
+                <tr key={c.id} className="border-t border-line transition hover:bg-surface-2">
                   <td className="px-4 py-3 font-medium">
                     <div className="flex items-center gap-2.5">
                       <Avatar url={c.avatarUrl} name={c.name} size={32} />
@@ -274,14 +274,14 @@ export function ClientesClient({ initial }: { initial: Customer[] }) {
                     <div className="flex gap-1.5">
                       <button
                         onClick={() => openDetail(c.id)}
-                        className="rounded border border-line px-3 py-1 text-xs transition hover:border-brand"
+                        className="rounded-lg border border-line px-3 py-1 text-xs transition hover:border-brand"
                       >
                         Ver
                       </button>
                       <button
                         onClick={() => resetPassword(c)}
                         disabled={busyId === c.id}
-                        className="rounded border border-line px-3 py-1 text-xs transition hover:border-brand disabled:opacity-50"
+                        className="rounded-lg border border-line px-3 py-1 text-xs transition hover:border-brand disabled:opacity-50"
                       >
                         {busyId === c.id ? "..." : "Resetar senha"}
                       </button>
@@ -331,11 +331,11 @@ export function ClientesClient({ initial }: { initial: Customer[] }) {
             <div className="mt-5">
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">Documentos enviados</p>
               {docs.length === 0 ? (
-                <p className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-xs text-muted">Nenhum documento enviado.</p>
+                <p className="rounded-xl border border-line bg-surface-2 px-3 py-2 text-xs text-muted">Nenhum documento enviado.</p>
               ) : (
                 <ul className="space-y-1.5">
                   {docs.map((d) => (
-                    <li key={d.id} className="flex items-center justify-between gap-2 rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+                    <li key={d.id} className="flex items-center justify-between gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2 text-sm">
                       <span className="flex items-center gap-2">
                         <span>{d.kind === "image" ? "🖼️" : d.kind === "pdf" ? "📄" : "📎"}</span>
                         <span>{DOC_LABEL[d.docType] ?? d.docType}</span>
@@ -355,8 +355,8 @@ export function ClientesClient({ initial }: { initial: Customer[] }) {
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <button onClick={() => setDetail(null)} className="rounded-lg border border-line px-4 py-2 text-sm">Fechar</button>
-              <button onClick={saveDetail} disabled={savingDetail} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+              <button onClick={() => setDetail(null)} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">Fechar</button>
+              <button onClick={saveDetail} disabled={savingDetail} className="btn-grad px-5 disabled:opacity-50">
                 {savingDetail ? "Salvando..." : "Salvar"}
               </button>
             </div>
@@ -374,7 +374,7 @@ function DField({ label, value, onChange }: { label: string; value: string; onCh
       <input
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+        className="input-base"
       />
     </label>
   );
@@ -414,7 +414,7 @@ function NewCustomerModal({ onClose, onCreated }: { onClose: () => void; onCreat
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Novo cliente</h3>
         {err && <p className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">{err}</p>}
 
@@ -422,7 +422,7 @@ function NewCustomerModal({ onClose, onCreated }: { onClose: () => void; onCreat
           <div className="sm:col-span-2"><DField label="Nome completo *" value={f.name} onChange={(v) => set("name", v)} /></div>
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo de documento</span>
-            <select value={f.documentType} onChange={(e) => set("documentType", e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+            <select value={f.documentType} onChange={(e) => set("documentType", e.target.value)} className="input-base">
               <option value="cpf">CPF</option><option value="cnpj">CNPJ</option><option value="passport">Passaporte</option><option value="other">Outro</option>
             </select>
           </label>
@@ -430,7 +430,7 @@ function NewCustomerModal({ onClose, onCreated }: { onClose: () => void; onCreat
           <DField label="Nascimento (AAAA-MM-DD)" value={f.birthDate} onChange={(v) => set("birthDate", v)} />
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Sexo</span>
-            <select value={f.gender} onChange={(e) => set("gender", e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+            <select value={f.gender} onChange={(e) => set("gender", e.target.value)} className="input-base">
               <option value="unspecified">Não informado</option><option value="female">Feminino</option><option value="male">Masculino</option><option value="other">Outro</option>
             </select>
           </label>
@@ -440,7 +440,7 @@ function NewCustomerModal({ onClose, onCreated }: { onClose: () => void; onCreat
           <DField label="Telefone 2" value={f.phoneSecondary} onChange={(v) => set("phoneSecondary", v)} />
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Canal preferido</span>
-            <select value={f.prefersChannel} onChange={(e) => set("prefersChannel", e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+            <select value={f.prefersChannel} onChange={(e) => set("prefersChannel", e.target.value)} className="input-base">
               <option value="whatsapp">WhatsApp</option><option value="phone">Telefone</option><option value="email">E-mail</option><option value="sms">SMS</option><option value="none">Nenhum</option>
             </select>
           </label>
@@ -454,8 +454,8 @@ function NewCustomerModal({ onClose, onCreated }: { onClose: () => void; onCreat
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">Cancelar</button>
-          <button disabled={busy} onClick={submit} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">Cancelar</button>
+          <button disabled={busy} onClick={submit} className="btn-grad px-5 disabled:opacity-50">
             {busy ? "Salvando…" : "Cadastrar cliente"}
           </button>
         </div>

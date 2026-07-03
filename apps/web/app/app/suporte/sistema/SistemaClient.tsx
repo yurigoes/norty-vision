@@ -53,7 +53,7 @@ export function SistemaClient() {
 
       {/* RAM + CPU */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-line bg-bg/60 p-4">
+        <div className="card">
           <p className="text-[10px] uppercase tracking-wider text-muted">Memória RAM</p>
           {mem ? (<>
             <p className="mt-1 text-xl font-semibold">{gb(mem.usedBytes)} <span className="text-sm text-muted">/ {gb(mem.totalBytes)}</span></p>
@@ -61,14 +61,14 @@ export function SistemaClient() {
             <p className="mt-1 text-[11px] text-muted">{mem.usedPct}% em uso · {gb(mem.freeBytes)} livre</p>
           </>) : <p className="mt-1 text-sm text-muted">—</p>}
         </div>
-        <div className="rounded-xl border border-line bg-bg/60 p-4">
+        <div className="card">
           <p className="text-[10px] uppercase tracking-wider text-muted">CPU / carga</p>
           {cpu ? (<>
             <p className="mt-1 text-xl font-semibold">{cpu.loadavg?.[0] ?? "—"} <span className="text-sm text-muted">load (1min)</span></p>
             <p className="mt-1 text-[11px] text-muted">{cpu.cores} núcleo(s) · 5min {cpu.loadavg?.[1]} · 15min {cpu.loadavg?.[2]}</p>
           </>) : <p className="mt-1 text-sm text-muted">—</p>}
         </div>
-        <div className="rounded-xl border border-line bg-bg/60 p-4">
+        <div className="card">
           <p className="text-[10px] uppercase tracking-wider text-muted">Uptime</p>
           <p className="mt-1 text-xl font-semibold">{cpu ? dur(cpu.uptimeSec) : "—"}</p>
           {stats?.node && <p className="mt-1 text-[11px] text-muted">API: {gb(stats.node.rssBytes)} RAM · Node {stats.node.version}</p>}
@@ -76,7 +76,7 @@ export function SistemaClient() {
       </div>
 
       {/* Disco */}
-      <section className="rounded-xl border border-line bg-bg/60 p-5">
+      <section className="card">
         <h2 className="mb-3 text-sm font-semibold">Disco (HD)</h2>
         {disks.length === 0 ? <p className="text-xs text-muted">Sem dados de disco.</p> : disks.map((d: any) => (
           <div key={d.mount} className="mb-2">
@@ -87,18 +87,18 @@ export function SistemaClient() {
       </section>
 
       {/* Backup */}
-      <section className="rounded-xl border border-line bg-bg/60 p-5">
+      <section className="card">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-sm font-semibold">Backup do banco</h2>
             <p className="mt-1 text-[11px] text-muted">Gera um dump completo do PostgreSQL (pg_dump) compactado e guarda no MinIO privado (backups/postgres/).</p>
           </div>
-          <button disabled={backing} onClick={backup} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{backing ? "Gerando…" : "Fazer backup agora"}</button>
+          <button disabled={backing} onClick={backup} className="btn-grad">{backing ? "Gerando…" : "Fazer backup agora"}</button>
         </div>
       </section>
 
       {/* Docker */}
-      <section className="rounded-xl border border-line bg-bg/60 p-5">
+      <section className="card">
         <h2 className="mb-3 text-sm font-semibold">Containers</h2>
         {docker?.available ? (
           <>
@@ -118,7 +118,7 @@ export function SistemaClient() {
       </section>
 
       {/* Manutenção (comandos do servidor) */}
-      <section className="rounded-xl border border-line bg-bg/60 p-5">
+      <section className="card">
         <h2 className="mb-1 text-sm font-semibold">Manutenção do servidor</h2>
         <p className="mb-3 text-[11px] text-muted">Rode no terminal da VPS (SSH ou RustDesk), na pasta <code>/opt/yugo-platform</code>. Clique pra copiar.</p>
         <div className="space-y-2">

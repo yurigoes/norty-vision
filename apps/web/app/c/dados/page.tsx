@@ -46,20 +46,20 @@ export default function PortalDados() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
-      <Link href="/c" className="text-sm text-brand hover:underline">← voltar</Link>
-      <h1 className="mt-4 text-2xl font-semibold">Meus dados</h1>
+      <Link href="/c" className="text-sm font-medium text-brand hover:underline">← voltar</Link>
+      <h1 className="mt-3 text-2xl font-extrabold tracking-tight">Meus dados</h1>
 
-      <div className="mt-6 flex items-center gap-4">
+      <div className="card mt-6 flex items-center gap-4">
         {c.avatarUrl
           ? <img src={c.avatarUrl} alt="" className="h-20 w-20 rounded-full object-cover" />
-          : <div className="flex h-20 w-20 items-center justify-center rounded-full bg-line text-2xl text-muted">?</div>}
-        <label className="cursor-pointer rounded-lg border border-line px-4 py-2 text-sm hover:border-brand">
+          : <div className="flex h-20 w-20 items-center justify-center rounded-full bg-surface-2 text-2xl text-muted">?</div>}
+        <label className="cursor-pointer rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/50 hover:text-brand">
           Trocar foto
           <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0])} />
         </label>
       </div>
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+      <div className="card mt-6 grid gap-4 sm:grid-cols-2">
         <Field label="Email" value={c.email} onChange={(v) => setC({ ...c, email: v })} />
         <Field label="Telefone" value={c.phone} onChange={(v) => setC({ ...c, phone: v })} />
         <Field label="WhatsApp" value={c.whatsappPhone} onChange={(v) => setC({ ...c, whatsappPhone: v })} />
@@ -72,8 +72,8 @@ export default function PortalDados() {
         <Field label="UF" value={c.state} onChange={(v) => setC({ ...c, state: v })} />
       </div>
 
-      {msg && <p className="mt-4 text-sm text-green-300">{msg}</p>}
-      <button onClick={save} disabled={saving} className="mt-6 rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+      {msg && <p className="mt-4 text-sm font-medium text-success">{msg}</p>}
+      <button onClick={save} disabled={saving} className="btn-grad mt-6 px-6 py-2.5">
         {saving ? "Salvando..." : "Salvar"}
       </button>
     </main>
@@ -83,8 +83,8 @@ export default function PortalDados() {
 function Field({ label, value, onChange }: { label: string; value: any; onChange: (v: string) => void }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">{label}</span>
-      <input value={value ?? ""} onChange={(e) => onChange(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+      <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">{label}</span>
+      <input value={value ?? ""} onChange={(e) => onChange(e.target.value)} className="input-base" />
     </label>
   );
 }

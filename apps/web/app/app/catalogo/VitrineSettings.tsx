@@ -107,7 +107,7 @@ export function VitrineSettings({
   }
 
   return (
-    <section className="mb-8 rounded-xl border border-line bg-bg/60 p-5">
+    <section className="mb-8 rounded-2xl border border-line bg-surface p-5 shadow-sm">
       <div className="flex items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold">Vitrine / Landing da empresa</h2>
@@ -125,20 +125,20 @@ export function VitrineSettings({
       <div className="mt-4 grid gap-3">
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Frase de efeito (título)</span>
-          <input value={headline} onChange={(e) => setHeadline(e.target.value)} maxLength={140} placeholder="Ex.: Enxergue o mundo com estilo" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <input value={headline} onChange={(e) => setHeadline(e.target.value)} maxLength={140} placeholder="Ex.: Enxergue o mundo com estilo" className="input-base" />
         </label>
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Subtítulo</span>
-          <input value={subheadline} onChange={(e) => setSubheadline(e.target.value)} maxLength={240} placeholder="Ex.: As melhores marcas, exame de vista e crediário próprio." className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <input value={subheadline} onChange={(e) => setSubheadline(e.target.value)} maxLength={240} placeholder="Ex.: As melhores marcas, exame de vista e crediário próprio." className="input-base" />
         </label>
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Sobre a loja</span>
-          <textarea value={about} onChange={(e) => setAbout(e.target.value)} maxLength={2000} rows={3} placeholder="Conte um pouco da sua loja, diferenciais, horário de atendimento..." className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <textarea value={about} onChange={(e) => setAbout(e.target.value)} maxLength={2000} rows={3} placeholder="Conte um pouco da sua loja, diferenciais, horário de atendimento..." className="input-base" />
         </label>
       </div>
 
       {/* Banner promocional */}
-      <div className="mt-5 rounded-lg border border-line bg-bg/40 p-4">
+      <div className="mt-5 rounded-xl border border-line bg-surface-2 p-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">Banner promocional (flutuante)</h3>
           <label className="flex items-center gap-2 text-sm">
@@ -153,7 +153,7 @@ export function VitrineSettings({
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadBanner(f); }} />
-          <button onClick={() => fileRef.current?.click()} disabled={uploading} className="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand disabled:opacity-50">
+          <button onClick={() => fileRef.current?.click()} disabled={uploading} className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand disabled:opacity-50">
             {uploading ? "Enviando..." : bannerUrl ? "Trocar imagem" : "Carregar imagem"}
           </button>
           {bannerUrl && <button onClick={() => setBannerUrl(null)} className="text-xs text-muted hover:text-red-300">remover</button>}
@@ -161,54 +161,54 @@ export function VitrineSettings({
 
         <label className="mt-3 block">
           <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Link ao clicar (opcional)</span>
-          <input value={bannerLink} onChange={(e) => setBannerLink(e.target.value)} placeholder="https://..." className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <input value={bannerLink} onChange={(e) => setBannerLink(e.target.value)} placeholder="https://..." className="input-base" />
         </label>
 
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Começa em (opcional)</span>
-            <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+            <input type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className="input-base" />
           </label>
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Termina em (opcional)</span>
-            <input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+            <input type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} className="input-base" />
           </label>
         </div>
         <p className="mt-2 text-[11px] text-muted">Sem datas = aparece sempre (enquanto ativo). O banner aparece flutuando ao abrir a vitrine.</p>
       </div>
 
       {/* Atendimento: endereço, horário, redes */}
-      <div className="mt-5 rounded-lg border border-line bg-bg/40 p-4">
+      <div className="mt-5 rounded-xl border border-line bg-surface-2 p-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">Atendimento (aparece em "Onde nos encontrar")</h3>
         <div className="mt-3 grid gap-3">
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Endereço</span>
-            <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Rua, nº, bairro, cidade - UF" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+            <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Rua, nº, bairro, cidade - UF" className="input-base" />
           </label>
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Link do Google Maps (opcional — se vazio, usa o endereço)</span>
-            <input value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+            <input value={mapsUrl} onChange={(e) => setMapsUrl(e.target.value)} placeholder="https://maps.google.com/..." className="input-base" />
           </label>
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Horário de funcionamento</span>
-            <textarea value={hours} onChange={(e) => setHours(e.target.value)} rows={2} placeholder="Seg a Sex: 9h às 18h&#10;Sáb: 9h às 13h" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+            <textarea value={hours} onChange={(e) => setHours(e.target.value)} rows={2} placeholder="Seg a Sex: 9h às 18h&#10;Sáb: 9h às 13h" className="input-base" />
           </label>
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Instagram (@ ou link)</span>
-              <input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@sualoja" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+              <input value={instagram} onChange={(e) => setInstagram(e.target.value)} placeholder="@sualoja" className="input-base" />
             </label>
             <label className="block">
               <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Facebook (usuário ou link)</span>
-              <input value={facebook} onChange={(e) => setFacebook(e.target.value)} placeholder="sualoja" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+              <input value={facebook} onChange={(e) => setFacebook(e.target.value)} placeholder="sualoja" className="input-base" />
             </label>
             <label className="block">
               <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">WhatsApp (com DDD)</span>
-              <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} inputMode="tel" placeholder="11999998888" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+              <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} inputMode="tel" placeholder="11999998888" className="input-base" />
             </label>
             <label className="block">
               <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Site (opcional)</span>
-              <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+              <input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://..." className="input-base" />
             </label>
           </div>
         </div>
@@ -218,7 +218,7 @@ export function VitrineSettings({
       {err && <p className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">{err}</p>}
 
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={save} disabled={saving} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        <button onClick={save} disabled={saving} className="btn-grad disabled:opacity-50">
           {saving ? "Salvando..." : "Salvar vitrine"}
         </button>
         {saved && <span className="text-xs text-green-300">✓ salvo</span>}

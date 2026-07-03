@@ -13,7 +13,7 @@ export default function InfraestruturaPage() {
         </p>
       </header>
 
-      <section className="mb-8 rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Domínios</h2>
         <div className="space-y-2 text-sm">
           <Row label="App + API" value="yugochat.com.br" />
@@ -23,7 +23,7 @@ export default function InfraestruturaPage() {
         </div>
       </section>
 
-      <section className="mb-8 rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Serviços em containers</h2>
         <pre className="overflow-x-auto rounded-lg border border-line bg-bg/40 p-4 font-mono text-xs text-fg">
 {`yugo-caddy       reverse proxy + TLS 1.3 + HTTP/3
@@ -43,7 +43,7 @@ rustdesk-hbbs / hbbr   suporte remoto (coabita)`}
         </pre>
       </section>
 
-      <section className="mb-8 rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Rede interna</h2>
         <p className="text-sm text-muted">
           Containers conversam entre si via rede docker <code>yugo-internal</code>.
@@ -52,7 +52,7 @@ rustdesk-hbbs / hbbr   suporte remoto (coabita)`}
         </p>
       </section>
 
-      <section className="rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card">
         <h2 className="mb-4 text-lg font-semibold">Bancos de dados</h2>
         <div className="space-y-2 text-sm">
           <Row label="yugo" value="42 tabelas + RLS" />

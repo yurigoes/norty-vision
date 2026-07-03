@@ -85,7 +85,7 @@ export function OrgModulesCard({ orgId }: { orgId: string }) {
   }
 
   return (
-    <section className="rounded-xl border border-line bg-bg/60 p-6">
+    <section className="card p-6">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-semibold">Módulos da empresa</h2>
         {planName && <span className="rounded-full bg-line px-2 py-0.5 text-[11px] text-muted">Plano: {planName}</span>}
@@ -114,7 +114,7 @@ export function OrgModulesCard({ orgId }: { orgId: string }) {
                 // Override do master: módulo do plano explicitamente bloqueado pra essa empresa.
                 const blockedOverride = !!g?.blocked;
                 return (
-                  <div key={m.key} className="rounded-lg border border-line/60 bg-bg/40 px-3 py-2">
+                  <div key={m.key} className="rounded-xl border border-line bg-surface-2 px-3 py-2">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
                       <span className="font-medium">{m.label}</span>
                       <div className="flex items-center gap-2">
@@ -149,10 +149,10 @@ export function OrgModulesCard({ orgId }: { orgId: string }) {
                     </div>
 
                     {editKey === m.key && (
-                      <div className="mt-2 flex flex-wrap items-end gap-3 border-t border-line/60 pt-2">
+                      <div className="mt-2 flex flex-wrap items-end gap-3 border-t border-line pt-2">
                         <label className="block">
                           <span className="mb-1 block text-[10px] uppercase text-muted">Modalidade</span>
-                          <select value={kind} onChange={(e) => setKind(e.target.value as any)} className="rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">
+                          <select value={kind} onChange={(e) => setKind(e.target.value as any)} className="input-base w-auto px-2 py-1.5">
                             <option value="courtesy">Cortesia (grátis)</option>
                             <option value="trial">Experimental (X dias)</option>
                             <option value="alacarte">À la carte (cobrança)</option>
@@ -160,19 +160,19 @@ export function OrgModulesCard({ orgId }: { orgId: string }) {
                         </label>
                         {kind === "trial" && (
                           <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Dias</span>
-                            <input type="number" value={days} onChange={(e) => setDays(e.target.value)} className="w-20 rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+                            <input type="number" value={days} onChange={(e) => setDays(e.target.value)} className="input-base w-20 px-2 py-1.5" />
                           </label>
                         )}
                         {kind === "alacarte" && (
                           <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Preço (R$)</span>
-                            <input value={priceReais} onChange={(e) => setPriceReais(e.target.value)} inputMode="decimal" className="w-28 rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+                            <input value={priceReais} onChange={(e) => setPriceReais(e.target.value)} inputMode="decimal" className="input-base w-28 px-2 py-1.5" />
                           </label>
                         )}
                         <label className="block flex-1 min-w-[160px]"><span className="mb-1 block text-[10px] uppercase text-muted">Observação</span>
-                          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="opcional" className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+                          <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="opcional" className="input-base px-2 py-1.5" />
                         </label>
-                        <button onClick={() => liberar(m.key)} disabled={busy} className="rounded-lg bg-brand px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "..." : "Confirmar"}</button>
-                        <button onClick={() => setEditKey(null)} className="rounded-lg border border-line px-3 py-1.5 text-sm text-muted hover:text-fg">cancelar</button>
+                        <button onClick={() => liberar(m.key)} disabled={busy} className="btn-grad px-4 py-1.5">{busy ? "..." : "Confirmar"}</button>
+                        <button onClick={() => setEditKey(null)} className="rounded-xl border border-line px-3 py-1.5 text-sm text-muted transition hover:text-fg">cancelar</button>
                       </div>
                     )}
                   </div>

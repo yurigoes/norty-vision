@@ -58,7 +58,7 @@ export default function GuiaGraficaPage() {
         </ul>
       </Step>
 
-      <p className="mt-8 rounded-xl border border-line bg-bg/60 p-4 text-sm text-muted">
+      <p className="card mt-8 text-sm text-muted">
         Resumo do ciclo: <b>catálogo → orçamento (IA) → cliente aceita → pedido com sinal → arte → aprovação no WhatsApp → produção → entrega → cobrança do saldo → baixa → relatório</b>.
       </p>
     </div>
@@ -67,9 +67,9 @@ export default function GuiaGraficaPage() {
 
 function Step({ n, title, children }: { n: number; title: string; children: React.ReactNode }) {
   return (
-    <section className="mb-5 rounded-xl border border-line bg-bg/60 p-5">
+    <section className="card mb-5">
       <div className="flex items-center gap-3">
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">{n}</span>
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: "var(--grad-brand)" }}>{n}</span>
         <h2 className="text-lg font-semibold">{title}</h2>
       </div>
       <div className="mt-2 text-sm leading-relaxed">{children}</div>

@@ -14,7 +14,7 @@ export default async function RecallExamesPage() {
   const session = await getSession();
   if (!session.authenticated) redirect("/login");
   if (!session.user?.isOrgAdmin && !session.master) {
-    return <div className="max-w-3xl"><p className="rounded-lg border border-line bg-bg/60 p-6 text-muted">Apenas administradores.</p></div>;
+    return <div className="max-w-3xl"><p className="card p-6 text-muted">Apenas administradores.</p></div>;
   }
 
   const res = await apiFetch<{ items: Row[] }>("/api/appointments/reports/exam-recall");
@@ -24,25 +24,26 @@ export default async function RecallExamesPage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-6">
+      <header className="mb-8">
         <Link href="/app/agenda" className="text-sm text-brand hover:underline">← Agenda</Link>
-        <h1 className="mt-2 text-3xl font-semibold">Recall de exame de vista</h1>
+        <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-brand">Agenda · Recall</p>
+        <h1 className="mt-1 text-3xl font-semibold">Recall de exame de vista</h1>
         <p className="mt-2 text-muted">
           Quantos dias faltam pra cada paciente ser notificado (1 ano após o exame). O lembrete é
           enviado automaticamente no WhatsApp/e-mail quando vence. Vale só pra quem fez exame com o médico.
         </p>
       </header>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-3">
+      <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <Card label="Vencidos (recall devido)" value={String(vencidos.length)} tone="red" />
         <Card label="Vencem em ≤60 dias" value={String(proximos.length)} tone="orange" />
         <Card label="Pacientes com exame" value={String(items.length)} />
       </div>
 
       {items.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum exame atendido ainda.</p>
+        <p className="card p-6 text-sm text-muted">Nenhum exame atendido ainda.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+        <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
             <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted">
               <th className="px-4 py-3">Paciente</th><th className="px-4 py-3">Último exame</th><th className="px-4 py-3">Dias p/ notificar</th><th className="px-4 py-3">Status</th>
@@ -52,7 +53,7 @@ export default async function RecallExamesPage() {
                 const due = r.daysUntilRecall <= 0;
                 const soon = r.daysUntilRecall > 0 && r.daysUntilRecall <= 60;
                 return (
-                  <tr key={r.customerId} className="border-t border-line/50">
+                  <tr key={r.customerId} className="border-t border-line/50 transition hover:bg-surface-2">
                     <td className="px-4 py-3">
                       <div className="font-medium">{r.name}</div>
                       {r.phone && <div className="text-xs text-muted">{r.phone}</div>}
@@ -76,11 +77,11 @@ export default async function RecallExamesPage() {
 }
 
 function Card({ label, value, tone }: { label: string; value: string; tone?: "red" | "orange" }) {
-  const c = tone === "red" ? "text-red-300" : tone === "orange" ? "text-orange-300" : "text-fg";
+  const c = tone === "red" ? "text-danger" : tone === "orange" ? "text-warn" : "text-fg";
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-4">
+    <div className="card">
       <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold ${c}`}>{value}</p>
+      <p className={`mt-1 text-3xl font-semibold ${c}`}>{value}</p>
     </div>
   );
 }

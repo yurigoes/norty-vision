@@ -139,7 +139,7 @@ export default async function CompanyVitrine({ params }: { params: Promise<{ slu
             ["Qualidade garantida", "Produtos e serviços com procedência e garantia."],
             ["Compre do seu jeito", "À vista, no cartão ou no nosso crediário próprio."],
           ].map(([t, d]) => (
-            <div key={t} className="rounded-2xl border border-line bg-bg/60 p-5">
+            <div key={t} className="card">
               <p className="font-semibold">{t}</p>
               <p className="mt-2 text-sm text-muted">{d}</p>
             </div>
@@ -150,7 +150,7 @@ export default async function CompanyVitrine({ params }: { params: Promise<{ slu
       {/* Nível de satisfação (notas reais dos clientes) */}
       {satisfaction && (
         <section className="mx-auto max-w-3xl px-6 py-12">
-          <div className="flex flex-col items-center gap-3 rounded-2xl border border-line bg-bg/60 p-8 text-center">
+          <div className="glass flex flex-col items-center gap-3 rounded-2xl p-8 text-center">
             <p className="text-xs font-semibold uppercase tracking-wider text-brand">Satisfação dos clientes</p>
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-semibold" style={{ color: "rgb(var(--brand))" }}>
@@ -185,7 +185,7 @@ export default async function CompanyVitrine({ params }: { params: Promise<{ slu
           </header>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {products.map((p) => (
-              <div key={p.id} className="flex flex-col overflow-hidden rounded-xl border border-line bg-bg/60">
+              <div key={p.id} className="flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow-sm)] transition duration-300 hover:-translate-y-1 hover:border-brand/50 hover:shadow-[var(--shadow-md)]">
                 <div className="aspect-square w-full bg-line/40">
                   {p.imageUrl ? (
                     <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover" />
@@ -203,7 +203,7 @@ export default async function CompanyVitrine({ params }: { params: Promise<{ slu
           </div>
           {org.catalogSlug && (
             <div className="mt-8 text-center">
-              <Link href={`/loja/${org.slug}`} className="inline-block rounded-lg bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90">
+              <Link href={`/loja/${org.slug}`} className="inline-block rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_28px_-10px_rgb(var(--brand)/0.7)] transition hover:opacity-90 active:scale-[.98]">
                 Ver catálogo completo
               </Link>
             </div>
@@ -222,7 +222,7 @@ export default async function CompanyVitrine({ params }: { params: Promise<{ slu
             <Link
               key={b.href + b.label}
               href={b.href}
-              className="group flex items-center gap-4 rounded-2xl border border-line bg-bg/60 p-5 transition hover:border-brand hover:shadow-lg hover:shadow-brand/10"
+              className="group flex items-center gap-4 rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-sm)] transition duration-300 hover:-translate-y-1 hover:border-brand/50 hover:shadow-[var(--shadow-md)]"
             >
               <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-2xl">{b.icon}</span>
               <span className="min-w-0 flex-1">
@@ -243,7 +243,7 @@ export default async function CompanyVitrine({ params }: { params: Promise<{ slu
           </header>
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             {org.address && (
-              <div className="rounded-2xl border border-line bg-bg/60 p-6">
+              <div className="card">
                 <p className="text-sm font-semibold">📍 Endereço</p>
                 <p className="mt-2 whitespace-pre-line text-sm text-muted">{org.address}</p>
                 <a
@@ -256,13 +256,13 @@ export default async function CompanyVitrine({ params }: { params: Promise<{ slu
               </div>
             )}
             {org.hours && (
-              <div className="rounded-2xl border border-line bg-bg/60 p-6">
+              <div className="card">
                 <p className="text-sm font-semibold">🕒 Horário</p>
                 <p className="mt-2 whitespace-pre-line text-sm text-muted">{org.hours}</p>
               </div>
             )}
             {(social.instagram || social.facebook || social.whatsapp || social.website) && (
-              <div className="rounded-2xl border border-line bg-bg/60 p-6">
+              <div className="card">
                 <p className="text-sm font-semibold">💬 Redes sociais</p>
                 <div className="mt-3 flex flex-col gap-2 text-sm">
                   {social.whatsapp && <a href={waUrl(social.whatsapp)} target="_blank" rel="noreferrer" className="text-muted hover:text-brand">WhatsApp</a>}

@@ -140,17 +140,17 @@ export function RolesClient({
         {!showForm && (
           <button
             onClick={startCreate}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+            className="btn-grad"
           >
             Novo papel
           </button>
         )}
       </div>
 
-      {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p>}
+      {err && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{err}</p>}
 
       {showForm && (
-        <section className="space-y-4 rounded-xl border border-brand/40 bg-bg/60 p-5">
+        <section className="card space-y-4 border-brand/40">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
             {editing ? `Editar: ${editing.name}` : "Novo papel"}
           </h2>
@@ -161,7 +161,7 @@ export function RolesClient({
                 value={form.name}
                 onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
                 placeholder="Ex.: Recepção"
-                className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm"
+                className="input-base"
               />
             </label>
             <label className="block">
@@ -169,7 +169,7 @@ export function RolesClient({
               <input
                 value={form.description}
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-                className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm"
+                className="input-base"
               />
             </label>
           </div>
@@ -180,7 +180,7 @@ export function RolesClient({
                 <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-brand">{g.group}</p>
                 <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {g.items.map((it) => (
-                    <label key={it.key} className="flex items-center gap-2 rounded border border-line bg-bg/40 px-3 py-2 text-sm">
+                    <label key={it.key} className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm transition hover:border-brand/50">
                       <input
                         type="checkbox"
                         checked={!!form.permissions[it.key]}
@@ -199,11 +199,11 @@ export function RolesClient({
             <button
               onClick={save}
               disabled={busy || !form.name.trim()}
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              className="btn-grad"
             >
               {busy ? "Salvando..." : "Salvar papel"}
             </button>
-            <button onClick={cancel} className="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand">
+            <button onClick={cancel} className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:border-brand">
               Cancelar
             </button>
           </div>
@@ -215,7 +215,7 @@ export function RolesClient({
           const count = Object.values(r.permissions ?? {}).filter(Boolean).length;
           const custom = !r.isSystem && r.organizationId !== null;
           return (
-            <div key={r.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg/60 px-4 py-3">
+            <div key={r.id} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3 transition hover:border-brand/50">
               <div className="min-w-0">
                 <p className="flex items-center gap-2 text-sm font-medium">
                   {r.name}
@@ -223,7 +223,7 @@ export function RolesClient({
                     <span className="rounded bg-line px-1.5 py-0.5 text-[10px] uppercase text-muted">padrão</span>
                   )}
                   {custom && r.isActive === false && (
-                    <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[10px] uppercase text-red-300">inativo</span>
+                    <span className="rounded bg-danger/15 px-1.5 py-0.5 text-[10px] uppercase text-danger">inativo</span>
                   )}
                 </p>
                 <p className="truncate text-xs text-muted">
@@ -232,11 +232,11 @@ export function RolesClient({
               </div>
               {custom && (
                 <div className="flex shrink-0 gap-2">
-                  <button onClick={() => startEdit(r)} className="rounded border border-line px-3 py-1 text-xs transition hover:border-brand">Editar</button>
-                  <button onClick={() => toggleActive(r)} disabled={busy} className="rounded border border-line px-3 py-1 text-xs transition hover:border-brand disabled:opacity-50">
+                  <button onClick={() => startEdit(r)} className="rounded-lg border border-line px-3 py-1 text-xs font-medium transition hover:border-brand">Editar</button>
+                  <button onClick={() => toggleActive(r)} disabled={busy} className="rounded-lg border border-line px-3 py-1 text-xs font-medium transition hover:border-brand disabled:opacity-50">
                     {r.isActive === false ? "Ativar" : "Inativar"}
                   </button>
-                  <button onClick={() => remove(r)} className="rounded border border-line px-3 py-1 text-xs text-red-300 transition hover:border-red-400">Remover</button>
+                  <button onClick={() => remove(r)} className="rounded-lg border border-line px-3 py-1 text-xs font-medium text-danger transition hover:border-danger">Remover</button>
                 </div>
               )}
             </div>

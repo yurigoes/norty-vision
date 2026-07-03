@@ -85,7 +85,7 @@ export default async function OrgDetailPage({
         >
           ← voltar
         </Link>
-        <p className="mt-8 rounded-lg border border-line bg-bg/60 p-6 text-muted">
+        <p className="card mt-8 text-muted">
           Organização não encontrada.
         </p>
       </div>
@@ -112,7 +112,7 @@ export default async function OrgDetailPage({
         </header>
       </div>
 
-      <section className="rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card p-6">
         <h2 className="mb-4 text-lg font-semibold">Identificação</h2>
         <div className="grid gap-2 text-sm sm:grid-cols-2">
           <Row label="ID" value={org.id} mono />
@@ -148,7 +148,7 @@ export default async function OrgDetailPage({
       <OrgEditForm org={org} />
 
       {/* status das integrações */}
-      <section className="rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card p-6">
         <h2 className="mb-4 text-lg font-semibold">Integrações</h2>
         <div className="grid gap-3 sm:grid-cols-3">
           <IntegStatus
@@ -190,14 +190,14 @@ export default async function OrgDetailPage({
           </h2>
         </div>
         {org.stores.length === 0 ? (
-          <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">
+          <p className="card text-sm text-muted">
             Nenhuma loja.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+          <div className="card overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
                   <th className="px-4 py-3">Nome</th>
                   <th className="px-4 py-3">Slug</th>
                   <th className="px-4 py-3">Cidade/UF</th>
@@ -206,7 +206,7 @@ export default async function OrgDetailPage({
               </thead>
               <tbody>
                 {org.stores.map((s) => (
-                  <tr key={s.id} className="border-t border-line/50">
+                  <tr key={s.id} className="border-t border-line transition hover:bg-surface-2">
                     <td className="px-4 py-3 font-medium">{s.name}</td>
                     <td className="px-4 py-3 font-mono text-xs text-muted">
                       {s.slug}
@@ -228,14 +228,14 @@ export default async function OrgDetailPage({
           Usuários ({users.length})
         </h2>
         {users.length === 0 ? (
-          <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">
+          <p className="card text-sm text-muted">
             Nenhum usuário.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+          <div className="card overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
+                <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
                   <th className="px-4 py-3">Nome</th>
                   <th className="px-4 py-3">Email</th>
                   <th className="px-4 py-3">Papel/Loja</th>
@@ -245,7 +245,7 @@ export default async function OrgDetailPage({
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-t border-line/50 align-top">
+                  <tr key={u.id} className="border-t border-line align-top transition hover:bg-surface-2">
                     <td className="px-4 py-3 font-medium">{u.name}</td>
                     <td className="px-4 py-3 font-mono text-xs text-muted">
                       {u.email}

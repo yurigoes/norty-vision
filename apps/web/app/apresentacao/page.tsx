@@ -25,11 +25,11 @@ export default function ApresentacaoPage() {
       <ApresentacaoClient />
 
       <section className="mx-auto max-w-3xl px-6 pb-24 text-center">
-        <h2 className="text-2xl font-semibold">Gostou? Comece grátis por 14 dias.</h2>
+        <h2 className="text-gradient-brand text-2xl font-semibold">Gostou? Comece grátis por 14 dias.</h2>
         <p className="mt-2 text-muted">Sem cartão no cadastro. Ative só os módulos que precisar e contrate mais quando quiser.</p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link href="/planos" className="rounded-lg bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90">Ver planos</Link>
-          <Link href="/#contato" className="rounded-lg border border-line px-6 py-3 text-sm font-semibold transition hover:border-brand">Falar com a gente</Link>
+          <Link href="/planos" className="btn-grad px-6 py-3 text-sm shadow-[0_10px_28px_-10px_rgb(var(--brand)/0.7)]">Ver planos</Link>
+          <Link href="/#contato" className="rounded-xl border border-line bg-surface px-6 py-3 text-sm font-semibold transition hover:border-brand/60">Falar com a gente</Link>
         </div>
       </section>
     </main>

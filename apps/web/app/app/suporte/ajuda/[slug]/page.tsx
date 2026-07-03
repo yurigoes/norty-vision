@@ -20,7 +20,7 @@ export default async function AjudaArtigo({ params }: PageProps) {
         <Link href="/app/suporte/ajuda" className="text-sm text-brand hover:underline">
           ← voltar
         </Link>
-        <p className="mt-8 rounded-lg border border-line bg-bg/60 p-6 text-muted">
+        <p className="card mt-8 text-muted">
           Artigo não encontrado.
         </p>
       </div>

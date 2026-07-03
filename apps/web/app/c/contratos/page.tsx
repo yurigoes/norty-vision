@@ -30,20 +30,20 @@ export default function PortalContratos() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
-      <Link href="/c" className="text-sm text-brand hover:underline">← voltar</Link>
-      <h1 className="mt-4 text-2xl font-semibold">Meus contratos</h1>
+      <Link href="/c" className="text-sm font-medium text-brand hover:underline">← voltar</Link>
+      <h1 className="mt-3 text-2xl font-extrabold tracking-tight">Meus contratos</h1>
 
       {items.length === 0 ? (
-        <p className="mt-6 rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">
+        <p className="mt-6 rounded-2xl border border-line bg-surface p-6 text-sm text-muted">
           Nenhum contrato pendente.
         </p>
       ) : (
         <div className="mt-6 space-y-3">
           {items.map((c) => (
-            <div key={c.id} className="rounded-xl border border-line bg-bg/60 p-5">
+            <div key={c.id} className="card">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="font-medium">{c.template.title}</p>
+                  <p className="font-semibold text-fg">{c.template.title}</p>
                   <p className="text-xs text-muted">
                     {c.status === "signed"
                       ? `Assinado em ${c.signedAt ? new Date(c.signedAt).toLocaleString("pt-BR") : ""}`
@@ -52,18 +52,18 @@ export default function PortalContratos() {
                 </div>
                 {c.status === "signed" ? (
                   <div className="flex items-center gap-3">
-                    <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase text-green-300">assinado</span>
+                    <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-success">assinado</span>
                     <a
                       href={`/api/portal/contracts/${c.id}/html`}
                       target="_blank"
                       rel="noreferrer"
-                      className="rounded-lg border border-line px-3 py-1.5 text-xs transition hover:border-brand"
+                      className="rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/50 hover:text-brand"
                     >
                       Baixar / Imprimir
                     </a>
                   </div>
                 ) : (
-                  <button onClick={() => setSigning(c)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">
+                  <button onClick={() => setSigning(c)} className="btn-grad px-4 py-2">
                     Assinar
                   </button>
                 )}
@@ -164,8 +164,8 @@ function SignModal({ contract, onClose, onSigned }: { contract: Contract; onClos
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-line bg-bg p-6">
-        <h2 className="text-lg font-semibold">{contract.template.title}</h2>
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-line bg-surface p-6 shadow-lg">
+        <h2 className="text-lg font-bold text-fg">{contract.template.title}</h2>
 
         <iframe
           src={`/api/portal/contracts/${contract.id}/html`}
@@ -181,7 +181,7 @@ function SignModal({ contract, onClose, onSigned }: { contract: Contract; onClos
                 <button onClick={() => setSelfieUrl(null)} className="text-xs text-muted hover:text-red-300">trocar</button>
               </div>
             ) : (
-              <label className="inline-block cursor-pointer rounded-lg border border-line px-4 py-2 text-sm hover:border-brand">
+              <label className="inline-block cursor-pointer rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/50 hover:text-brand">
                 Tirar selfie
                 <input type="file" accept="image/*" capture="user" className="hidden" onChange={(e) => e.target.files?.[0] && uploadSelfie(e.target.files[0])} />
               </label>
@@ -207,11 +207,11 @@ function SignModal({ contract, onClose, onSigned }: { contract: Contract; onClos
           <span>Li e concordo com todas as cláusulas. Esta assinatura eletrônica + biometria têm validade legal (Lei 14.063/2020).</span>
         </label>
 
-        {error && <p className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
+        {error && <p className="mt-3 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{error}</p>}
 
         <div className="mt-5 flex justify-end gap-3">
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm">Cancelar</button>
-          <button onClick={submit} disabled={busy} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:border-brand/50 hover:text-fg">Cancelar</button>
+          <button onClick={submit} disabled={busy} className="btn-grad px-5 py-2">
             {busy ? "Assinando..." : "Assinar contrato"}
           </button>
         </div>

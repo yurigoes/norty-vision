@@ -137,14 +137,14 @@ export function BillingClient({
   return (
     <div className="space-y-8">
       {!subscription ? (
-        <section className="rounded-xl border border-yellow-500/40 bg-yellow-500/10 p-6">
+        <section className="rounded-2xl border border-yellow-500/40 bg-yellow-500/10 p-6">
           <h2 className="text-lg font-semibold">Sem assinatura ativa</h2>
           <p className="mt-1 text-sm text-muted">
             Escolha um plano abaixo pra ativar.
           </p>
         </section>
       ) : (
-        <section className="rounded-xl border border-line bg-bg/60 p-6">
+        <section className="card">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-xs uppercase tracking-wider text-muted">
@@ -189,7 +189,7 @@ export function BillingClient({
             <button
               onClick={() => startCheckout(subscription.plan.slug)}
               disabled={loading || isPending}
-              className="mt-6 rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+              className="btn-grad mt-6 disabled:opacity-50"
             >
               {loading ? "Gerando..." : "Ativar pagamento (Mercado Pago)"}
             </button>
@@ -199,7 +199,7 @@ export function BillingClient({
             <button
               onClick={cancelSubscription}
               disabled={loading || isPending}
-              className="ml-3 rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-red-300"
+              className="ml-3 rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-red-400"
             >
               Cancelar
             </button>
@@ -224,7 +224,7 @@ export function BillingClient({
               return (
                 <div
                   key={p.id}
-                  className="rounded-xl border border-line bg-bg/60 p-5"
+                  className="card"
                 >
                   <h3 className="text-base font-semibold">{p.name}</h3>
                   <p className="mt-1 text-xs text-muted">{p.description}</p>
@@ -240,7 +240,7 @@ export function BillingClient({
                   <button
                     disabled={loading || isPending}
                     onClick={() => startCheckout(p.slug)}
-                    className="mt-4 w-full rounded-lg bg-brand py-2 text-xs font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+                    className="btn-grad mt-4 w-full py-2 text-xs disabled:opacity-50"
                   >
                     Assinar (recorrente)
                   </button>
@@ -249,14 +249,14 @@ export function BillingClient({
                     <button
                       disabled={loading || isPending}
                       onClick={() => startOneTime(p.slug, "pix")}
-                      className="flex-1 rounded-lg border border-line py-2 text-xs font-medium transition hover:border-brand disabled:opacity-50"
+                      className="flex-1 rounded-xl border border-line py-2 text-xs font-medium transition hover:border-brand/60 hover:text-brand disabled:opacity-50"
                     >
                       Pix
                     </button>
                     <button
                       disabled={loading || isPending}
                       onClick={() => startOneTime(p.slug, "card")}
-                      className="flex-1 rounded-lg border border-line py-2 text-xs font-medium transition hover:border-brand disabled:opacity-50"
+                      className="flex-1 rounded-xl border border-line py-2 text-xs font-medium transition hover:border-brand/60 hover:text-brand disabled:opacity-50"
                     >
                       Cartão
                     </button>
@@ -274,14 +274,14 @@ export function BillingClient({
           <p className="mb-4 text-sm text-muted">Módulos liberados pelo suporte para sua empresa contratar à parte. Após o pagamento, o módulo é desbloqueado automaticamente.</p>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {offers.map((o) => (
-              <div key={o.moduleKey} className="rounded-xl border border-line bg-bg/60 p-5">
+              <div key={o.moduleKey} className="card">
                 <h3 className="text-base font-semibold">{moduleLabel(o.moduleKey)}</h3>
                 <p className="mt-2 text-xl font-semibold">
                   {(o.priceCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                 </p>
                 <div className="mt-3 flex gap-2">
-                  <button disabled={loading || isPending} onClick={() => buyModule(o.moduleKey, "pix")} className="flex-1 rounded-lg border border-line py-2 text-xs font-medium transition hover:border-brand disabled:opacity-50">Pix</button>
-                  <button disabled={loading || isPending} onClick={() => buyModule(o.moduleKey, "card")} className="flex-1 rounded-lg border border-line py-2 text-xs font-medium transition hover:border-brand disabled:opacity-50">Cartão</button>
+                  <button disabled={loading || isPending} onClick={() => buyModule(o.moduleKey, "pix")} className="flex-1 rounded-xl border border-line py-2 text-xs font-medium transition hover:border-brand/60 hover:text-brand disabled:opacity-50">Pix</button>
+                  <button disabled={loading || isPending} onClick={() => buyModule(o.moduleKey, "card")} className="flex-1 rounded-xl border border-line py-2 text-xs font-medium transition hover:border-brand/60 hover:text-brand disabled:opacity-50">Cartão</button>
                 </div>
               </div>
             ))}
@@ -291,7 +291,7 @@ export function BillingClient({
 
       {pix && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={() => setPix(null)}>
-          <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5 text-center shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-6 text-center shadow-lg" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-semibold">Pix da assinatura</h3>
             <p className="mt-1 text-sm text-muted">
               {(pix.amountCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} — a assinatura ativa automaticamente após o pagamento.
@@ -304,12 +304,12 @@ export function BillingClient({
             {pix.qrCode && (
               <button
                 onClick={() => { navigator.clipboard?.writeText(pix.qrCode!).then(() => { setPixCopied(true); setTimeout(() => setPixCopied(false), 2000); }); }}
-                className="mt-4 w-full break-all rounded-lg border border-line bg-bg/60 px-3 py-2 text-[11px] text-muted transition hover:border-brand"
+                className="mt-4 w-full break-all rounded-xl border border-line bg-surface-2 px-3 py-2 text-[11px] text-muted transition hover:border-brand"
               >
                 {pixCopied ? "✓ copiado!" : pix.qrCode}
               </button>
             )}
-            <button onClick={() => { setPix(null); startTransition(() => router.refresh()); }} className="mt-3 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-white">
+            <button onClick={() => { setPix(null); startTransition(() => router.refresh()); }} className="btn-grad mt-3 w-full py-2 text-sm">
               Já paguei / Fechar
             </button>
           </div>

@@ -54,7 +54,7 @@ export function CatalogClient({ stores, leads, orgSlug }: { stores: Store[]; lea
       <section>
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Pedidos da vitrine ({leads.length})</h2>
         {leads.length === 0 ? (
-          <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum pedido ainda.</p>
+          <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhum pedido ainda.</p>
         ) : (
           <div className="space-y-3">
             {leads.map((l) => (
@@ -90,7 +90,7 @@ function StoreCard({ store, origin, orgSlug, onSaved }: { store: Store; origin: 
   }
 
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-5">
+    <div className="card">
       <div className="flex items-center justify-between">
         <div>
           <p className="font-medium">{store.name}</p>
@@ -105,16 +105,16 @@ function StoreCard({ store, origin, orgSlug, onSaved }: { store: Store; origin: 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Chamada (headline)</span>
-          <input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Ex.: Coleção 2026 com até 10x" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <input value={headline} onChange={(e) => setHeadline(e.target.value)} placeholder="Ex.: Coleção 2026 com até 10x" className="input-base" />
         </label>
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">WhatsApp dos pedidos</span>
-          <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ""))} placeholder="DDD + número" inputMode="tel" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, ""))} placeholder="DDD + número" inputMode="tel" className="input-base" />
         </label>
       </div>
 
       {enabled && (
-        <div className="mt-3 flex items-center gap-2 rounded-lg border border-line bg-bg/40 px-3 py-2 text-xs">
+        <div className="mt-3 flex items-center gap-2 rounded-xl border border-line bg-surface-2 px-3 py-2 text-xs">
           <span className="truncate text-muted">{url}</span>
           <a href={url} target="_blank" rel="noreferrer" className="shrink-0 text-brand hover:underline">abrir</a>
           <button onClick={() => navigator.clipboard?.writeText(url)} className="shrink-0 text-brand hover:underline">copiar</button>
@@ -122,7 +122,7 @@ function StoreCard({ store, origin, orgSlug, onSaved }: { store: Store; origin: 
       )}
 
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={save} disabled={saving} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        <button onClick={save} disabled={saving} className="btn-grad disabled:opacity-50">
           {saving ? "Salvando..." : "Salvar"}
         </button>
         {saved && <span className="text-xs text-green-300">✓ salvo</span>}
@@ -148,13 +148,13 @@ function LeadCard({ lead, onChanged }: { lead: Lead; onChanged: () => void }) {
   }
 
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-4">
+    <div className="rounded-2xl border border-line bg-surface p-4 shadow-sm transition hover:border-brand/40">
       <div className="flex items-center justify-between gap-2">
         <div>
           <p className="font-medium">{lead.customerName}</p>
           <p className="text-xs text-muted">{lead.customerPhone} · {new Date(lead.createdAt).toLocaleString("pt-BR")}</p>
         </div>
-        <span className="rounded-full bg-line px-2 py-0.5 text-[10px] uppercase text-muted">{STATUS_LABEL[lead.status] ?? lead.status}</span>
+        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] uppercase text-muted">{STATUS_LABEL[lead.status] ?? lead.status}</span>
       </div>
       {Array.isArray(lead.items) && lead.items.length > 0 && (
         <p className="mt-2 text-xs text-muted">
@@ -163,10 +163,10 @@ function LeadCard({ lead, onChanged }: { lead: Lead; onChanged: () => void }) {
       )}
       {lead.message && <p className="mt-1 text-xs text-muted">“{lead.message}”</p>}
       <div className="mt-3 flex flex-wrap gap-2">
-        <a href={`https://wa.me/55${lead.customerPhone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-1 text-xs hover:border-brand">WhatsApp</a>
-        <button disabled={busy} onClick={() => setStatus("contacted")} className="rounded-lg border border-line px-3 py-1 text-xs hover:border-brand disabled:opacity-50">Contatado</button>
-        <button disabled={busy} onClick={() => setStatus("converted")} className="rounded-lg border border-green-500/40 px-3 py-1 text-xs text-green-300 hover:bg-green-500/10 disabled:opacity-50">Convertido</button>
-        <button disabled={busy} onClick={() => setStatus("dismissed")} className="rounded-lg border border-line px-3 py-1 text-xs text-muted hover:text-red-300 disabled:opacity-50">Descartar</button>
+        <a href={`https://wa.me/55${lead.customerPhone.replace(/\D/g, "")}`} target="_blank" rel="noreferrer" className="rounded-xl border border-line px-3 py-1 text-xs transition hover:border-brand/60 hover:text-brand">WhatsApp</a>
+        <button disabled={busy} onClick={() => setStatus("contacted")} className="rounded-xl border border-line px-3 py-1 text-xs transition hover:border-brand/60 disabled:opacity-50">Contatado</button>
+        <button disabled={busy} onClick={() => setStatus("converted")} className="rounded-xl border border-green-500/40 px-3 py-1 text-xs text-green-300 transition hover:bg-green-500/10 disabled:opacity-50">Convertido</button>
+        <button disabled={busy} onClick={() => setStatus("dismissed")} className="rounded-xl border border-line px-3 py-1 text-xs text-muted transition hover:text-red-300 disabled:opacity-50">Descartar</button>
       </div>
     </div>
   );

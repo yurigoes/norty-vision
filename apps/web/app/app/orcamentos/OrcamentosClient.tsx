@@ -57,15 +57,15 @@ export function OrcamentosClient({ initial }: { initial: Quote[] }) {
   return (
     <div className="space-y-5">
       <div className="flex justify-end">
-        <button onClick={() => setOpen(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">+ Novo orçamento</button>
+        <button onClick={() => setOpen(true)} className="btn-grad">+ Novo orçamento</button>
       </div>
 
       {initial.length === 0 ? (
-        <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-muted">Nenhum orçamento ainda. Crie o primeiro!</p>
+        <p className="rounded-2xl border border-line bg-surface p-8 text-center text-muted">Nenhum orçamento ainda. Crie o primeiro!</p>
       ) : (
         <div className="space-y-2">
           {initial.map((q) => (
-            <div key={q.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-bg/60 p-4">
+            <div key={q.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
               <div className="min-w-0">
                 <p className="font-medium">{q.contactName} <span className="ml-1 text-xs text-muted">{q.shortCode}</span>{!q.createdByUserId && <span className="ml-1 rounded-full bg-brand/15 px-2 py-0.5 text-[9px] font-semibold uppercase text-brand">via IA</span>}</p>
                 <p className="text-xs text-muted">{new Date(q.createdAt).toLocaleDateString("pt-BR")} · {q.items.length} item(ns) · <b>{brl(q.totalCents)}</b></p>
@@ -124,13 +124,13 @@ function NewQuote({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="glass max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line p-6" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Novo orçamento</h3>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Cliente</span><input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">WhatsApp</span><input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(71) 99999-9999" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">E-mail</span><input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Cliente</span><input value={name} onChange={(e) => setName(e.target.value)} className="input-base" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">WhatsApp</span><input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(71) 99999-9999" className="input-base" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">E-mail</span><input value={email} onChange={(e) => setEmail(e.target.value)} className="input-base" /></label>
         </div>
 
         <div className="mt-4">
@@ -140,25 +140,25 @@ function NewQuote({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
           <div className="space-y-2">
             {items.map((it, i) => (
               <div key={i} className="flex gap-2">
-                <input value={it.description} onChange={(e) => setItem(i, { description: e.target.value })} placeholder="Ex.: Conjunto sublimado (camisa + short) — tecido dryfit" className="flex-1 rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
-                <input value={it.qty} onChange={(e) => setItem(i, { qty: e.target.value })} type="number" min={1} className="w-16 rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" />
-                <input value={it.price} onChange={(e) => setItem(i, { price: e.target.value })} inputMode="decimal" placeholder="R$ unit." className="w-28 rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" />
-                {items.length > 1 && <button onClick={() => setItems((a) => a.filter((_, idx) => idx !== i))} className="text-muted hover:text-red-300">✕</button>}
+                <input value={it.description} onChange={(e) => setItem(i, { description: e.target.value })} placeholder="Ex.: Conjunto sublimado (camisa + short) — tecido dryfit" className="input-base flex-1" />
+                <input value={it.qty} onChange={(e) => setItem(i, { qty: e.target.value })} type="number" min={1} className="input-base w-16" />
+                <input value={it.price} onChange={(e) => setItem(i, { price: e.target.value })} inputMode="decimal" placeholder="R$ unit." className="input-base w-28" />
+                {items.length > 1 && <button onClick={() => setItems((a) => a.filter((_, idx) => idx !== i))} className="text-muted transition hover:text-red-400">✕</button>}
               </div>
             ))}
           </div>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Desconto (R$)</span><input value={discount} onChange={(e) => setDiscount(e.target.value)} inputMode="decimal" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Válido até</span><input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Desconto (R$)</span><input value={discount} onChange={(e) => setDiscount(e.target.value)} inputMode="decimal" className="input-base" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Válido até</span><input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="input-base" /></label>
           <div className="flex items-end justify-end"><span className="text-sm">Total: <b className="text-lg">{brl(total)}</b></span></div>
         </div>
-        <label className="mt-3 block"><span className="mb-1 block text-[10px] uppercase text-muted">Observações</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+        <label className="mt-3 block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Observações</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="input-base" /></label>
 
         <div className="mt-4 flex gap-2">
-          <button disabled={busy} onClick={save} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Salvar orçamento"}</button>
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+          <button disabled={busy} onClick={save} className="btn-grad flex-1 disabled:opacity-50">{busy ? "Salvando…" : "Salvar orçamento"}</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
         </div>
       </div>
     </div>

@@ -106,11 +106,11 @@ export function ContractsClient({
             <input
               readOnly
               value={`${typeof window !== "undefined" ? window.location.origin : ""}/assinar/${lastCreated.signerToken}`}
-              className="flex-1 rounded-lg border border-line bg-bg/60 px-3 py-2 font-mono text-xs"
+              className="input-base flex-1 font-mono text-xs"
             />
             <button
               onClick={() => copyLink(lastCreated.signerToken!)}
-              className="rounded-lg bg-brand px-4 py-2 text-xs font-semibold text-white"
+              className="btn-grad text-xs"
             >
               Copiar
             </button>
@@ -128,7 +128,7 @@ export function ContractsClient({
         <button
           onClick={() => setShowForm(true)}
           disabled={templates.length === 0}
-          className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+          className="btn-grad disabled:opacity-50"
         >
           + Novo contrato
         </button>
@@ -146,7 +146,7 @@ export function ContractsClient({
       {showForm && (
         <form
           onSubmit={onCreate}
-          className="space-y-4 rounded-xl border border-line bg-bg/60 p-6"
+          className="card space-y-4"
         >
           <h2 className="text-lg font-semibold">Novo contrato</h2>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -186,14 +186,14 @@ export function ContractsClient({
                 setShowForm(false);
                 setError(null);
               }}
-              className="rounded-lg border border-line px-4 py-2 text-sm"
+              className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="btn-grad disabled:opacity-50"
             >
               Gerar link de assinatura
             </button>
@@ -202,25 +202,25 @@ export function ContractsClient({
       )}
 
       {contracts.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">
+        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">
           Nenhum contrato enviado.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
-                <th className="px-4 py-3">Modelo</th>
-                <th className="px-4 py-3">Signatário</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Enviado</th>
-                <th className="px-4 py-3">Assinado</th>
-                <th className="px-4 py-3">Ações</th>
+              <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
+                <th className="px-4 py-3 font-medium">Modelo</th>
+                <th className="px-4 py-3 font-medium">Signatário</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Enviado</th>
+                <th className="px-4 py-3 font-medium">Assinado</th>
+                <th className="px-4 py-3 font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
               {contracts.map((c) => (
-                <tr key={c.id} className="border-t border-line/50">
+                <tr key={c.id} className="border-t border-line transition hover:bg-surface-2">
                   <td className="px-4 py-3 font-medium">{c.template.title}</td>
                   <td className="px-4 py-3 text-xs">
                     <div>{c.signerName ?? "—"}</div>
@@ -328,7 +328,7 @@ function Field({
         name={name}
         defaultValue={defaultValue}
         autoComplete="off"
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       />
     </label>
   );
@@ -355,7 +355,7 @@ function SelectField({
         name={name}
         defaultValue=""
         required={required}
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

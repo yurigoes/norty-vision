@@ -76,8 +76,8 @@ export function SignupForm({
 
   if (success) {
     return (
-      <div className="rounded-2xl border border-green-500/40 bg-green-500/10 p-8">
-        <h2 className="text-2xl font-semibold text-green-100">
+      <div className="rounded-2xl border border-success/40 bg-success/10 p-8">
+        <h2 className="text-2xl font-semibold text-success">
           ✓ Conta criada
         </h2>
         <dl className="mt-4 grid gap-2 text-sm">
@@ -104,7 +104,7 @@ export function SignupForm({
         </dl>
         <button
           onClick={() => router.push("/login")}
-          className="mt-6 rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
+          className="btn-grad mt-6 px-6 py-2.5 text-sm"
         >
           Entrar agora →
         </button>
@@ -113,7 +113,7 @@ export function SignupForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6 rounded-2xl border border-line bg-bg/60 p-6">
+    <form onSubmit={onSubmit} className="space-y-6 rounded-2xl border border-line bg-surface p-6 shadow-[var(--shadow-sm)]">
       {plans.length > 1 && (
         <Section title="Plano escolhido">
           <SelectField
@@ -172,7 +172,7 @@ export function SignupForm({
       </Section>
 
       {error && (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        <p className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm font-medium text-danger">
           {error}
         </p>
       )}
@@ -180,7 +180,7 @@ export function SignupForm({
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-brand py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+        className="btn-grad w-full py-3 text-sm shadow-[0_10px_28px_-10px_rgb(var(--brand)/0.7)]"
       >
         {loading ? "Criando..." : "Criar conta e começar trial"}
       </button>
@@ -234,7 +234,7 @@ function Field({
         placeholder={placeholder}
         defaultValue={defaultValue}
         autoComplete="off"
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       />
       {help && <p className="mt-1 text-[11px] leading-snug text-muted">{help}</p>}
     </label>
@@ -260,7 +260,7 @@ function SelectField({
       <select
         name={name}
         defaultValue={defaultValue ?? ""}
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

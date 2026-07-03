@@ -55,7 +55,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
       </nav>
 
       {/* Exportação: Excel (CSV) + PDF em 3 modelos (relatórios de crédito) */}
-      <div className={`flex flex-wrap items-center gap-2 rounded-xl border border-line bg-bg/60 p-3 ${tab === "estoque" ? "hidden" : ""}`}>
+      <div className={`card flex flex-wrap items-center gap-2 p-3 ${tab === "estoque" ? "hidden" : ""}`}>
         <span className="text-[10px] uppercase tracking-wider text-muted">Exportar</span>
         <a
           href={tab === "collections" ? "/api/reports/export/collections.csv" : `/api/reports/export/installments.csv?bucket=${bucket}`}
@@ -76,7 +76,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
             {Object.entries(BUCKET_LABEL).map(([key, meta]) => {
               const b = inst[key] ?? { count: 0, total: 0 };
               return (
-                <div key={key} className="rounded-xl border border-line bg-bg/60 p-4">
+                <div key={key} className="card p-4">
                   <p className="text-[10px] uppercase tracking-wider text-muted">{meta.label}</p>
                   <p className={`mt-1 text-2xl font-semibold ${meta.cls}`}>{b.count}</p>
                   <p className="text-xs text-muted">{brl(b.total)}</p>
@@ -85,7 +85,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
             })}
           </div>
 
-          <section className="rounded-xl border border-line bg-bg/60 p-5">
+          <section className="card p-5">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Contas por status</h2>
             <div className="grid gap-2 text-sm sm:grid-cols-2">
               {(summary?.accounts ?? []).map((a: any) => (
@@ -109,7 +109,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
             ))}
           </div>
           {loading ? <p className="text-sm text-muted">Carregando...</p> : (
-            <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+            <div className="card overflow-x-auto p-0">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
@@ -146,7 +146,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
         loading && !lowStock ? <p className="text-sm text-muted">Carregando...</p> : (
           <div className="space-y-6">
             {/* exportar (Excel/CSV) */}
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-bg/60 p-3">
+            <div className="card flex flex-wrap items-center gap-2 p-3">
               <span className="text-[10px] uppercase tracking-wider text-muted">Exportar CSV</span>
               {[["low_stock", "Baixo estoque"], ["reorder", "Reposição"], ["abc", "Curva ABC"], ["value", "Valor (CMV)"], ["best_sellers", "Mais vendidos"]].map(([k, l]) => (
                 <a key={k} href={`/api/products/reports/inventory.csv?kind=${k}`} className="rounded-lg border border-line px-3 py-1.5 text-xs transition hover:border-brand">↓ {l}</a>
@@ -155,15 +155,15 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
 
             {/* resumo */}
             <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-xl border border-line bg-bg/60 p-4">
+              <div className="card p-4">
                 <p className="text-[10px] uppercase tracking-wider text-muted">Produtos c/ controle</p>
                 <p className="mt-1 text-2xl font-semibold">{lowStock?.totalTracked ?? 0}</p>
               </div>
-              <div className="rounded-xl border border-line bg-bg/60 p-4">
+              <div className="card p-4">
                 <p className="text-[10px] uppercase tracking-wider text-muted">Abaixo do mínimo</p>
                 <p className="mt-1 text-2xl font-semibold text-red-300">{lowStock?.totalLow ?? 0}</p>
               </div>
-              <div className="rounded-xl border border-line bg-bg/60 p-4">
+              <div className="card p-4">
                 <p className="text-[10px] uppercase tracking-wider text-muted">Giro (últimos 30d)</p>
                 <p className="mt-1 text-2xl font-semibold">{(sellers?.products ?? []).reduce((s: number, p: any) => s + (p.qty ?? 0), 0)} un.</p>
               </div>
@@ -171,7 +171,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
 
             {/* estoque por loja */}
             {(byStore ?? []).length > 1 && (
-              <section className="rounded-xl border border-line bg-bg/60 p-5">
+              <section className="card p-5">
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Estoque por loja</h2>
                 <table className="w-full text-sm">
                   <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted"><th className="py-2">Loja</th><th className="py-2 text-right">Produtos (SKUs)</th><th className="py-2 text-right">Unidades</th></tr></thead>
@@ -185,7 +185,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
             )}
 
             {/* produtos com estoque baixo */}
-            <section className="rounded-xl border border-line bg-bg/60 p-5">
+            <section className="card p-5">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Produtos com estoque baixo</h2>
               {(lowStock?.products ?? []).length === 0 ? <p className="text-sm text-muted">Tudo certo — nenhum produto abaixo do mínimo. 👍</p> : (
                 <table className="w-full text-sm">
@@ -205,7 +205,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
             </section>
 
             {/* baixo estoque por grupo */}
-            <section className="rounded-xl border border-line bg-bg/60 p-5">
+            <section className="card p-5">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Estoque por grupo (categoria)</h2>
               <table className="w-full text-sm">
                 <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted"><th className="py-2">Grupo</th><th className="py-2 text-right">Produtos</th><th className="py-2 text-right">Em estoque</th><th className="py-2 text-right">Abaixo do mín.</th></tr></thead>
@@ -224,7 +224,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
 
             {/* mais vendidos (giro) */}
             <div className="grid gap-6 lg:grid-cols-2">
-              <section className="rounded-xl border border-line bg-bg/60 p-5">
+              <section className="card p-5">
                 <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-muted">Mais vendidos — produto</h2>
                 <p className="mb-3 text-[11px] text-muted">{sellers?.from} a {sellers?.to}</p>
                 {(sellers?.products ?? []).length === 0 ? <p className="text-sm text-muted">Sem vendas no período.</p> : (
@@ -238,7 +238,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
                   </table>
                 )}
               </section>
-              <section className="rounded-xl border border-line bg-bg/60 p-5">
+              <section className="card p-5">
                 <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-muted">Mais vendidos — grupo</h2>
                 <p className="mb-3 text-[11px] text-muted">qual categoria sai mais</p>
                 {(sellers?.byGroup ?? []).length === 0 ? <p className="text-sm text-muted">Sem vendas no período.</p> : (
@@ -256,7 +256,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
 
             {/* valor em estoque (CMV) + margem */}
             {analytics && (
-              <section className="rounded-xl border border-line bg-bg/60 p-5">
+              <section className="card p-5">
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Valor em estoque</h2>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div><p className="text-[10px] uppercase tracking-wider text-muted">Custo (parado)</p><p className="mt-1 text-xl font-semibold">{brl(analytics.value.totalCostCents)}</p></div>
@@ -278,7 +278,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
 
             {/* reposição sugerida */}
             {analytics && (
-              <section className="rounded-xl border border-line bg-bg/60 p-5">
+              <section className="card p-5">
                 <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-muted">Reposição sugerida</h2>
                 <p className="mb-3 text-[11px] text-muted">cruza o giro dos últimos {analytics.periodDays} dias com o estoque mínimo</p>
                 {(analytics.reorder ?? []).length === 0 ? <p className="text-sm text-muted">Nada a repor agora. 👍</p> : (
@@ -302,7 +302,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
 
             {/* curva ABC */}
             {analytics && (
-              <section className="rounded-xl border border-line bg-bg/60 p-5">
+              <section className="card p-5">
                 <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-muted">Curva ABC</h2>
                 <p className="mb-3 text-[11px] text-muted">classe A = 80% do faturamento · B = próximos 15% · C = resto</p>
                 <div className="mb-4 flex gap-3 text-sm">
@@ -334,12 +334,12 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
       {tab === "collections" && (
         <div className="space-y-2">
           {collections.length === 0 ? (
-            <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">
+            <p className="card p-6 text-sm text-muted">
               Nenhuma cobrança disparada ainda. O sistema dispara automaticamente
               conforme a régua configurada em Cobrança.
             </p>
           ) : collections.map((e) => (
-            <div key={e.id} className="flex items-start gap-3 rounded-lg border border-line bg-bg/60 p-3 text-sm">
+            <div key={e.id} className="card flex items-start gap-3 p-3 text-sm">
               <span className={`mt-0.5 rounded px-2 py-0.5 text-[10px] font-semibold uppercase ${e.status === "sent" ? "bg-green-500/20 text-green-300" : e.status === "failed" ? "bg-red-500/20 text-red-300" : "bg-line text-muted"}`}>
                 {e.channel}
               </span>

@@ -74,10 +74,7 @@ export function CreateOrgForm() {
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      className="space-y-8 rounded-xl border border-line bg-bg/60 p-6 backdrop-blur-sm"
-    >
+    <form onSubmit={onSubmit} className="card space-y-8 p-6">
       <section>
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted">
           Identificação da empresa
@@ -141,7 +138,7 @@ export function CreateOrgForm() {
         </div>
       </section>
 
-      <label className="flex items-center gap-3 rounded-lg border border-line p-4 text-sm">
+      <label className="flex items-center gap-3 rounded-xl border border-line bg-surface-2 p-4 text-sm">
         <input
           type="checkbox"
           name="autoProvision"
@@ -163,11 +160,7 @@ export function CreateOrgForm() {
       )}
 
       <div className="flex justify-end">
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-        >
+        <button type="submit" disabled={loading} className="btn-grad px-6 py-2.5">
           {loading ? "Criando..." : "Criar organização"}
         </button>
       </div>
@@ -192,7 +185,7 @@ function SuccessCard({ result, onClose }: { result: Result; onClose: () => void 
       </div>
 
       {prov && (
-        <div className="rounded-xl border border-line bg-bg/60 p-6 backdrop-blur-sm">
+        <div className="card p-6">
           <h3 className="text-base font-semibold">Provisionamento externo</h3>
           <div className="mt-3 space-y-2 text-sm">
             <ProvBlock title="Chatwoot" data={prov.chatwoot} />
@@ -208,7 +201,7 @@ function SuccessCard({ result, onClose }: { result: Result; onClose: () => void 
       <button
         type="button"
         onClick={onClose}
-        className="rounded-lg border border-line px-5 py-2 text-sm font-medium text-fg transition hover:border-brand"
+        className="rounded-xl border border-line px-5 py-2 text-sm font-medium text-fg transition hover:border-brand"
       >
         Criar outra
       </button>
@@ -283,7 +276,7 @@ function Field({
         placeholder={placeholder}
         required={required}
         autoComplete="off"
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       />
       {help && <p className="mt-1 text-[11px] leading-snug text-muted">{help}</p>}
     </label>
@@ -306,11 +299,7 @@ function SelectField({
       <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">
         {label}
       </span>
-      <select
-        name={name}
-        defaultValue=""
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
-      >
+      <select name={name} defaultValue="" className="input-base">
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

@@ -15,9 +15,9 @@ export const dynamic = "force-dynamic";
 export default function AtendimentoKioskPage() {
   return (
     <>
-      <header className="flex shrink-0 items-center justify-between border-b border-line bg-bg/80 px-4 py-2 backdrop-blur">
+      <header className="flex shrink-0 items-center justify-between border-b border-line bg-surface/80 px-4 py-2 backdrop-blur">
         <div className="flex items-center gap-3">
-          <span className="rounded-md bg-brand/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">Tela cheia</span>
+          <span className="rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white" style={{ background: "var(--grad-brand)" }}>Tela cheia</span>
           <h1 className="text-sm font-semibold">Atendimento</h1>
           <span className="text-xs text-muted">WhatsApp, e-mail e site</span>
         </div>
@@ -26,7 +26,7 @@ export default function AtendimentoKioskPage() {
             href="/app/atendimento"
             target="_blank"
             rel="noreferrer"
-            className="rounded-md border border-line px-3 py-1 text-xs text-muted transition hover:border-brand hover:text-fg"
+            className="rounded-md border border-line px-3 py-1 text-xs text-muted transition hover:border-brand/60 hover:text-fg"
             title="Abrir versão normal (com menu lateral) em outra aba"
           >
             Voltar ao app

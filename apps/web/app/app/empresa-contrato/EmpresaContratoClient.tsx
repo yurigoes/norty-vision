@@ -34,12 +34,12 @@ export function EmpresaContratoClient() {
   }
 
   if (!loaded) return <p className="text-sm text-muted">Carregando...</p>;
-  if (items.length === 0) return <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum contrato no momento.</p>;
+  if (items.length === 0) return <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhum contrato no momento.</p>;
 
   return (
     <div className="space-y-3">
       {items.map((c) => (
-        <div key={c.id} className="rounded-xl border border-line bg-bg/60 p-5">
+        <div key={c.id} className="card">
           <div className="flex items-center justify-between">
             <div>
               <p className="font-medium">{c.title}{c.version ? ` · v${c.version}` : ""}</p>
@@ -48,25 +48,25 @@ export function EmpresaContratoClient() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <a href={`/api/org-contracts/${c.id}/html`} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-1.5 text-xs transition hover:border-brand">Ler / imprimir</a>
+              <a href={`/api/org-contracts/${c.id}/html`} target="_blank" rel="noreferrer" className="rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">Ler / imprimir</a>
               {c.status === "accepted"
                 ? <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase text-green-300">aceito</span>
-                : <button onClick={() => setAccepting(accepting === c.id ? null : c.id)} className="rounded-lg bg-brand px-4 py-1.5 text-sm font-semibold text-white">{accepting === c.id ? "Fechar" : "Aceitar"}</button>}
+                : <button onClick={() => setAccepting(accepting === c.id ? null : c.id)} className="btn-grad !py-1.5">{accepting === c.id ? "Fechar" : "Aceitar"}</button>}
             </div>
           </div>
           {accepting === c.id && c.status !== "accepted" && (
             <div className="mt-4 space-y-2 border-t border-line/50 pt-4">
               <p className="text-xs text-muted">Leia o contrato (botão "Ler / imprimir") antes de aceitar.</p>
               <div className="flex flex-wrap gap-2">
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome completo" className="flex-1 rounded border border-line bg-bg/60 px-3 py-2 text-sm" />
-                <input value={doc} onChange={(e) => setDoc(e.target.value)} placeholder="CPF (opcional)" className="w-40 rounded border border-line bg-bg/60 px-3 py-2 text-sm" />
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome completo" className="input-base flex-1" />
+                <input value={doc} onChange={(e) => setDoc(e.target.value)} placeholder="CPF (opcional)" className="input-base w-40" />
               </div>
               <label className="flex items-start gap-2 text-sm">
                 <input type="checkbox" checked={accepted} onChange={(e) => setAccepted(e.target.checked)} className="mt-0.5 h-4 w-4" />
                 <span>Li e concordo com todos os termos deste contrato. Este aceite eletrônico tem validade legal (Lei 14.063/2020).</span>
               </label>
               {err && <p className="text-xs text-red-300">{err}</p>}
-              <button onClick={() => accept(c.id)} disabled={busy} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Registrando..." : "Aceitar contrato"}</button>
+              <button onClick={() => accept(c.id)} disabled={busy} className="btn-grad px-5">{busy ? "Registrando..." : "Aceitar contrato"}</button>
             </div>
           )}
         </div>

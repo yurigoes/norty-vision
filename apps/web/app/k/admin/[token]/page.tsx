@@ -31,8 +31,8 @@ export default function KioskAdmin() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  if (err) return <div className="flex min-h-screen items-center justify-center bg-[#0b1020] text-2xl text-red-300">{err}</div>;
-  if (!data) return <div className="flex min-h-screen items-center justify-center bg-[#0b1020] text-2xl text-slate-400">Carregando painel…</div>;
+  if (err) return <div className="flex min-h-screen items-center justify-center bg-[#060a15] text-2xl text-red-300">{err}</div>;
+  if (!data) return <div className="flex min-h-screen items-center justify-center bg-[#060a15] text-2xl text-slate-400">Carregando painel…</div>;
 
   const fin = data.financeiro ?? {};
   const c = data.contas ?? {};
@@ -41,19 +41,19 @@ export default function KioskAdmin() {
   const listas = data.listas ?? {};
 
   const Kpi = ({ label, value, cls, sub }: { label: string; value: any; cls?: string; sub?: string }) => (
-    <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-4">
-      <p className="text-xs uppercase tracking-wider text-white/50">{label}</p>
-      <p className={`mt-1 text-3xl font-black ${cls ?? "text-white"}`}>{value}</p>
+    <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-5 py-4 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)] ring-1 ring-inset ring-white/5">
+      <p className="text-xs font-medium uppercase tracking-wider text-white/50">{label}</p>
+      <p className={`mt-1 text-3xl font-black tabular-nums ${cls ?? "text-white"}`}>{value}</p>
       {sub && <p className="mt-0.5 text-xs text-white/40">{sub}</p>}
     </div>
   );
 
   const List = ({ title, items, color, right }: { title: string; items: any[]; color: string; right: (o: any) => any }) => (
-    <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/10 bg-white/5 p-4">
+    <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-white/10 bg-white/[0.06] p-4 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.6)] ring-1 ring-inset ring-white/5">
       <h2 className={`mb-2 text-lg font-bold ${color}`}>{title} <span className="text-white/40">({items.length})</span></h2>
       <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
         {items.length === 0 ? <p className="text-sm text-white/30">—</p> : items.map((o, i) => (
-          <div key={i} className="flex items-center justify-between gap-2 rounded-lg bg-black/20 px-3 py-2">
+          <div key={i} className="flex items-center justify-between gap-2 rounded-xl border border-white/5 bg-black/25 px-3 py-2.5 transition hover:border-white/15 hover:bg-black/30">
             <div className="min-w-0"><p className="truncate text-base font-semibold text-white">{o.nome}</p><p className="text-xs text-white/50">{o.venc ?? o.code ?? ""}{o.status ? ` · ${o.status}` : ""}</p></div>
             <span className="shrink-0 text-sm font-semibold text-white/90">{right(o)}</span>
           </div>
@@ -63,11 +63,17 @@ export default function KioskAdmin() {
   );
 
   return (
-    <div className="flex h-screen flex-col gap-4 overflow-hidden bg-[#0b1020] p-5 text-white">
-      <header className="flex items-center justify-between">
+    <div
+      className="flex h-screen flex-col gap-4 overflow-hidden p-5 text-white"
+      style={{
+        background:
+          "radial-gradient(900px 520px at 82% -6%, rgba(37,99,235,.20), transparent 60%), radial-gradient(760px 520px at 6% 106%, rgba(6,182,212,.14), transparent 58%), linear-gradient(180deg, #060a15 0%, #080d1a 100%)",
+      }}
+    >
+      <header className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-3 ring-1 ring-inset ring-white/5">
         <div className="flex items-center gap-3">
           {data.org?.logoUrl && <img src={data.org.logoUrl} alt="" className="h-12 w-auto object-contain" />}
-          <div><h1 className="text-2xl font-bold">{data.org?.name ?? "Painel"}</h1><p className="text-sm text-white/50">Painel geral</p></div>
+          <div><h1 className="text-2xl font-extrabold tracking-tight">{data.org?.name ?? "Painel"}</h1><p className="text-sm text-white/50">Painel geral</p></div>
         </div>
         <div className="flex items-center gap-4">
           <LiveBall tick={tick} />

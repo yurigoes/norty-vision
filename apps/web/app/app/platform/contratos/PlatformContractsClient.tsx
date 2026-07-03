@@ -54,34 +54,34 @@ function Contratos({ contracts, templates, orgs, onChanged }: { contracts: Contr
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-2 rounded-xl border border-line bg-bg/60 p-4">
+      <div className="card flex flex-wrap items-end gap-3">
         <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Empresa</span>
-          <select value={orgId} onChange={(e) => setOrgId(e.target.value)} className="rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">
+          <select value={orgId} onChange={(e) => setOrgId(e.target.value)} className="input-base w-auto py-1.5">
             {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
         </label>
         <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Modelo</span>
-          <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} className="rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">
+          <select value={templateId} onChange={(e) => setTemplateId(e.target.value)} className="input-base w-auto py-1.5">
             {templates.filter((t) => t.isActive).map((t) => <option key={t.id} value={t.id}>{t.title} (v{t.version})</option>)}
           </select>
         </label>
-        <button onClick={assign} disabled={busy || !templateId} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Enviar contrato</button>
+        <button onClick={assign} disabled={busy || !templateId} className="btn-grad">Enviar contrato</button>
         {msg && <span className="text-xs text-muted">{msg}</span>}
       </div>
 
-      {contracts.length === 0 ? <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum contrato enviado.</p> : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+      {contracts.length === 0 ? <p className="card text-sm text-muted">Nenhum contrato enviado.</p> : (
+        <div className="card overflow-x-auto p-0">
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted">
+            <thead><tr className="border-b border-line text-left text-[10px] uppercase tracking-wider text-muted">
               <th className="px-4 py-3">Empresa</th><th className="px-4 py-3">Contrato</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Aceite</th><th className="px-4 py-3"></th>
             </tr></thead>
             <tbody>
               {contracts.map((c) => (
-                <tr key={c.id} className="border-t border-line/50">
+                <tr key={c.id} className="border-t border-line/60 transition hover:bg-surface-2">
                   <td className="px-4 py-3 font-medium">{c.organizationName}</td>
                   <td className="px-4 py-3">{c.title}{c.version ? ` · v${c.version}` : ""}</td>
                   <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${c.status === "accepted" ? "bg-green-500/20 text-green-300" : c.status === "canceled" ? "bg-red-500/20 text-red-300" : "bg-orange-500/20 text-orange-300"}`}>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${c.status === "accepted" ? "bg-success/15 text-success" : c.status === "canceled" ? "bg-danger/15 text-danger" : "bg-warn/15 text-warn"}`}>
                       {c.status === "accepted" ? "aceito" : c.status === "canceled" ? "cancelado" : "pendente"}
                     </span>
                   </td>
@@ -89,7 +89,7 @@ function Contratos({ contracts, templates, orgs, onChanged }: { contracts: Contr
                   <td className="px-4 py-3">
                     <div className="flex gap-3">
                       <a href={`/api/platform/contracts/${c.id}/html`} target="_blank" rel="noreferrer" className="text-xs text-brand hover:underline">Ver</a>
-                      {c.status === "pending" && <button onClick={() => cancel(c.id)} className="text-xs text-muted hover:text-red-300">Cancelar</button>}
+                      {c.status === "pending" && <button onClick={() => cancel(c.id)} className="text-xs text-muted transition hover:text-danger">Cancelar</button>}
                     </div>
                   </td>
                 </tr>
@@ -125,40 +125,40 @@ function Modelos({ templates, onChanged }: { templates: Template[]; onChanged: (
   const open = creating || editing;
   return (
     <div className="space-y-4">
-      {!open && <button onClick={openCreate} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">+ Novo modelo</button>}
+      {!open && <button onClick={openCreate} className="btn-grad">+ Novo modelo</button>}
 
       {open && (
-        <div className="space-y-3 rounded-xl border border-line bg-bg/60 p-5">
+        <div className="card space-y-3">
           <h2 className="text-lg font-semibold">{editing ? "Editar modelo" : "Novo modelo"}</h2>
           <div className="grid gap-3 sm:grid-cols-3">
             <Inp label="Título" value={f.title} onChange={(v) => setF({ ...f, title: v })} />
             <Inp label="Versão" value={f.version} onChange={(v) => setF({ ...f, version: v })} />
             <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Tipo</span>
-              <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm">
+              <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })} className="input-base py-1.5">
                 <option value="onboarding">Onboarding</option><option value="aditivo">Aditivo</option><option value="servico_extra">Serviço extra</option>
               </select>
             </label>
           </div>
           <Inp label="Descrição" value={f.description} onChange={(v) => setF({ ...f, description: v })} />
           <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Conteúdo (markdown + variáveis)</span>
-            <textarea value={f.bodyMarkdown} onChange={(e) => setF({ ...f, bodyMarkdown: e.target.value })} rows={12} className="w-full rounded border border-line bg-bg/60 px-3 py-2 font-mono text-xs" />
+            <textarea value={f.bodyMarkdown} onChange={(e) => setF({ ...f, bodyMarkdown: e.target.value })} rows={12} className="input-base font-mono text-xs" />
           </label>
           <p className="text-[11px] text-muted">Variáveis: {"{{contratante.razao_social}}"}, {"{{contratante.cnpj}}"}, {"{{contratante.email}}"}, {"{{contratante.telefone}}"}, {"{{data.hoje}}"}.</p>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.isActive} onChange={(e) => setF({ ...f, isActive: e.target.checked })} /> Ativo</label>
-          {err && <p className="text-xs text-red-300">{err}</p>}
+          {err && <p className="text-xs text-danger">{err}</p>}
           <div className="flex justify-end gap-2">
-            <button onClick={() => { setCreating(false); setEditing(null); }} className="rounded-lg border border-line px-4 py-2 text-sm">Cancelar</button>
-            <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">Salvar</button>
+            <button onClick={() => { setCreating(false); setEditing(null); }} className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand">Cancelar</button>
+            <button onClick={save} disabled={busy} className="btn-grad">Salvar</button>
           </div>
         </div>
       )}
 
-      {templates.length === 0 ? <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum modelo.</p> : (
-        <div className="space-y-2">
+      {templates.length === 0 ? <p className="card text-sm text-muted">Nenhum modelo.</p> : (
+        <div className="space-y-3">
           {templates.map((t) => (
-            <div key={t.id} className="flex items-center justify-between rounded-lg border border-line bg-bg/60 p-4">
+            <div key={t.id} className="card flex items-center justify-between">
               <div>
-                <p className="font-medium">{t.title} <span className="ml-1 rounded-full bg-line px-2 py-0.5 text-[10px] uppercase text-muted">{KIND_LABEL[t.kind] ?? t.kind}</span>{!t.isActive && <span className="ml-1 text-[10px] text-muted">(inativo)</span>}</p>
+                <p className="font-medium">{t.title} <span className="ml-1 rounded-full bg-surface-2 px-2 py-0.5 text-[10px] uppercase text-muted">{KIND_LABEL[t.kind] ?? t.kind}</span>{!t.isActive && <span className="ml-1 text-[10px] text-muted">(inativo)</span>}</p>
                 <p className="text-xs text-muted">v{t.version}{t.description ? ` · ${t.description}` : ""}</p>
               </div>
               <button onClick={() => openEdit(t)} className="text-xs text-brand hover:underline">Editar</button>
@@ -192,7 +192,7 @@ function Inp({ label, value, onChange }: { label: string; value: string; onChang
   return (
     <label className="block">
       <span className="mb-1 block text-[10px] uppercase text-muted">{label}</span>
-      <input value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+      <input value={value} onChange={(e) => onChange(e.target.value)} className="input-base py-1.5" />
     </label>
   );
 }

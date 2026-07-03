@@ -50,7 +50,7 @@ export default async function SignupPage({
         <SignupForm plans={plans} initialPlanSlug={selected?.slug} />
 
         {selected && (
-          <aside className="rounded-2xl border border-line bg-bg/60 p-6 h-fit sticky top-8">
+          <aside className="glass sticky top-8 h-fit rounded-2xl p-6">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-muted">
               Seu plano
             </h3>

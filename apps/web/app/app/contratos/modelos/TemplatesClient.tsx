@@ -183,7 +183,7 @@ export function TemplatesClient({
       {!showForm && !editing && (
         <button
           onClick={startNew}
-          className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white"
+          className="btn-grad"
         >
           + Novo modelo
         </button>
@@ -192,7 +192,7 @@ export function TemplatesClient({
       {(showForm || editing) && (
         <form
           onSubmit={onSubmit}
-          className="space-y-5 rounded-xl border border-line bg-bg/60 p-6"
+          className="card space-y-5"
         >
           <h2 className="text-lg font-semibold">
             {editing ? `Editar — ${editing.title}` : "Novo modelo"}
@@ -235,7 +235,7 @@ export function TemplatesClient({
             <input
               name="description"
               defaultValue={editing?.description ?? ""}
-              className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+              className="input-base"
             />
           </label>
 
@@ -249,7 +249,7 @@ export function TemplatesClient({
             </span>
 
             {/* paleta de variáveis do sistema (preenchidas na assinatura) */}
-            <div className="mb-2 space-y-2 rounded-lg border border-line bg-bg/40 p-3">
+            <div className="mb-2 space-y-2 rounded-xl border border-line bg-surface-2 p-3">
               <p className="text-[11px] text-muted">
                 Clique para inserir variáveis do sistema (preenchidas automaticamente na assinatura):
               </p>
@@ -277,7 +277,7 @@ export function TemplatesClient({
               defaultValue={editing?.bodyMarkdown ?? ""}
               required
               rows={14}
-              className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 font-mono text-xs text-fg outline-none focus:border-brand"
+              className="input-base font-mono text-xs"
             />
           </label>
 
@@ -328,7 +328,7 @@ export function TemplatesClient({
               ))}
             </div>
             {fields.length === 0 ? (
-              <p className="rounded-lg border border-line bg-bg/40 p-4 text-xs text-muted">
+              <p className="rounded-xl border border-line bg-surface-2 p-4 text-xs text-muted">
                 Nenhum campo definido. Adicione um campo pra cada placeholder
                 usado no corpo do contrato.
               </p>
@@ -337,7 +337,7 @@ export function TemplatesClient({
                 {fields.map((f, i) => (
                   <div
                     key={i}
-                    className="rounded-lg border border-line bg-bg/40 p-4"
+                    className="rounded-xl border border-line bg-surface-2 p-4"
                   >
                     <div className="grid gap-3 sm:grid-cols-4">
                       <input
@@ -416,14 +416,14 @@ export function TemplatesClient({
             <button
               type="button"
               onClick={reset}
-              className="rounded-lg border border-line px-4 py-2 text-sm"
+              className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="btn-grad disabled:opacity-50"
             >
               Salvar
             </button>
@@ -432,25 +432,25 @@ export function TemplatesClient({
       )}
 
       {initialTemplates.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">
+        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">
           Nenhum modelo cadastrado.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
-                <th className="px-4 py-3">Título</th>
-                <th className="px-4 py-3">Slug</th>
-                <th className="px-4 py-3">Escopo</th>
-                <th className="px-4 py-3">Assinatura</th>
-                <th className="px-4 py-3">Campos</th>
-                <th className="px-4 py-3">Ações</th>
+              <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
+                <th className="px-4 py-3 font-medium">Título</th>
+                <th className="px-4 py-3 font-medium">Slug</th>
+                <th className="px-4 py-3 font-medium">Escopo</th>
+                <th className="px-4 py-3 font-medium">Assinatura</th>
+                <th className="px-4 py-3 font-medium">Campos</th>
+                <th className="px-4 py-3 font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
               {initialTemplates.map((t) => (
-                <tr key={t.id} className="border-t border-line/50">
+                <tr key={t.id} className="border-t border-line transition hover:bg-surface-2">
                   <td className="px-4 py-3 font-medium">
                     {t.title}
                     {t.description && (
@@ -521,7 +521,7 @@ function Field({
         required={required}
         defaultValue={defaultValue}
         autoComplete="off"
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       />
       {help && <p className="mt-1 text-[11px] leading-snug text-muted">{help}</p>}
     </label>
@@ -547,7 +547,7 @@ function SelectField({
       <select
         name={name}
         defaultValue={defaultValue ?? ""}
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

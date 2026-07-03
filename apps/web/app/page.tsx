@@ -55,16 +55,16 @@ export default async function HomePage() {
         <span className="inline-block rounded-full border border-brand/40 bg-brand/10 px-4 py-1 text-xs font-semibold uppercase tracking-wider text-brand">
           SaaS multi-loja · Óticas, clínicas e varejo
         </span>
-        <h1 className="mx-auto mt-6 max-w-3xl bg-gradient-to-br from-brand via-fg to-brand bg-clip-text text-5xl font-semibold leading-tight tracking-tight text-transparent md:text-6xl">
+        <h1 className="text-gradient-brand mx-auto mt-6 max-w-3xl text-5xl font-semibold leading-tight tracking-tight md:text-6xl">
           Toda a sua operação num só sistema.
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted">
           {s.tagline ?? "Agenda, vendas, crediário, cobrança, ótica e RH — com WhatsApp integrado, contratos com assinatura digital e relatórios de verdade. Sem planilha, sem gambiarra."}
         </p>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-          <Link href="/apresentacao" className="rounded-lg bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90">▶ Ver demonstração</Link>
-          <a href="#solucoes" className="rounded-lg border border-line px-6 py-3 text-sm font-semibold transition hover:border-brand">Soluções</a>
-          <Link href="/planos" className="rounded-lg border border-line px-6 py-3 text-sm font-semibold transition hover:border-brand">Ver planos</Link>
+          <Link href="/apresentacao" className="btn-grad px-6 py-3 text-sm shadow-[0_10px_28px_-10px_rgb(var(--brand)/0.7)]">▶ Ver demonstração</Link>
+          <a href="#solucoes" className="rounded-xl border border-line bg-surface px-6 py-3 text-sm font-semibold transition hover:border-brand/60">Soluções</a>
+          <Link href="/planos" className="rounded-xl border border-line bg-surface px-6 py-3 text-sm font-semibold transition hover:border-brand/60">Ver planos</Link>
         </div>
         <p className="mt-4 text-xs text-muted">14 dias grátis · sem cartão no cadastro · cancele quando quiser</p>
       </section>
@@ -77,7 +77,7 @@ export default async function HomePage() {
             ["Crediário próprio", "Venda parcelada com análise, contrato assinado e cobrança automática."],
             ["RH completo", "Ponto com selfie e geolocalização, holerite, escala, férias e empréstimos."],
           ].map(([t, d]) => (
-            <div key={t} className="rounded-2xl border border-line bg-bg/60 p-5">
+            <div key={t} className="card">
               <p className="font-semibold">{t}</p>
               <p className="mt-2 text-sm text-muted">{d}</p>
             </div>
@@ -93,31 +93,32 @@ export default async function HomePage() {
         </header>
         <div className="mt-10 grid gap-5 md:grid-cols-2">
           {/* Ótica completa */}
-          <div className="rounded-2xl border border-brand bg-brand/5 p-6 shadow-lg shadow-brand/10">
-            <span className="rounded-full bg-brand px-3 py-1 text-[10px] font-semibold uppercase text-white">Mais completo</span>
-            <h3 className="mt-3 text-xl font-semibold">Ótica completa 👓</h3>
-            <p className="mt-2 text-sm text-muted">Tudo o que a sua ótica usa no dia a dia, integrado e com WhatsApp:</p>
-            <ul className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
+          <div className="relative overflow-hidden rounded-2xl border border-brand/60 bg-surface p-6 shadow-[var(--shadow-md)] ring-1 ring-brand/10">
+            <div className="pointer-events-none absolute inset-0 opacity-[0.08]" style={{ background: "var(--grad-brand)" }} />
+            <span className="btn-grad relative px-3 py-1 text-[10px] uppercase">Mais completo</span>
+            <h3 className="relative mt-3 text-xl font-semibold">Ótica completa 👓</h3>
+            <p className="relative mt-2 text-sm text-muted">Tudo o que a sua ótica usa no dia a dia, integrado e com WhatsApp:</p>
+            <ul className="relative mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm">
               {["Agenda + lembretes", "Vendas (PDV)", "Caixa diário", "Clientes", "Atendimento (IA)", "Chamados / OS", "Mala direta", "Produtos & vitrine", "Crediário próprio", "Cobrança automática", "Pedidos de lente", "RH & ponto"].map((x) => (
                 <li key={x} className="flex items-center gap-2"><span className="text-brand">✓</span>{x}</li>
               ))}
             </ul>
-            <Link href="/planos" className="mt-6 inline-block rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-white transition hover:opacity-90">Ver planos completos</Link>
+            <Link href="/planos" className="btn-grad relative mt-6 inline-block px-5 py-2.5 text-sm">Ver planos completos</Link>
           </div>
 
           {/* Cards menores */}
           <div className="grid gap-5">
-            <div className="rounded-2xl border border-line bg-bg/60 p-6">
+            <div className="card">
               <h3 className="text-lg font-semibold">Só atendimento 🎧</h3>
               <p className="mt-2 text-sm text-muted">Central de WhatsApp com <b>IA integrada</b>: tria, responde, mostra produtos, agenda e transfere pro humano. Vários números, fila, supervisão e relatórios — sem precisar do resto.</p>
               <Link href="/apresentacao" className="mt-3 inline-block text-sm font-semibold text-brand hover:underline">Ver como funciona →</Link>
             </div>
-            <div className="rounded-2xl border border-line bg-bg/60 p-6">
+            <div className="card">
               <h3 className="text-lg font-semibold">Só agenda 📅</h3>
               <p className="mt-2 text-sm text-muted">Para qualquer empresa que marca horário: a agenda confirma, lembra e reagenda pelo WhatsApp sozinha. Menos falta, mais horário ocupado.</p>
               <Link href="/apresentacao" className="mt-3 inline-block text-sm font-semibold text-brand hover:underline">Ver como funciona →</Link>
             </div>
-            <div className="rounded-2xl border border-line bg-bg/60 p-6">
+            <div className="card">
               <h3 className="text-lg font-semibold">Monte do seu jeito 🧩</h3>
               <p className="mt-2 text-sm text-muted">Escolha um plano e ative só os módulos que usa. Precisou de mais? Contrate <b>módulos avulsos (à la carte)</b> a qualquer momento — sem trocar de plano.</p>
               <Link href="/planos" className="mt-3 inline-block text-sm font-semibold text-brand hover:underline">Ver planos →</Link>
@@ -134,7 +135,7 @@ export default async function HomePage() {
               ["🧑‍💼 Portal do funcionário (RH)", "Ponto com selfie, holerite, escala, férias, vale, atestado e comissões — tudo na mão do colaborador."],
               ["🏭 Portal do fornecedor", "Médicos e laboratórios recebem pedidos de lente, atualizam status e veem repasses, com login 2FA por WhatsApp."],
             ].map(([t, d]) => (
-              <div key={t} className="rounded-2xl border border-line bg-bg/60 p-5">
+              <div key={t} className="card">
                 <p className="font-semibold">{t}</p>
                 <p className="mt-2 text-sm text-muted">{d}</p>
               </div>
@@ -151,7 +152,7 @@ export default async function HomePage() {
         </header>
         <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {MODULE_GROUPS.map((g) => (
-            <div key={g.group} className="rounded-2xl border border-line bg-bg/60 p-6">
+            <div key={g.group} className="card">
               <h3 className="text-lg font-semibold text-brand">{g.group}</h3>
               <p className="mt-1 text-sm text-muted">{GROUP_BLURB[g.group]}</p>
               <ul className="mt-4 space-y-1.5 text-sm">
@@ -175,8 +176,8 @@ export default async function HomePage() {
             {plans.map((p) => {
               const price = (p.priceCents / 100).toLocaleString("pt-BR", { style: "currency", currency: p.currency });
               return (
-                <div key={p.id} className={`relative flex flex-col rounded-2xl border bg-bg/60 p-6 ${p.highlight ? "border-brand shadow-lg shadow-brand/20" : "border-line"}`}>
-                  {p.highlight && <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-brand px-3 py-1 text-[10px] font-semibold uppercase text-white">{p.highlight}</div>}
+                <div key={p.id} className={`relative flex flex-col rounded-2xl border bg-surface p-6 shadow-[var(--shadow-sm)] transition duration-300 hover:-translate-y-1 ${p.highlight ? "border-brand/60 shadow-[var(--shadow-lg)] ring-1 ring-brand/15" : "border-line hover:border-brand/50"}`}>
+                  {p.highlight && <div className="btn-grad absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 text-[10px] uppercase">{p.highlight}</div>}
                   <h3 className="text-xl font-semibold">{p.name}</h3>
                   {p.description && <p className="mt-1 text-sm text-muted">{p.description}</p>}
                   <div className="mt-5 flex items-baseline gap-1"><span className="text-4xl font-semibold">{price}</span><span className="text-sm text-muted">{p.interval === "yearly" ? "/ano" : "/mês"}</span></div>
@@ -185,7 +186,7 @@ export default async function HomePage() {
                     {p.features.slice(0, 8).map((k) => <li key={k} className="flex gap-2"><span className="text-brand">✓</span>{moduleLabel(k)}</li>)}
                     {(p.extraHighlights ?? []).map((h, i) => <li key={i} className="flex gap-2"><span className="text-brand">★</span>{h}</li>)}
                   </ul>
-                  <Link href={`/signup?plan=${p.slug}`} className={`mt-8 block rounded-lg py-3 text-center text-sm font-semibold transition ${p.highlight ? "bg-brand text-white hover:opacity-90" : "border border-line hover:border-brand"}`}>Começar grátis</Link>
+                  <Link href={`/signup?plan=${p.slug}`} className={`mt-8 block rounded-xl py-3 text-center text-sm font-semibold transition ${p.highlight ? "btn-grad" : "border border-line hover:border-brand/60"}`}>Começar grátis</Link>
                 </div>
               );
             })}

@@ -26,7 +26,7 @@ export function CrmClient() {
             <button key={k} onClick={() => setTab(k as any)} className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${tab === k ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"}`}>{lbl}</button>
           ))}
         </nav>
-        <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">+ Lead</button>
+        <button onClick={() => setCreating(true)} className="btn-grad">+ Lead</button>
       </div>
 
       {tab === "fila" && <LeadList key={`fila${reloadKey}`} view="fila" onOpen={setOpenId} />}
@@ -50,19 +50,19 @@ function LeadList({ view, onOpen }: { view: "fila" | "mine"; onOpen: (id: string
     if (r.ok) { dialog.toast("Lead pego (vá em Acompanhamento) ✅", "success"); load(); } else dialog.toast("Falha", "error");
   }
   if (items === null) return <p className="text-sm text-muted">Carregando…</p>;
-  if (items.length === 0) return <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-muted">{view === "fila" ? "Sem leads novos 👍" : "Você ainda não pegou nenhum lead."}</p>;
+  if (items.length === 0) return <p className="card p-10 text-center text-muted">{view === "fila" ? "Sem leads novos 👍" : "Você ainda não pegou nenhum lead."}</p>;
   return (
     <div className="space-y-2">
       {items.map((l) => (
-        <div key={l.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-bg/60 p-4">
+        <div key={l.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
           <button onClick={() => onOpen(l.id)} className="text-left">
             <p className="font-medium">{CHAN_ICON[l.source] ?? "•"} {l.name} <span className="ml-1 text-xs text-muted">{l.phone ?? ""}</span> <span className="ml-1 rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-brand">{STAGE_LABEL[l.stage] ?? l.stage}</span></p>
             <p className="text-xs text-muted">{l.source}{l.protocol ? ` · protocolo ${l.protocol}` : ""} · atualizado {fmt(l.lastEventAt)}{l.nextActionAt ? ` · ⏰ ${fmt(l.nextActionAt)}` : ""}</p>
           </button>
           <div className="flex items-center gap-2">
-            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${l.score >= 70 ? "bg-green-500/15 text-green-300" : l.score >= 50 ? "bg-amber-500/15 text-amber-300" : "bg-line text-muted"}`}>score {l.score}</span>
-            {view === "fila" && <button onClick={() => pegar(l.id)} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white">Pegar</button>}
-            <button onClick={() => onOpen(l.id)} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand">Abrir</button>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${l.score >= 70 ? "bg-success/15 text-success" : l.score >= 50 ? "bg-warn/15 text-warn" : "bg-surface-2 text-muted"}`}>score {l.score}</span>
+            {view === "fila" && <button onClick={() => pegar(l.id)} className="btn-grad px-3 py-1.5 text-xs">Pegar</button>}
+            <button onClick={() => onOpen(l.id)} className="rounded-xl border border-line px-3 py-1.5 text-xs font-semibold hover:border-brand hover:text-brand">Abrir</button>
           </div>
         </div>
       ))}
@@ -77,11 +77,11 @@ function Board({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <div className="flex gap-3 overflow-x-auto pb-2">
       {data.stages.map((s) => (
-        <div key={s} className="w-56 shrink-0 rounded-xl border border-line bg-bg/40 p-2">
+        <div key={s} className="w-56 shrink-0 rounded-2xl border border-line bg-surface-2 p-2">
           <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted">{STAGE_LABEL[s] ?? s} <span className="text-muted/60">({(data.byStage[s] ?? []).length})</span></p>
           <div className="space-y-2">
             {(data.byStage[s] ?? []).map((l) => (
-              <button key={l.id} onClick={() => onOpen(l.id)} className="block w-full rounded-lg border border-line bg-bg/70 p-2 text-left text-xs hover:border-brand">
+              <button key={l.id} onClick={() => onOpen(l.id)} className="block w-full rounded-xl border border-line bg-surface p-2 text-left text-xs transition hover:border-brand hover:shadow-sm">
                 <p className="font-medium">{l.name}</p>
                 <p className="text-[10px] text-muted">{CHAN_ICON[l.source] ?? "•"} score {l.score}</p>
               </button>
@@ -101,12 +101,12 @@ function Supervision() {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Kpi k="Leads novos" v={d.novos ?? 0} cls="text-sky-300" />
-        <Kpi k="Ganhos (24h)" v={d.ganhosHoje ?? 0} cls="text-green-400" />
-        <Kpi k="Follow-ups vencidos" v={d.followupsVencidos ?? 0} cls={(d.followupsVencidos ?? 0) > 0 ? "text-red-400" : "text-white"} />
+        <Kpi k="Leads novos" v={d.novos ?? 0} cls="text-brand-2" />
+        <Kpi k="Ganhos (24h)" v={d.ganhosHoje ?? 0} cls="text-success" />
+        <Kpi k="Follow-ups vencidos" v={d.followupsVencidos ?? 0} cls={(d.followupsVencidos ?? 0) > 0 ? "text-danger" : "text-fg"} />
         <Kpi k="Em negociação" v={sc["negociacao"] ?? 0} />
       </div>
-      <div className="rounded-xl border border-line bg-bg/60 p-4">
+      <div className="card p-5">
         <p className="mb-2 text-sm font-medium">Por etapa</p>
         <div className="flex flex-wrap gap-2">
           {Object.keys(STAGE_LABEL).map((s) => (
@@ -117,7 +117,7 @@ function Supervision() {
     </div>
   );
 }
-function Kpi({ k, v, cls }: { k: string; v: any; cls?: string }) { return <div className="rounded-2xl border border-line bg-bg/60 px-4 py-3"><p className="text-[10px] uppercase tracking-wider text-muted">{k}</p><p className={`mt-1 text-2xl font-black ${cls ?? "text-fg"}`}>{v}</p></div>; }
+function Kpi({ k, v, cls }: { k: string; v: any; cls?: string }) { return <div className="card px-5 py-4"><p className="text-xs uppercase tracking-wider text-muted">{k}</p><p className={`mt-1 text-3xl font-semibold ${cls ?? "text-fg"}`}>{v}</p></div>; }
 
 function NewLead({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
   const dialog = useDialog();
@@ -138,12 +138,12 @@ function NewLead({ onClose, onCreated }: { onClose: () => void; onCreated: (id: 
       <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Novo lead</h3>
         <div className="mt-3 space-y-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome / empresa" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="WhatsApp/telefone" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail (opcional)" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome / empresa" className="input-base" />
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="WhatsApp/telefone" className="input-base" />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail (opcional)" className="input-base" />
         </div>
         <div className="mt-4 flex gap-2">
-          <button disabled={busy} onClick={save} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Criar lead"}</button>
+          <button disabled={busy} onClick={save} className="btn-grad flex-1 py-2.5">{busy ? "Salvando…" : "Criar lead"}</button>
           <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
         </div>
       </div>
@@ -227,7 +227,7 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
         )}
 
         <p className="mt-4 text-[10px] uppercase tracking-wider text-muted">Linha do tempo</p>
-        <div className="mt-1 min-h-0 flex-1 space-y-2 overflow-y-auto rounded-lg border border-line/60 bg-bg/40 p-3">
+        <div className="mt-1 min-h-0 flex-1 space-y-2 overflow-y-auto rounded-xl border border-line bg-surface-2 p-3">
           {[...(lead.events ?? [])].reverse().map((e: any) => (
             <div key={e.id} className="flex gap-2 text-sm">
               <span className="mt-0.5 w-5 shrink-0 text-center">{KIND_ICON[e.kind] ?? "•"}</span>
@@ -262,10 +262,10 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
                 ))}
               </div>
             )}
-            {tabModal.then === "perdido" && <input value={lostReason} onChange={(e) => setLostReason(e.target.value)} placeholder="Motivo da perda (opcional)" className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />}
+            {tabModal.then === "perdido" && <input value={lostReason} onChange={(e) => setLostReason(e.target.value)} placeholder="Motivo da perda (opcional)" className="input-base mt-3" />}
             <div className="mt-4 flex gap-2">
-              <button onClick={() => setTabModal(null)} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
-              <button disabled={busy || !pickedTab} onClick={confirmTab} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">Confirmar tabulação</button>
+              <button onClick={() => setTabModal(null)} className="rounded-xl border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+              <button disabled={busy || !pickedTab} onClick={confirmTab} className="btn-grad flex-1 py-2.5">Confirmar tabulação</button>
             </div>
           </div>
         </div>

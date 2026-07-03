@@ -63,7 +63,7 @@ export default async function SaudePage() {
         />
       </section>
 
-      <section className="mb-8 rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Memória da API</h2>
         <div className="space-y-2 text-sm">
           <Row label="RSS" value={`${health?.memory.rss_mb ?? 0} MB`} />
@@ -76,7 +76,7 @@ export default async function SaudePage() {
         </div>
       </section>
 
-      <section className="mb-8 rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Host (VPS)</h2>
         <div className="space-y-2 text-sm">
           <Row label="Memória total" value={`${health?.os.total_mem_gb ?? "?"} GB`} />
@@ -86,7 +86,7 @@ export default async function SaudePage() {
         </div>
       </section>
 
-      <section className="rounded-xl border border-line bg-bg/60 p-6">
+      <section className="card">
         <h2 className="mb-4 text-lg font-semibold">Containers</h2>
         {containers.length === 0 ? (
           <p className="text-sm text-muted">
@@ -132,7 +132,7 @@ function DependencyCard({
   detail?: string;
 }) {
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-4 backdrop-blur-sm">
+    <div className="card">
       <div className="flex items-center justify-between">
         <span className="text-sm font-semibold">{label}</span>
         <span

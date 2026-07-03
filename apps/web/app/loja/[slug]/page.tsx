@@ -144,11 +144,11 @@ export default function StorefrontPage({ params }: { params: Promise<{ slug: str
 
       {/* grade de produtos */}
       {shown.length === 0 ? (
-        <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-sm text-muted">Nenhum produto publicado.</p>
+        <p className="rounded-2xl border border-line bg-surface p-8 text-center text-sm text-muted shadow-[var(--shadow-sm)]">Nenhum produto publicado.</p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {shown.map((p) => (
-            <div key={p.id} className="flex flex-col overflow-hidden rounded-xl border border-line bg-bg/60">
+            <div key={p.id} className="flex flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow-sm)] transition duration-300 hover:-translate-y-1 hover:border-brand/50 hover:shadow-[var(--shadow-md)]">
               <div className="aspect-square w-full bg-line/40">
                 {p.imageUrl ? (
                   <img src={p.imageUrl} alt={p.name} className="h-full w-full object-cover" />
@@ -202,7 +202,7 @@ export default function StorefrontPage({ params }: { params: Promise<{ slug: str
       {/* modal de checkout / lead */}
       {showCheckout && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" onClick={() => setShowCheckout(false)}>
-          <div className="w-full max-w-md rounded-t-2xl border border-line bg-bg p-5 shadow-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-t-2xl border border-line bg-surface p-5 shadow-2xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
             {done ? (
               <div className="text-center">
                 <h3 className="text-lg font-semibold">Pedido enviado! ✅</h3>
@@ -231,11 +231,11 @@ export default function StorefrontPage({ params }: { params: Promise<{ slug: str
                   <span>Total</span><span>{brl(cartTotal)}</span>
                 </p>
                 <div className="mt-4 space-y-2">
-                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
-                  <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="WhatsApp (com DDD)" inputMode="tel" className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
-                  <textarea value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Observação (opcional)" rows={2} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+                  <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Seu nome" className="input-base" />
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="WhatsApp (com DDD)" inputMode="tel" className="input-base" />
+                  <textarea value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Observação (opcional)" rows={2} className="input-base" />
                 </div>
-                {err && <p className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">{err}</p>}
+                {err && <p className="mt-2 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-medium text-danger">{err}</p>}
                 <button onClick={submit} disabled={sending} className="mt-3 w-full rounded-lg py-2.5 text-sm font-semibold text-white disabled:opacity-50" style={{ background: "rgb(var(--brand))" }}>
                   {sending ? "Enviando..." : "Enviar pedido pelo WhatsApp"}
                 </button>

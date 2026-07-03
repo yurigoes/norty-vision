@@ -208,7 +208,7 @@ export function AgendaClient({
   return (
     <div className="space-y-6">
       {/* Header de controle */}
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-bg/60 p-4">
+      <div className="glass flex flex-wrap items-center gap-3 rounded-2xl p-4">
         {/* só navega quando a data está completa e válida — evita o "deform"
             ao digitar o ano (cada tecla disparava um router.push e perdia foco) */}
         <input
@@ -217,12 +217,12 @@ export function AgendaClient({
           min="2020-01-01"
           max="2100-12-31"
           onChange={(e) => { const v = e.target.value; if (/^\d{4}-\d{2}-\d{2}$/.test(v) && Number(v.slice(0, 4)) >= 2020) setDate(v); }}
-          className="rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+          className="input-base w-auto"
         />
         <select
           value={selectedProfessionalId ?? ""}
           onChange={(e) => setProfessional(e.target.value || null)}
-          className="rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+          className="input-base w-auto"
         >
           <option value="">Todos profissionais</option>
           {professionals.map((p) => (
@@ -231,20 +231,20 @@ export function AgendaClient({
             </option>
           ))}
         </select>
-        <div className="flex items-center overflow-hidden rounded-lg border border-line">
-          <button onClick={() => setView("day")} className={`px-3 py-2 text-xs font-medium ${view === "day" ? "bg-brand text-white" : "text-muted"}`}>Dia</button>
-          <button onClick={() => setView("month")} className={`px-3 py-2 text-xs font-medium ${view === "month" ? "bg-brand text-white" : "text-muted"}`}>Mês</button>
+        <div className="flex items-center overflow-hidden rounded-xl border border-line">
+          <button onClick={() => setView("day")} className={`px-3 py-2 text-xs font-medium transition ${view === "day" ? "bg-grad-brand text-white" : "text-muted hover:bg-surface-2"}`}>Dia</button>
+          <button onClick={() => setView("month")} className={`px-3 py-2 text-xs font-medium transition ${view === "month" ? "bg-grad-brand text-white" : "text-muted hover:bg-surface-2"}`}>Mês</button>
         </div>
         <div className="ml-auto flex items-center gap-2">
           <button
             onClick={() => setShowOpenDay(true)}
-            className="rounded-lg bg-brand px-3 py-2 text-xs font-semibold text-white transition hover:opacity-90"
+            className="btn-grad"
           >
             + Abrir agenda do dia
           </button>
           <a
             href={`/app/agenda/relatorio?date=${date}${selectedProfessionalId ? `&professionalId=${selectedProfessionalId}` : ""}`}
-            className="rounded-lg border border-line px-3 py-2 text-xs font-medium transition hover:border-brand"
+            className="rounded-xl border border-line bg-surface px-4 py-2 text-sm font-semibold transition hover:border-brand hover:text-brand"
           >
             🖨️ Relatório do dia
           </a>
@@ -265,7 +265,7 @@ export function AgendaClient({
       )}
 
       {error && (
-        <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
         </p>
       )}
@@ -281,7 +281,7 @@ export function AgendaClient({
       {view === "day" && bookingSlot && (
         <form
           onSubmit={onBook}
-          className="space-y-4 rounded-xl border border-brand/40 bg-bg/60 p-6"
+          className="card space-y-4 border-brand/40"
         >
           <h2 className="text-lg font-semibold">
             Agendar — {new Date(bookingSlot.startsAt).toLocaleString("pt-BR")}{" "}
@@ -306,7 +306,7 @@ export function AgendaClient({
                   name="customerId"
                   value={selectedCustomerId}
                   onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                  className="input-base"
                 >
                   <option value="">— selecione —</option>
                   {allCustomers.map((c) => (
@@ -316,7 +316,7 @@ export function AgendaClient({
                   ))}
                 </select>
               ) : (
-                <div className="space-y-2 rounded-lg border border-brand/30 bg-bg/40 p-3">
+                <div className="space-y-2 rounded-xl border border-brand/30 bg-surface-2 p-3">
                   <p className="text-[11px] text-muted">
                     Cruzamos pelo CPF/telefone: se o cliente já existir, vinculamos automaticamente.
                   </p>
@@ -324,34 +324,34 @@ export function AgendaClient({
                     value={npName}
                     onChange={(e) => setNpName(e.target.value)}
                     placeholder="Nome completo *"
-                    className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                    className="input-base"
                   />
                   <div className="grid gap-2 sm:grid-cols-2">
                     <input
                       value={npDoc}
                       onChange={(e) => setNpDoc(e.target.value)}
                       placeholder="CPF/CNPJ"
-                      className="rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                      className="input-base"
                     />
                     <input
                       value={npPhone}
                       onChange={(e) => setNpPhone(e.target.value)}
                       placeholder="Telefone/WhatsApp"
-                      className="rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                      className="input-base"
                     />
                   </div>
                   <button
                     type="button"
                     onClick={addPatient}
                     disabled={npBusy}
-                    className="rounded-lg border border-brand px-4 py-2 text-sm text-brand transition hover:bg-brand hover:text-white disabled:opacity-50"
+                    className="rounded-xl border border-brand px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand hover:text-white disabled:opacity-50"
                   >
                     {npBusy ? "Salvando..." : "Cadastrar e vincular"}
                   </button>
                 </div>
               )}
               {selectedCustomerId && !showNewPatient && (
-                <p className="mt-1 text-[11px] text-green-600 dark:text-green-300">
+                <p className="mt-1 text-[11px] text-success">
                   Paciente selecionado: {allCustomers.find((c) => c.id === selectedCustomerId)?.name}
                 </p>
               )}
@@ -363,7 +363,7 @@ export function AgendaClient({
               <input
                 name="serviceName"
                 placeholder="Ex: Consulta de rotina"
-                className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                className="input-base"
               />
             </label>
             <label className="block">
@@ -372,7 +372,7 @@ export function AgendaClient({
               </span>
               <input
                 name="notes"
-                className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                className="input-base"
               />
             </label>
           </div>
@@ -380,14 +380,14 @@ export function AgendaClient({
             <button
               type="button"
               onClick={() => setBookingSlot(null)}
-              className="rounded-lg border border-line px-4 py-2 text-sm"
+              className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:bg-surface-2"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="btn-grad"
             >
               Confirmar agendamento
             </button>
@@ -398,7 +398,7 @@ export function AgendaClient({
       {view === "day" && (
       <>
       {/* Lista de agendamentos do dia */}
-      <section className="rounded-xl border border-line bg-bg/60">
+      <section className="card overflow-hidden p-0">
         <h2 className="border-b border-line px-5 py-3 text-sm font-semibold uppercase tracking-wider text-muted">
           Agendamentos do dia
         </h2>
@@ -407,7 +407,7 @@ export function AgendaClient({
         ) : (
           <ul className="divide-y divide-line/50">
             {appointments.map((a) => (
-              <li key={a.id} className="flex items-start gap-4 px-5 py-4">
+              <li key={a.id} className="flex items-start gap-4 px-5 py-4 transition hover:bg-surface-2">
                 <div
                   className="mt-1 h-3 w-3 shrink-0 rounded-full"
                   style={{
@@ -440,7 +440,7 @@ export function AgendaClient({
                   {a.status === "pending" && (
                     <button
                       onClick={() => appointmentAction(a.id, "confirm")}
-                      className="rounded-md border border-line px-3 py-1 text-xs hover:border-green-500 hover:text-green-300"
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium transition hover:border-green-500 hover:text-green-500"
                     >
                       Confirmar
                     </button>
@@ -448,7 +448,7 @@ export function AgendaClient({
                   {(a.status === "confirmed" || a.status === "pending") && (
                     <button
                       onClick={() => setExamReceipt(a)}
-                      className="rounded-md border border-line px-3 py-1 text-xs hover:border-blue-500 hover:text-blue-300"
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium transition hover:border-brand hover:text-brand"
                     >
                       Check-in
                     </button>
@@ -456,7 +456,7 @@ export function AgendaClient({
                   {a.status === "in_progress" && (
                     <button
                       onClick={() => appointmentAction(a.id, "attended")}
-                      className="rounded-md border border-line px-3 py-1 text-xs hover:border-green-500 hover:text-green-300"
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium transition hover:border-green-500 hover:text-green-500"
                     >
                       Finalizar
                     </button>
@@ -464,7 +464,7 @@ export function AgendaClient({
                   {a.status !== "canceled" && a.status !== "attended" && (
                     <button
                       onClick={() => appointmentAction(a.id, "cancel")}
-                      className="rounded-md border border-line px-3 py-1 text-xs hover:border-red-500 hover:text-red-300"
+                      className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium transition hover:border-danger hover:text-danger"
                     >
                       Cancelar
                     </button>
@@ -477,7 +477,7 @@ export function AgendaClient({
       </section>
 
       {/* Horários do dia (verde livre · vermelho ocupado · cinza inativo) */}
-      <section className="rounded-xl border border-line bg-bg/60">
+      <section className="card overflow-hidden p-0">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Horários do dia</h2>
           <div className="flex gap-3 text-[10px] text-muted">
@@ -631,7 +631,7 @@ function OpenDayModal({
         <div className="mt-4 space-y-3">
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Profissional</span>
-            <select value={professionalId} onChange={(e) => { setProfessionalId(e.target.value); setPreview(null); }} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+            <select value={professionalId} onChange={(e) => { setProfessionalId(e.target.value); setPreview(null); }} className="input-base">
               {professionals.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
@@ -642,11 +642,11 @@ function OpenDayModal({
             <div className="space-y-2">
               {periods.map((p, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <input type="time" value={p.start} onChange={(e) => { const n = [...periods]; n[i] = { ...n[i]!, start: e.target.value }; setPeriods(n); setPreview(null); }} className="rounded-lg border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+                  <input type="time" value={p.start} onChange={(e) => { const n = [...periods]; n[i] = { ...n[i]!, start: e.target.value }; setPeriods(n); setPreview(null); }} className="input-base w-auto" />
                   <span className="text-muted">até</span>
-                  <input type="time" value={p.end} onChange={(e) => { const n = [...periods]; n[i] = { ...n[i]!, end: e.target.value }; setPeriods(n); setPreview(null); }} className="rounded-lg border border-line bg-bg/60 px-2 py-1.5 text-sm" />
+                  <input type="time" value={p.end} onChange={(e) => { const n = [...periods]; n[i] = { ...n[i]!, end: e.target.value }; setPeriods(n); setPreview(null); }} className="input-base w-auto" />
                   {periods.length > 1 && (
-                    <button onClick={() => { setPeriods(periods.filter((_, x) => x !== i)); setPreview(null); }} className="text-muted hover:text-red-300">×</button>
+                    <button onClick={() => { setPeriods(periods.filter((_, x) => x !== i)); setPreview(null); }} className="text-muted transition hover:text-danger">×</button>
                   )}
                 </div>
               ))}
@@ -656,33 +656,33 @@ function OpenDayModal({
 
           {/* modo */}
           <div className="flex gap-2">
-            <button onClick={() => { setMode("byDuration"); setPreview(null); }} className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium ${mode === "byDuration" ? "border-brand text-brand" : "border-line text-muted"}`}>Por duração (min/horário)</button>
-            <button onClick={() => { setMode("byCount"); setPreview(null); }} className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium ${mode === "byCount" ? "border-brand text-brand" : "border-line text-muted"}`}>Por quantidade</button>
+            <button onClick={() => { setMode("byDuration"); setPreview(null); }} className={`flex-1 rounded-xl border px-3 py-2 text-xs font-medium transition ${mode === "byDuration" ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:bg-surface-2"}`}>Por duração (min/horário)</button>
+            <button onClick={() => { setMode("byCount"); setPreview(null); }} className={`flex-1 rounded-xl border px-3 py-2 text-xs font-medium transition ${mode === "byCount" ? "border-brand bg-brand/10 text-brand" : "border-line text-muted hover:bg-surface-2"}`}>Por quantidade</button>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             {mode === "byDuration" ? (
               <label className="block">
                 <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Minutos por horário</span>
-                <input type="number" min={5} value={slotMinutes} onChange={(e) => { setSlotMinutes(Number(e.target.value)); setPreview(null); }} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+                <input type="number" min={5} value={slotMinutes} onChange={(e) => { setSlotMinutes(Number(e.target.value)); setPreview(null); }} className="input-base" />
               </label>
             ) : (
               <label className="block">
                 <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Qtde de horários</span>
-                <input type="number" min={1} value={count} onChange={(e) => { setCount(Number(e.target.value)); setPreview(null); }} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+                <input type="number" min={1} value={count} onChange={(e) => { setCount(Number(e.target.value)); setPreview(null); }} className="input-base" />
               </label>
             )}
             <label className="block">
               <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Pessoas por horário</span>
-              <input type="number" min={1} value={capacityPerSlot} onChange={(e) => { setCapacityPerSlot(Number(e.target.value)); setPreview(null); }} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+              <input type="number" min={1} value={capacityPerSlot} onChange={(e) => { setCapacityPerSlot(Number(e.target.value)); setPreview(null); }} className="input-base" />
               <span className="mt-0.5 block text-[10px] text-muted">&gt;1 = por ordem de chegada</span>
             </label>
           </div>
 
-          {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">{err}</p>}
+          {err && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">{err}</p>}
 
           {preview && (
-            <div className="rounded-lg border border-brand/40 bg-brand/10 px-4 py-3 text-sm">
+            <div className="rounded-xl border border-brand/40 bg-brand/10 px-4 py-3 text-sm">
               <p>Serão abertos <strong>{preview.slotsCount}</strong> horário(s) de <strong>{preview.slotMinutes} min</strong> cada.</p>
               <p className="mt-1">Capacidade total: <strong>{preview.totalCapacity}</strong> atendimento(s){preview.capacityPerSlot > 1 ? " (por ordem de chegada)" : ""}.</p>
               <p className="mt-1 text-xs text-muted">{preview.perPeriod.map((p) => `${p.start}–${p.end}: ${p.slots}`).join(" · ")}</p>
@@ -691,11 +691,11 @@ function OpenDayModal({
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm">Fechar</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:bg-surface-2">Fechar</button>
           {!preview ? (
-            <button onClick={calc} disabled={busy} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Calculando..." : "Calcular"}</button>
+            <button onClick={calc} disabled={busy} className="btn-grad">{busy ? "Calculando..." : "Calcular"}</button>
           ) : (
-            <button onClick={commit} disabled={busy} className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Abrindo..." : `Confirmar e abrir ${preview.slotsCount} horário(s)`}</button>
+            <button onClick={commit} disabled={busy} className="btn-grad">{busy ? "Abrindo..." : `Confirmar e abrir ${preview.slotsCount} horário(s)`}</button>
           )}
         </div>
       </div>
@@ -749,7 +749,7 @@ function MonthView({
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <section className="rounded-xl border border-line bg-bg/60 p-5">
+    <section className="card">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted capitalize">{monthLabel}</h2>
         {loading && <span className="text-xs text-muted">carregando...</span>}

@@ -59,7 +59,7 @@ export default function IaAprendizado() {
       </header>
 
       {emb && (
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-bg/60 p-4">
+        <div className="card mb-6 flex flex-wrap items-center justify-between gap-3 p-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className={`inline-block h-2 w-2 rounded-full ${emb.enabled ? "bg-green-400" : "bg-muted"}`} />
@@ -72,7 +72,7 @@ export default function IaAprendizado() {
             </p>
           </div>
           {emb.enabled && (
-            <button onClick={backfill} disabled={indexing} className="shrink-0 rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+            <button onClick={backfill} disabled={indexing} className="btn-grad shrink-0 px-3 py-1.5 text-xs disabled:opacity-50">
               {indexing ? "Indexando…" : "Indexar base (IA)"}
             </button>
           )}
@@ -100,21 +100,21 @@ export default function IaAprendizado() {
 
       <h2 className="mb-3 text-lg font-semibold">Dúvidas para ensinar</h2>
       {doubts === null ? <p className="text-sm text-muted">Carregando…</p>
-        : doubts.length === 0 ? <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Nenhuma dúvida pendente. A IA está dando conta 👏</p>
+        : doubts.length === 0 ? <p className="card text-sm text-muted">Nenhuma dúvida pendente. A IA está dando conta 👏</p>
         : (
           <div className="space-y-2">
             {doubts.map((d) => (
-              <div key={d.id} className="rounded-xl border border-line bg-bg/60 p-4">
+              <div key={d.id} className="card p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <span className="rounded-full bg-line px-2 py-0.5 text-[10px] font-semibold uppercase text-muted">{TYPE_LABEL[d.eventType] ?? d.eventType}</span>
-                    <p className="mt-1 text-sm font-medium">{d.question || "(sem texto)"}</p>
+                    <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-semibold uppercase text-muted">{TYPE_LABEL[d.eventType] ?? d.eventType}</span>
+                    <p className="mt-1 text-sm font-medium text-fg">{d.question || "(sem texto)"}</p>
                     {d.response && <p className="mt-1 text-xs text-muted">IA: {d.response}</p>}
                     <p className="mt-1 text-[10px] text-muted">{new Date(d.createdAt).toLocaleString("pt-BR")}</p>
                   </div>
                   <div className="flex shrink-0 gap-2">
-                    <button onClick={() => setTeachFor(d)} className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white">Ensinar</button>
-                    <button onClick={() => dismiss(d.id)} className="rounded-md border border-line px-3 py-1 text-xs text-muted hover:border-brand">Dispensar</button>
+                    <button onClick={() => setTeachFor(d)} className="btn-grad px-3 py-1 text-xs">Ensinar</button>
+                    <button onClick={() => dismiss(d.id)} className="rounded-lg border border-line px-3 py-1 text-xs text-muted transition hover:border-brand hover:text-brand">Dispensar</button>
                   </div>
                 </div>
               </div>
@@ -128,13 +128,13 @@ export default function IaAprendizado() {
           <p className="mb-3 text-xs text-muted">Avalie pra ensinar o que funciona (alimenta o score).</p>
           <div className="space-y-2">
             {recent.slice(0, 15).map((r) => (
-              <div key={r.id} className="flex items-start justify-between gap-3 rounded-xl border border-line bg-bg/60 p-3">
+              <div key={r.id} className="card flex items-start justify-between gap-3 p-3">
                 <div className="min-w-0 text-sm">
                   <p className="truncate text-muted">{r.question || "—"}</p>
                   <p className="mt-0.5 truncate">{r.response || "—"}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-1">
-                  {r.conversationId && <button onClick={() => setTraceFor(r.conversationId)} className="rounded-md border border-line px-2 py-1 text-xs text-muted hover:border-brand" title="Ver passo a passo da IA">fluxo</button>}
+                  {r.conversationId && <button onClick={() => setTraceFor(r.conversationId)} className="rounded-lg border border-line px-2 py-1 text-xs text-muted transition hover:border-brand hover:text-brand" title="Ver passo a passo da IA">fluxo</button>}
                   <button onClick={() => rate(r.id, true)} className={`rounded-md border px-2 py-1 text-xs ${r.helpful === true ? "border-green-400 bg-green-500/15 text-green-300" : "border-line text-muted hover:border-green-400"}`}>👍</button>
                   <button onClick={() => rate(r.id, false)} className={`rounded-md border px-2 py-1 text-xs ${r.helpful === false ? "border-red-400 bg-red-500/15 text-red-300" : "border-line text-muted hover:border-red-400"}`}>👎</button>
                 </div>
@@ -169,11 +169,11 @@ function TraceModal({ conversationId, onClose }: { conversationId: string; onClo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Fluxo da IA nesta conversa</h3>
         <p className="mt-1 text-xs text-muted">Passo a passo: o que a IA consultou, quais ações fez e o que respondeu. Use para auditar em caso de erro.</p>
         {steps === null ? <p className="mt-4 text-sm text-muted">Carregando…</p>
-          : steps.length === 0 ? <p className="mt-4 rounded-lg border border-line bg-bg/60 p-4 text-sm text-muted">Sem passos registrados para esta conversa.</p>
+          : steps.length === 0 ? <p className="mt-4 rounded-xl border border-line bg-surface-2 p-4 text-sm text-muted">Sem passos registrados para esta conversa.</p>
           : (
             <ol className="mt-4 space-y-0">
               {steps.map((s, i) => {
@@ -199,7 +199,7 @@ function TraceModal({ conversationId, onClose }: { conversationId: string; onClo
             </ol>
           )}
         <div className="mt-4 flex justify-end">
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">fechar</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">fechar</button>
         </div>
       </div>
     </div>
@@ -208,7 +208,7 @@ function TraceModal({ conversationId, onClose }: { conversationId: string; onClo
 
 function Trend({ title, data }: { title: string; data: Array<{ week: string; assertiveness: number | null }> }) {
   return (
-    <div className="mb-6 rounded-xl border border-line bg-bg/60 p-4">
+    <div className="card mb-6 p-4">
       <p className="mb-3 text-[10px] uppercase tracking-wider text-muted">{title}</p>
       <div className="flex items-end gap-1.5" style={{ height: 80 }}>
         {data.map((d) => (
@@ -224,7 +224,7 @@ function Trend({ title, data }: { title: string; data: Array<{ week: string; ass
 
 function Card({ title, value, highlight }: { title: string; value: string; highlight?: boolean }) {
   return (
-    <div className={`rounded-xl border p-4 ${highlight ? "border-brand/40 bg-brand/10" : "border-line bg-bg/60"}`}>
+    <div className={`card p-4 ${highlight ? "border-brand/40 bg-brand/10" : ""}`}>
       <p className="text-[10px] uppercase tracking-wider text-muted">{title}</p>
       <p className={`mt-1 text-2xl font-semibold ${highlight ? "text-brand" : ""}`}>{value}</p>
     </div>
@@ -260,23 +260,23 @@ function TeachModal({ event, onClose, onSaved }: { event: any; onClose: () => vo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-lg rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-lg rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Ensinar a IA</h3>
         <p className="mt-1 text-xs text-muted">Vira uma resposta publicada na base de conhecimento; o bot usa nas próximas conversas.</p>
         <label className="mt-4 block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Pergunta / situação</span>
-          <input value={question} onChange={(e) => setQuestion(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+          <input value={question} onChange={(e) => setQuestion(e.target.value)} className="input-base" />
         </label>
         <label className="mt-3 block">
           <div className="mb-1 flex items-center justify-between">
             <span className="text-[10px] uppercase text-muted">Resposta correta</span>
             <button type="button" onClick={draft} disabled={drafting} className="text-xs font-medium text-brand hover:underline disabled:opacity-50">{drafting ? "Gerando…" : "✨ Sugerir resposta (IA)"}</button>
           </div>
-          <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={4} placeholder="O que a IA deveria responder…" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+          <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} rows={4} placeholder="O que a IA deveria responder…" className="input-base" />
         </label>
         <div className="mt-4 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
-          <button disabled={busy} onClick={save} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Ensinar"}</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
+          <button disabled={busy} onClick={save} className="btn-grad px-4 disabled:opacity-50">{busy ? "Salvando…" : "Ensinar"}</button>
         </div>
       </div>
     </div>

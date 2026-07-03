@@ -62,14 +62,14 @@ export function AccountActions({
   return (
     <div className="flex flex-col items-end gap-2">
       <div className="flex flex-wrap justify-end gap-2">
-        <button onClick={() => setShowLimit(!showLimit)} className="rounded-md border border-line px-3 py-1.5 text-xs hover:border-brand">
+        <button onClick={() => setShowLimit(!showLimit)} className="rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">
           Alterar limite
         </button>
-        <button onClick={openContract} className="rounded-md border border-line px-3 py-1.5 text-xs hover:border-brand">
+        <button onClick={openContract} className="rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">
           Enviar contrato
         </button>
         {account.status === "blocked" ? (
-          <button onClick={() => call("unblock")} className="rounded-md border border-line px-3 py-1.5 text-xs text-green-300 hover:border-green-500">
+          <button onClick={() => call("unblock")} className="rounded-xl border border-line px-3 py-1.5 text-xs text-green-300 transition hover:border-green-500">
             Desbloquear
           </button>
         ) : (
@@ -78,14 +78,14 @@ export function AccountActions({
               const reason = await dialog.prompt({ title: "Bloquear conta", message: "Informe o motivo do bloqueio:", placeholder: "Ex.: inadimplência" });
               if (reason) call("block", { reason });
             }}
-            className="rounded-md border border-line px-3 py-1.5 text-xs text-red-300 hover:border-red-500"
+            className="rounded-xl border border-line px-3 py-1.5 text-xs text-red-300 transition hover:border-red-500"
           >
             Bloquear
           </button>
         )}
       </div>
       {showContract && (
-        <div className="flex flex-wrap items-end gap-2 rounded-lg border border-line bg-bg/60 p-2">
+        <div className="flex flex-wrap items-end gap-2 rounded-xl border border-line bg-surface-2 p-2">
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Modelo de contrato</span>
             <select value={tplId} onChange={(e) => setTplId(e.target.value)} className="rounded border border-line bg-bg/60 px-2 py-1 text-xs">
@@ -95,13 +95,13 @@ export function AccountActions({
               ))}
             </select>
           </label>
-          <button onClick={sendContract} disabled={sending} className="rounded bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+          <button onClick={sendContract} disabled={sending} className="btn-grad px-3 py-1.5 disabled:opacity-50">
             {sending ? "Enviando..." : "Enviar ao cliente"}
           </button>
         </div>
       )}
       {showLimit && (
-        <div className="flex gap-2 rounded-lg border border-line bg-bg/60 p-2">
+        <div className="flex gap-2 rounded-xl border border-line bg-surface-2 p-2">
           <input
             value={newLimit}
             onChange={(e) => setNewLimit(e.target.value)}
@@ -111,7 +111,7 @@ export function AccountActions({
           <button
             disabled={isPending}
             onClick={() => call("limit", { limitCents: Math.round(Number(newLimit.replace(",", ".")) * 100) })}
-            className="rounded bg-brand px-3 py-1 text-xs font-semibold text-white disabled:opacity-50"
+            className="btn-grad px-3 py-1 disabled:opacity-50"
           >
             Salvar
           </button>

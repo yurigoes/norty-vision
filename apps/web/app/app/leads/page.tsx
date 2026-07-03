@@ -7,8 +7,8 @@ export default function LeadsPage() {
         <p className="text-xs font-semibold uppercase tracking-wider text-brand">Leads</p>
         <h1 className="mt-1 text-3xl font-semibold">Pipeline de leads</h1>
       </header>
-      <div className="rounded-xl border border-line bg-bg/60 p-8 text-center">
-        <p className="text-lg font-medium">Em breve</p>
+      <div className="card p-10 text-center">
+        <p className="text-lg font-semibold">Em breve</p>
         <p className="mt-2 text-sm text-muted">
           O módulo de leads (kanban, atribuição por vendedor e métricas de
           conversão) está em construção.

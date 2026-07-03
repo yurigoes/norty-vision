@@ -93,18 +93,18 @@ export function CustomersClient({
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && search()}
           placeholder="Buscar por nome, telefone, CPF..."
-          className="flex-1 rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+          className="input-base flex-1"
         />
         <button
           onClick={search}
-          className="rounded-lg border border-line px-4 py-2 text-sm"
+          className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:bg-surface-2"
         >
           Buscar
         </button>
         {!creating && !editing && (
           <button
             onClick={() => setCreating(true)}
-            className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white"
+            className="btn-grad whitespace-nowrap"
           >
             + Novo paciente
           </button>
@@ -114,7 +114,7 @@ export function CustomersClient({
       {(creating || editing) && (
         <form
           onSubmit={onSubmit}
-          className="space-y-4 rounded-xl border border-line bg-bg/60 p-6"
+          className="card space-y-4"
         >
           <h2 className="text-lg font-semibold">
             {editing ? `Editar — ${editing.name}` : "Novo paciente"}
@@ -128,7 +128,7 @@ export function CustomersClient({
                 <select
                   name="storeId"
                   required
-                  className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                  className="input-base"
                 >
                   {stores.map((s) => (
                     <option key={s.id} value={s.id}>
@@ -163,7 +163,7 @@ export function CustomersClient({
               <select
                 name="prefersChannel"
                 defaultValue={editing?.prefersChannel ?? "whatsapp"}
-                className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                className="input-base"
               >
                 <option value="whatsapp">WhatsApp</option>
                 <option value="sms">SMS</option>
@@ -174,7 +174,7 @@ export function CustomersClient({
             </label>
           </div>
           {error && (
-            <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+            <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
               {error}
             </p>
           )}
@@ -186,14 +186,14 @@ export function CustomersClient({
                 setEditing(null);
                 setError(null);
               }}
-              className="rounded-lg border border-line px-4 py-2 text-sm"
+              className="rounded-xl border border-line px-4 py-2 text-sm font-semibold transition hover:bg-surface-2"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="btn-grad"
             >
               Salvar
             </button>
@@ -201,7 +201,7 @@ export function CustomersClient({
         </form>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+      <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
@@ -222,7 +222,7 @@ export function CustomersClient({
               </tr>
             ) : (
               initialCustomers.map((c) => (
-                <tr key={c.id} className="border-t border-line/50">
+                <tr key={c.id} className="border-t border-line/50 transition hover:bg-surface-2">
                   <td className="px-4 py-3 font-medium">{c.name}</td>
                   <td className="px-4 py-3 font-mono text-xs">{c.phone ?? "—"}</td>
                   <td className="px-4 py-3 font-mono text-xs">{c.whatsappPhone ?? "—"}</td>
@@ -277,7 +277,7 @@ function Field({
         required={required}
         defaultValue={defaultValue}
         autoComplete="off"
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+        className="input-base"
       />
       {help && <p className="mt-1 text-[11px] leading-snug text-muted">{help}</p>}
     </label>

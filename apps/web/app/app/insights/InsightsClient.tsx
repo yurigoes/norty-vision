@@ -31,7 +31,7 @@ export function InsightsClient() {
     setItems((it) => (it ?? []).filter((x) => x.id !== id));
   }
 
-  if (!items) return <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Carregando…</p>;
+  if (!items) return <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Carregando…</p>;
 
   const resumo = items.find((i) => i.kind === "resumo");
   const gargalos = items.filter((i) => i.kind !== "resumo");
@@ -40,7 +40,7 @@ export function InsightsClient() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted">{gargalos.length} ponto(s) de atenção</p>
-        <button onClick={refresh} disabled={busy} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand disabled:opacity-50">{busy ? "Analisando…" : "Analisar agora"}</button>
+        <button onClick={refresh} disabled={busy} className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand disabled:opacity-50">{busy ? "Analisando…" : "Analisar agora"}</button>
       </div>
 
       {resumo?.detail && (

@@ -40,22 +40,22 @@ export default function CostureiraRelatorio() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6">
-      <Link href="/f" className="text-xs text-muted hover:text-fg">← Voltar</Link>
-      <h1 className="mt-4 mb-2 text-2xl font-semibold">Meu relatório</h1>
+      <Link href="/f" className="text-xs text-muted transition-colors hover:text-fg">← Voltar</Link>
+      <h1 className="mt-4 mb-2 text-2xl font-extrabold tracking-tight">Meu relatório</h1>
       <p className="text-xs text-muted">Pedidos que você marcou como prontos no período. Pendentes = ainda não inclusos num pagamento.</p>
 
       <section className="mt-4 flex flex-wrap items-end gap-2">
         <div className="flex gap-1">
-          <button onClick={() => setRange(0)} className="rounded-full border border-line px-3 py-1.5 text-xs hover:border-brand">Hoje</button>
-          <button onClick={() => setRange(7)} className="rounded-full border border-line px-3 py-1.5 text-xs hover:border-brand">7d</button>
-          <button onClick={() => setRange(30)} className="rounded-full border border-line px-3 py-1.5 text-xs hover:border-brand">30d</button>
-          <button onClick={() => setRange(90)} className="rounded-full border border-line px-3 py-1.5 text-xs hover:border-brand">90d</button>
+          <button onClick={() => setRange(0)} className="rounded-full border border-line px-3 py-1.5 text-xs font-medium transition hover:border-brand hover:text-brand">Hoje</button>
+          <button onClick={() => setRange(7)} className="rounded-full border border-line px-3 py-1.5 text-xs font-medium transition hover:border-brand hover:text-brand">7d</button>
+          <button onClick={() => setRange(30)} className="rounded-full border border-line px-3 py-1.5 text-xs font-medium transition hover:border-brand hover:text-brand">30d</button>
+          <button onClick={() => setRange(90)} className="rounded-full border border-line px-3 py-1.5 text-xs font-medium transition hover:border-brand hover:text-brand">90d</button>
         </div>
-        <label className="flex flex-col text-[10px] uppercase text-muted">de
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="rounded border border-line bg-bg/40 px-2 py-1 text-sm text-fg" />
+        <label className="flex flex-col text-[10px] font-semibold uppercase text-muted">de
+          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input-base w-auto mt-1 py-1.5" />
         </label>
-        <label className="flex flex-col text-[10px] uppercase text-muted">até
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="rounded border border-line bg-bg/40 px-2 py-1 text-sm text-fg" />
+        <label className="flex flex-col text-[10px] font-semibold uppercase text-muted">até
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input-base w-auto mt-1 py-1.5" />
         </label>
       </section>
 
@@ -72,10 +72,10 @@ export default function CostureiraRelatorio() {
 
           <section className="mt-6 space-y-2">
             {(data?.items ?? []).length === 0 ? (
-              <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhuma OS no período.</p>
+              <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted shadow-[var(--shadow-sm)]">Nenhuma OS no período.</p>
             ) : (
               (data.items as any[]).map((o) => (
-                <div key={o.id} className="flex items-center justify-between rounded-lg border border-line bg-bg/60 p-4">
+                <div key={o.id} className="flex items-center justify-between rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-sm)]">
                   <div>
                     <p className="font-mono text-sm">#{o.shortCode ?? "—"}</p>
                     <p className="text-[11px] text-muted">{new Date(o.producedAt).toLocaleString("pt-BR")} · {o.pieces} pç</p>
@@ -99,9 +99,9 @@ export default function CostureiraRelatorio() {
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "green" | "amber" }) {
   const cls = tone === "green" ? "text-green-300" : tone === "amber" ? "text-amber-300" : "text-fg";
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-3">
-      <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
-      <p className={`mt-1 text-lg font-semibold ${cls}`}>{value}</p>
+    <div className="rounded-2xl border border-line bg-surface p-3 shadow-[var(--shadow-sm)]">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">{label}</p>
+      <p className={`mt-1 text-lg font-extrabold tracking-tight ${cls}`}>{value}</p>
     </div>
   );
 }

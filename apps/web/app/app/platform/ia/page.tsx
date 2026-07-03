@@ -55,7 +55,7 @@ export default function MasterIaPanel() {
       </header>
 
       {/* ===== Inteligência do ecossistema ===== */}
-      <section className="mb-8 rounded-2xl border border-brand/30 bg-brand/5 p-5">
+      <section className="mb-8 rounded-2xl border border-brand/30 bg-brand/5 p-5 shadow-sm">
         <h2 className="text-lg font-semibold">Inteligência do ecossistema</h2>
         <p className="mt-1 text-sm text-muted">Gargalos operacionais somados de todas as empresas + dúvidas que a IA levanta pra você ensinar.</p>
 
@@ -76,9 +76,9 @@ export default function MasterIaPanel() {
             {(eco.items ?? []).length > 0 && (
               <div className="mt-3 max-h-60 space-y-1 overflow-y-auto">
                 {eco.items.slice(0, 30).map((i: any) => (
-                  <div key={i.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg/60 px-3 py-1.5 text-xs">
+                  <div key={i.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-surface px-3 py-1.5 text-xs transition hover:border-brand/50">
                     <span><b>{i.orgName}</b>{i.niche ? ` · ${NICHE_LABEL[i.niche] ?? i.niche}` : ""} — {i.title}</span>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase ${i.severity === "urgent" ? "bg-red-500/20 text-red-300" : "bg-amber-500/20 text-amber-200"}`}>{i.severity}</span>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase ${i.severity === "urgent" ? "bg-danger/15 text-danger" : "bg-warn/15 text-warn"}`}>{i.severity}</span>
                   </div>
                 ))}
               </div>
@@ -93,7 +93,7 @@ export default function MasterIaPanel() {
           ) : (
             <div className="mt-2 space-y-2">
               {questions.map((q) => (
-                <div key={q.id} className="rounded-lg border border-line bg-bg/60 p-3">
+                <div key={q.id} className="rounded-xl border border-line bg-surface p-3">
                   <p className="text-sm">{q.question}</p>
                   {q.topic && <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted">{q.topic}</p>}
                   <textarea
@@ -101,11 +101,11 @@ export default function MasterIaPanel() {
                     onChange={(e) => setDraft((d) => ({ ...d, [q.id]: e.target.value }))}
                     placeholder="Ensine a IA: como responder isso melhor?"
                     rows={2}
-                    className="mt-2 w-full rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-xs outline-none focus:border-brand"
+                    className="input-base mt-2 text-xs"
                   />
                   <div className="mt-1 flex gap-2">
-                    <button onClick={() => answerQuestion(q.id)} className="rounded-lg bg-brand px-3 py-1 text-xs font-semibold text-white">Ensinar</button>
-                    <button onClick={() => dismissQuestion(q.id)} className="rounded-lg border border-line px-3 py-1 text-xs text-muted hover:text-fg">Dispensar</button>
+                    <button onClick={() => answerQuestion(q.id)} className="btn-grad px-3 py-1 text-xs">Ensinar</button>
+                    <button onClick={() => dismissQuestion(q.id)} className="rounded-lg border border-line px-3 py-1 text-xs text-muted transition hover:text-fg">Dispensar</button>
                   </div>
                 </div>
               ))}
@@ -116,7 +116,7 @@ export default function MasterIaPanel() {
 
       {/* ===== Uso das IAs grátis + Aprendizado (RAG) ===== */}
       {usage && (
-        <section className="mb-8 rounded-2xl border border-line bg-bg/60 p-5">
+        <section className="mb-8 rounded-2xl border border-line bg-surface p-5 shadow-sm">
           <h2 className="text-lg font-semibold">Uso das IAs grátis & aprendizado (RAG)</h2>
           <p className="mt-1 text-sm text-muted">Qual IA respondeu, se os provedores estão conectados/em cooldown, e o quanto a base de conhecimento cresceu. <b>Importante:</b> o modelo não "treina" — quem aprende é a base (RAG), alimentada quando alguém ensina.</p>
 
@@ -129,7 +129,7 @@ export default function MasterIaPanel() {
               {(() => { const max = Math.max(...usage.byProvider.map((p: any) => p.count), 1); return usage.byProvider.map((p: any) => (
                 <div key={p.provider} className="flex items-center gap-2 text-xs">
                   <span className="w-40 shrink-0 truncate">{PROVIDER_LABEL[p.provider] ?? p.provider}</span>
-                  <div className="h-3 flex-1 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-brand" style={{ width: `${Math.round((p.count / max) * 100)}%` }} /></div>
+                  <div className="h-3 flex-1 overflow-hidden rounded-full bg-surface-2"><div className="h-full rounded-full bg-grad-brand" style={{ width: `${Math.round((p.count / max) * 100)}%` }} /></div>
                   <span className="w-12 shrink-0 text-right font-medium">{p.count}</span>
                 </div>
               )); })()}
@@ -145,7 +145,7 @@ export default function MasterIaPanel() {
                   const down = p.active === 0;
                   const cooling = p.inCooldown > 0;
                   return (
-                    <div key={p.provider} className={`rounded-lg border px-3 py-2 text-xs ${down ? "border-red-500/40 bg-red-500/5" : cooling ? "border-amber-500/40 bg-amber-500/5" : "border-green-500/30 bg-green-500/5"}`} title={p.lastError ? `Último erro: ${p.lastError}` : ""}>
+                    <div key={p.provider} className={`rounded-xl border px-3 py-2 text-xs ${down ? "border-danger/40 bg-danger/5" : cooling ? "border-warn/40 bg-warn/5" : "border-success/30 bg-success/5"}`} title={p.lastError ? `Último erro: ${p.lastError}` : ""}>
                       <p className="font-medium">{PROVIDER_LABEL[p.provider] ?? p.provider}</p>
                       <p className="mt-0.5 text-[11px] text-muted">{p.active}/{p.configured} ativo(s){cooling ? ` · ${p.inCooldown} em cooldown` : ""}{down ? " · sem chave/desligado" : ""}</p>
                       {p.lastUsedAt && <p className="text-[10px] text-muted">usado {new Date(p.lastUsedAt).toLocaleDateString("pt-BR")}</p>}
@@ -165,7 +165,7 @@ export default function MasterIaPanel() {
             <Card title="Buscas semânticas" value={usage.embeddingsEnabled ? "Ligado" : "Desligado"} />
           </div>
           {!usage.embeddingsEnabled && (
-            <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[11px] text-amber-200">⚠️ Embeddings desligados (EMBEDDINGS_URL vazio) — o RAG cai pra busca por texto. Pra busca semântica via Ollama, configure o EMBEDDINGS_URL apontando pro Ollama e rode o backfill.</p>
+            <p className="mt-2 rounded-lg border border-warn/30 bg-warn/5 px-3 py-2 text-[11px] text-warn">⚠️ Embeddings desligados (EMBEDDINGS_URL vazio) — o RAG cai pra busca por texto. Pra busca semântica via Ollama, configure o EMBEDDINGS_URL apontando pro Ollama e rode o backfill.</p>
           )}
           {(usage.rag?.growth ?? []).length > 0 && (
             <p className="mt-2 text-[11px] text-muted">Crescimento (8 sem.): {usage.rag.growth.map((g: any) => `${g.week.slice(5)}=${g.count}`).join(" · ")}</p>
@@ -185,14 +185,14 @@ export default function MasterIaPanel() {
           {(data.perNiche ?? []).length > 0 && (
             <>
               <h2 className="mb-3 text-lg font-semibold">Por nicho</h2>
-              <div className="mb-6 overflow-hidden rounded-xl border border-line">
+              <div className="card mb-6 overflow-hidden p-0">
                 <table className="w-full text-sm">
-                  <thead className="bg-bg/40 text-left text-[10px] uppercase tracking-wider text-muted">
+                  <thead className="bg-surface-2 text-left text-[10px] uppercase tracking-wider text-muted">
                     <tr><th className="px-4 py-2">Nicho</th><th className="px-4 py-2">Empresas</th><th className="px-4 py-2">Interações</th><th className="px-4 py-2">Dúvidas</th><th className="px-4 py-2">Assertividade</th></tr>
                   </thead>
                   <tbody>
                     {data.perNiche.map((n: any) => (
-                      <tr key={n.niche} className="border-t border-line/60">
+                      <tr key={n.niche} className="border-t border-line/60 transition hover:bg-surface-2">
                         <td className="px-4 py-2 font-medium">{NICHE_LABEL[n.niche] ?? n.niche}</td>
                         <td className="px-4 py-2">{n.orgs}</td>
                         <td className="px-4 py-2">{n.total}</td>
@@ -207,15 +207,15 @@ export default function MasterIaPanel() {
           )}
 
           <h2 className="mb-3 text-lg font-semibold">Por empresa</h2>
-          {(data.perOrg ?? []).length === 0 ? <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Sem dados ainda.</p> : (
-            <div className="overflow-hidden rounded-xl border border-line">
+          {(data.perOrg ?? []).length === 0 ? <p className="card p-6 text-sm text-muted">Sem dados ainda.</p> : (
+            <div className="card overflow-hidden p-0">
               <table className="w-full text-sm">
-                <thead className="bg-bg/40 text-left text-[10px] uppercase tracking-wider text-muted">
+                <thead className="bg-surface-2 text-left text-[10px] uppercase tracking-wider text-muted">
                   <tr><th className="px-4 py-2">Empresa</th><th className="px-4 py-2">Nicho</th><th className="px-4 py-2">Interações</th><th className="px-4 py-2">Dúvidas</th><th className="px-4 py-2">Assertividade</th></tr>
                 </thead>
                 <tbody>
                   {data.perOrg.map((o: any) => (
-                    <tr key={o.organizationId} className="border-t border-line/60">
+                    <tr key={o.organizationId} className="border-t border-line/60 transition hover:bg-surface-2">
                       <td className="px-4 py-2 font-medium">{o.name}</td>
                       <td className="px-4 py-2 text-muted">{NICHE_LABEL[o.niche] ?? o.niche ?? "—"}</td>
                       <td className="px-4 py-2">{o.total}</td>
@@ -231,22 +231,22 @@ export default function MasterIaPanel() {
           {/* Dúvidas de TODAS as empresas — base pra definir as regras reais da IA */}
           <h2 className="mb-2 mt-8 text-lg font-semibold">Dúvidas da IA (todas as empresas)</h2>
           <p className="mb-3 text-xs text-muted">Onde a IA travou em cada empresa. Use pra entender padrões e definir as regras/guarda-corpos reais. Quem ensina a resposta é o admin de cada empresa.</p>
-          {doubts.length === 0 ? <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Nenhuma dúvida pendente nas empresas. 👏</p> : (
+          {doubts.length === 0 ? <p className="card p-6 text-sm text-muted">Nenhuma dúvida pendente nas empresas. 👏</p> : (
             <div className="space-y-2">
               {doubts.slice(0, 50).map((d) => (
-                <div key={d.id} className="rounded-xl border border-line bg-bg/60 p-3">
+                <div key={d.id} className="card p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-semibold text-brand">{d.organizationName ?? "—"}</span>
                         {d.organizationNiche && <span className="text-[10px] text-muted">{NICHE_LABEL[d.organizationNiche] ?? d.organizationNiche}</span>}
-                        <span className="rounded-full bg-line px-2 py-0.5 text-[10px] font-semibold uppercase text-muted">{TYPE_LABEL[d.eventType] ?? d.eventType}</span>
+                        <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px] font-semibold uppercase text-muted">{TYPE_LABEL[d.eventType] ?? d.eventType}</span>
                       </div>
                       <p className="mt-1 text-sm font-medium">{d.question || "(sem texto)"}</p>
                       {d.response && <p className="mt-0.5 text-xs text-muted">IA: {d.response}</p>}
                       <p className="mt-1 text-[10px] text-muted">{new Date(d.createdAt).toLocaleString("pt-BR")}</p>
                     </div>
-                    {d.conversationId && <button onClick={() => setTraceFor(d.conversationId)} className="shrink-0 rounded-md border border-line px-2 py-1 text-xs text-muted hover:border-brand">fluxo</button>}
+                    {d.conversationId && <button onClick={() => setTraceFor(d.conversationId)} className="shrink-0 rounded-lg border border-line px-2 py-1 text-xs text-muted transition hover:border-brand">fluxo</button>}
                   </div>
                 </div>
               ))}
@@ -259,13 +259,13 @@ export default function MasterIaPanel() {
               <h2 className="mb-3 text-lg font-semibold">Respostas recentes da IA (todas)</h2>
               <div className="space-y-2">
                 {recent.slice(0, 30).map((r) => (
-                  <div key={r.id} className="flex items-start justify-between gap-3 rounded-xl border border-line bg-bg/60 p-3">
+                  <div key={r.id} className="card flex items-start justify-between gap-3 p-3">
                     <div className="min-w-0 text-sm">
                       <span className="rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-semibold text-brand">{r.organizationName ?? "—"}</span>
                       <p className="mt-1 truncate text-muted">{r.question || "—"}</p>
                       <p className="mt-0.5 truncate">{r.response || "—"}</p>
                     </div>
-                    {r.conversationId && <button onClick={() => setTraceFor(r.conversationId)} className="shrink-0 rounded-md border border-line px-2 py-1 text-xs text-muted hover:border-brand">fluxo</button>}
+                    {r.conversationId && <button onClick={() => setTraceFor(r.conversationId)} className="shrink-0 rounded-lg border border-line px-2 py-1 text-xs text-muted transition hover:border-brand">fluxo</button>}
                   </div>
                 ))}
               </div>
@@ -293,11 +293,11 @@ function TraceModal({ conversationId, onClose }: { conversationId: string; onClo
   }, [conversationId]);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Fluxo da IA nesta conversa</h3>
         <p className="mt-1 text-xs text-muted">Passo a passo: o que a IA consultou, quais ações fez e o que respondeu.</p>
         {steps === null ? <p className="mt-4 text-sm text-muted">Carregando…</p>
-          : steps.length === 0 ? <p className="mt-4 rounded-lg border border-line bg-bg/60 p-4 text-sm text-muted">Sem passos registrados.</p>
+          : steps.length === 0 ? <p className="mt-4 rounded-lg border border-line bg-surface-2 p-4 text-sm text-muted">Sem passos registrados.</p>
           : (
             <ol className="mt-4 space-y-0">
               {steps.map((s, i) => {
@@ -312,7 +312,7 @@ function TraceModal({ conversationId, onClose }: { conversationId: string; onClo
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-semibold uppercase tracking-wider text-brand">{meta.label}</span>
                         <span className="text-[10px] text-muted">{new Date(s.createdAt).toLocaleString("pt-BR")}</span>
-                        {s.provider && <span className="rounded-full border border-line px-1.5 text-[9px] text-muted">{s.provider}{s.model ? ` · ${s.model}` : ""}</span>}
+                        {s.provider && <span className="rounded-full border border-line bg-surface-2 px-1.5 text-[9px] text-muted">{s.provider}{s.model ? ` · ${s.model}` : ""}</span>}
                       </div>
                       {s.question && <p className="mt-0.5 break-words text-sm font-medium">{s.question}</p>}
                       {s.response && <p className="mt-0.5 whitespace-pre-wrap break-words text-xs text-muted">{s.response}</p>}
@@ -323,7 +323,7 @@ function TraceModal({ conversationId, onClose }: { conversationId: string; onClo
             </ol>
           )}
         <div className="mt-4 flex justify-end">
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">fechar</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:border-brand hover:text-fg">fechar</button>
         </div>
       </div>
     </div>
@@ -332,7 +332,7 @@ function TraceModal({ conversationId, onClose }: { conversationId: string; onClo
 
 function Card({ title, value, highlight }: { title: string; value: string; highlight?: boolean }) {
   return (
-    <div className={`rounded-xl border p-4 ${highlight ? "border-brand/40 bg-brand/10" : "border-line bg-bg/60"}`}>
+    <div className={`rounded-2xl border p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 ${highlight ? "border-brand/40 bg-brand/10" : "border-line bg-surface hover:border-brand/50"}`}>
       <p className="text-[10px] uppercase tracking-wider text-muted">{title}</p>
       <p className={`mt-1 text-2xl font-semibold ${highlight ? "text-brand" : ""}`}>{value}</p>
     </div>

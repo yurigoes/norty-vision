@@ -29,7 +29,7 @@ export function ChamadosClient() {
 
 function TabBtn({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button onClick={onClick} className={`rounded-lg px-4 py-2 text-sm font-medium transition ${active ? "bg-brand text-white" : "border border-line text-muted hover:text-fg"}`}>
+    <button onClick={onClick} className={`rounded-xl px-4 py-2 text-sm font-medium transition ${active ? "bg-brand text-white" : "border border-line text-muted hover:border-brand/60 hover:text-brand"}`}>
       {children}
     </button>
   );
@@ -52,7 +52,7 @@ function Tickets() {
     <div className="grid gap-4 lg:grid-cols-[320px_1fr]">
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="flex-1 rounded-lg border border-line bg-bg/60 px-2 py-1.5 text-sm">
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="input-base flex-1 w-auto">
             <option value="open">Abertos</option>
             <option value="new">Novos</option>
             <option value="pending">Pendentes</option>
@@ -60,12 +60,12 @@ function Tickets() {
             <option value="closed">Fechados</option>
             <option value="all">Todos</option>
           </select>
-          <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white">+ Novo</button>
+          <button onClick={() => setCreating(true)} className="btn-grad px-3 py-1.5 text-sm">+ Novo</button>
         </div>
         <div className="space-y-1.5">
-          {items.length === 0 && <p className="rounded-lg border border-line bg-bg/60 p-4 text-sm text-muted">Nenhum chamado.</p>}
+          {items.length === 0 && <p className="rounded-2xl border border-line bg-surface p-4 text-sm text-muted">Nenhum chamado.</p>}
           {items.map((t) => (
-            <button key={t.id} onClick={() => setSel(t.id)} className={`block w-full rounded-lg border p-3 text-left transition ${sel === t.id ? "border-brand bg-brand/5" : "border-line bg-bg/60 hover:border-brand/50"}`}>
+            <button key={t.id} onClick={() => setSel(t.id)} className={`block w-full rounded-xl border p-3 text-left transition ${sel === t.id ? "border-brand bg-brand/5" : "border-line bg-surface hover:border-brand/50 hover:bg-surface-2"}`}>
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[10px] text-muted">{t.code}</span>
                 <span className={`text-[10px] ${PRIO_CLS[t.priority] ?? ""}`}>{PRIO_LABEL[t.priority] ?? t.priority}</span>
@@ -77,7 +77,7 @@ function Tickets() {
         </div>
       </div>
       <div>
-        {sel ? <TicketDetail id={sel} onChange={load} /> : <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-sm text-muted">Selecione um chamado.</p>}
+        {sel ? <TicketDetail id={sel} onChange={load} /> : <p className="rounded-2xl border border-line bg-surface p-8 text-center text-sm text-muted">Selecione um chamado.</p>}
       </div>
       {creating && <CreateTicket onClose={() => setCreating(false)} onDone={(id) => { setCreating(false); load(); setSel(id); }} />}
     </div>
@@ -114,17 +114,17 @@ function TicketDetail({ id, onChange }: { id: string; onChange: () => void }) {
     load(); onChange();
   }
 
-  if (!t) return <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-sm text-muted">Carregando…</p>;
+  if (!t) return <p className="rounded-2xl border border-line bg-surface p-8 text-center text-sm text-muted">Carregando…</p>;
 
   return (
-    <div className="rounded-xl border border-line bg-bg/60 p-5">
+    <div className="card">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-mono text-[10px] text-muted">{t.code}</p>
           <h2 className="text-lg font-semibold">{t.subject}</h2>
           <p className="text-xs text-muted">{t.requesterName ?? "—"} · {STATUS_LABEL[t.status] ?? t.status} · {PRIO_LABEL[t.priority]}</p>
         </div>
-        <select value={t.status} onChange={(e) => setStatus(e.target.value)} className="rounded-lg border border-line bg-bg/60 px-2 py-1.5 text-xs">
+        <select value={t.status} onChange={(e) => setStatus(e.target.value)} className="input-base w-auto px-2 py-1.5 text-xs">
           {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </div>
@@ -142,12 +142,12 @@ function TicketDetail({ id, onChange }: { id: string; onChange: () => void }) {
       </div>
 
       <div className="mt-4 border-t border-line pt-3">
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Escreva uma resposta…" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Escreva uma resposta…" className="input-base" />
         <div className="mt-2 flex items-center justify-between">
           <label className="flex items-center gap-2 text-xs text-muted">
             <input type="checkbox" checked={internal} onChange={(e) => setInternal(e.target.checked)} /> nota interna (cliente não vê)
           </label>
-          <button disabled={busy} onClick={reply} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <button disabled={busy} onClick={reply} className="btn-grad disabled:opacity-50">
             {busy ? "Enviando…" : internal ? "Adicionar nota" : "Responder"}
           </button>
         </div>
@@ -157,7 +157,7 @@ function TicketDetail({ id, onChange }: { id: string; onChange: () => void }) {
         <div className="mt-4 border-t border-line pt-3">
           <p className="mb-2 text-xs font-semibold uppercase text-muted">Ordens de serviço</p>
           {t.serviceOrders.map((so: any) => (
-            <div key={so.id} className="flex items-center justify-between rounded-lg border border-line bg-bg/40 p-2 text-sm">
+            <div key={so.id} className="flex items-center justify-between rounded-xl border border-line bg-surface-2 p-2 text-sm">
               <span>{so.code} · {so.title}</span>
               <span className="text-xs text-muted">{brl(so.totalCents)}</span>
             </div>
@@ -188,23 +188,23 @@ function CreateTicket({ onClose, onDone }: { onClose: () => void; onDone: (id: s
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-5" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Novo chamado</h3>
         <div className="mt-3 space-y-2">
-          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Assunto" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Descrição" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
+          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Assunto" className="input-base" />
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Descrição" className="input-base" />
           <div className="grid grid-cols-2 gap-2">
-            <input value={requesterName} onChange={(e) => setRequesterName(e.target.value)} placeholder="Solicitante" className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
-            <input value={requesterPhone} onChange={(e) => setRequesterPhone(e.target.value)} placeholder="WhatsApp (opcional)" className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
+            <input value={requesterName} onChange={(e) => setRequesterName(e.target.value)} placeholder="Solicitante" className="input-base" />
+            <input value={requesterPhone} onChange={(e) => setRequesterPhone(e.target.value)} placeholder="WhatsApp (opcional)" className="input-base" />
           </div>
-          <select value={priority} onChange={(e) => setPriority(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+          <select value={priority} onChange={(e) => setPriority(e.target.value)} className="input-base">
             {Object.entries(PRIO_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
         <div className="mt-4 flex gap-2">
-          <button disabled={busy} onClick={save} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">Abrir chamado</button>
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted">Cancelar</button>
+          <button disabled={busy} onClick={save} className="btn-grad flex-1 disabled:opacity-50">Abrir chamado</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">Cancelar</button>
         </div>
       </div>
     </div>
@@ -248,12 +248,12 @@ function ServiceOrders() {
   return (
     <div>
       <div className="mb-3 flex justify-end">
-        <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white">+ Nova OS</button>
+        <button onClick={() => setCreating(true)} className="btn-grad px-3 py-1.5 text-sm">+ Nova OS</button>
       </div>
       <div className="space-y-2">
-        {items.length === 0 && <p className="rounded-lg border border-line bg-bg/60 p-4 text-sm text-muted">Nenhuma ordem de serviço.</p>}
+        {items.length === 0 && <p className="rounded-2xl border border-line bg-surface p-4 text-sm text-muted">Nenhuma ordem de serviço.</p>}
         {items.map((so) => (
-          <div key={so.id} className="rounded-xl border border-line bg-bg/60 p-4">
+          <div key={so.id} className="rounded-2xl border border-line bg-surface p-4 transition hover:bg-surface-2">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="font-mono text-[10px] text-muted">{so.code}</p>
@@ -262,10 +262,10 @@ function ServiceOrders() {
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${SO_STATUS_CLS[so.status] ?? "bg-line text-muted"}`}>{SO_STATUS[so.status] ?? so.status}</span>
-                <select value={so.status} onChange={(e) => setStatus(so.id, e.target.value)} className="rounded-lg border border-line bg-bg/60 px-2 py-1.5 text-xs">
+                <select value={so.status} onChange={(e) => setStatus(so.id, e.target.value)} className="input-base w-auto px-2 py-1.5 text-xs">
                   {Object.entries(SO_STATUS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
-                <button onClick={() => setOpenId(openId === so.id ? null : so.id)} className="rounded-lg border border-line px-2 py-1.5 text-xs hover:border-brand">{openId === so.id ? "ocultar" : "detalhes"}</button>
+                <button onClick={() => setOpenId(openId === so.id ? null : so.id)} className="rounded-xl border border-line px-2 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">{openId === so.id ? "ocultar" : "detalhes"}</button>
               </div>
             </div>
             {Array.isArray(so.items) && so.items.length > 0 && (
@@ -332,8 +332,8 @@ function CreateSo({ onClose, onDone }: { onClose: () => void; onDone: () => void
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-line bg-bg p-5" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-line bg-surface p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Nova ordem de serviço</h3>
         <div className="mt-3 space-y-2">
           {/* cliente (pra avisar no WhatsApp + portal) */}
@@ -344,11 +344,11 @@ function CreateSo({ onClose, onDone }: { onClose: () => void; onDone: () => void
             </div>
           ) : (
             <>
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cliente (nome / CPF) — opcional, p/ avisar no WhatsApp" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cliente (nome / CPF) — opcional, p/ avisar no WhatsApp" className="input-base" />
               {results.length > 0 && (
                 <div className="max-h-32 space-y-1 overflow-y-auto">
                   {results.map((c) => (
-                    <button key={c.id} onClick={() => { setCustomer(c); setResults([]); }} className="flex w-full items-center justify-between rounded-lg border border-line bg-bg/40 px-3 py-1.5 text-left text-sm hover:border-brand">
+                    <button key={c.id} onClick={() => { setCustomer(c); setResults([]); }} className="flex w-full items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-1.5 text-left text-sm transition hover:border-brand">
                       <span className="truncate">{c.name}</span><span className="text-xs text-muted">{c.phone || c.document || ""}</span>
                     </button>
                   ))}
@@ -356,10 +356,10 @@ function CreateSo({ onClose, onDone }: { onClose: () => void; onDone: () => void
               )}
             </>
           )}
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título (ex.: Troca de haste)" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título (ex.: Troca de haste)" className="input-base" />
           <div className="grid grid-cols-2 gap-2">
-            <input value={equipment} onChange={(e) => setEquipment(e.target.value)} placeholder="Equipamento/óculos" className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
-            <select value={type} onChange={(e) => setType(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+            <input value={equipment} onChange={(e) => setEquipment(e.target.value)} placeholder="Equipamento/óculos" className="input-base" />
+            <select value={type} onChange={(e) => setType(e.target.value)} className="input-base">
               <option value="repair">Conserto</option>
               <option value="warranty">Garantia</option>
               <option value="assistance">Assistência</option>
@@ -367,14 +367,14 @@ function CreateSo({ onClose, onDone }: { onClose: () => void; onDone: () => void
             </select>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <select value={urgency} onChange={(e) => setUrgency(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+            <select value={urgency} onChange={(e) => setUrgency(e.target.value)} className="input-base">
               <option value="low">Urgência: Baixa</option>
               <option value="normal">Urgência: Normal</option>
               <option value="high">Urgência: Alta</option>
               <option value="urgent">Urgência: Urgente</option>
             </select>
           </div>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Observações (opcional)" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm outline-none focus:border-brand" />
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="Observações (opcional)" className="input-base" />
           <div>
             <div className="mb-1 flex items-center justify-between">
               <span className="text-xs font-semibold uppercase text-muted">Itens</span>
@@ -382,16 +382,16 @@ function CreateSo({ onClose, onDone }: { onClose: () => void; onDone: () => void
             </div>
             {items.map((it, i) => (
               <div key={i} className="mb-1 grid grid-cols-[1fr_56px_90px] gap-1">
-                <input value={it.description} onChange={(e) => upd(i, { description: e.target.value })} placeholder="Descrição" className="rounded border border-line bg-bg/40 px-2 py-1 text-xs" />
-                <input type="number" value={it.qty} onChange={(e) => upd(i, { qty: Number(e.target.value) })} className="rounded border border-line bg-bg/40 px-2 py-1 text-xs" />
-                <input type="number" value={it.unitCents / 100} onChange={(e) => upd(i, { unitCents: Math.round(Number(e.target.value) * 100) })} placeholder="R$ unit" className="rounded border border-line bg-bg/40 px-2 py-1 text-xs" />
+                <input value={it.description} onChange={(e) => upd(i, { description: e.target.value })} placeholder="Descrição" className="rounded-lg border border-line bg-surface-2 px-2 py-1 text-xs outline-none focus:border-brand" />
+                <input type="number" value={it.qty} onChange={(e) => upd(i, { qty: Number(e.target.value) })} className="rounded-lg border border-line bg-surface-2 px-2 py-1 text-xs outline-none focus:border-brand" />
+                <input type="number" value={it.unitCents / 100} onChange={(e) => upd(i, { unitCents: Math.round(Number(e.target.value) * 100) })} placeholder="R$ unit" className="rounded-lg border border-line bg-surface-2 px-2 py-1 text-xs outline-none focus:border-brand" />
               </div>
             ))}
           </div>
         </div>
         <div className="mt-4 flex gap-2">
-          <button disabled={busy} onClick={save} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">Criar OS</button>
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted">Cancelar</button>
+          <button disabled={busy} onClick={save} className="btn-grad flex-1 disabled:opacity-50">Criar OS</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">Cancelar</button>
         </div>
       </div>
     </div>

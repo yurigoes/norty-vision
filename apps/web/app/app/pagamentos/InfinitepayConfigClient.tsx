@@ -48,7 +48,7 @@ export function InfinitepayConfigClient({ initial }: { initial: IpIntegration | 
   }
 
   return (
-    <form onSubmit={save} className="space-y-5 rounded-xl border border-line bg-bg/60 p-6">
+    <form onSubmit={save} className="card space-y-5 p-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">InfinitePay (link de pagamento)</h2>
         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${
@@ -72,7 +72,7 @@ export function InfinitepayConfigClient({ initial }: { initial: IpIntegration | 
           name="handle"
           defaultValue={initial?.config?.handle ?? ""}
           placeholder="seu-handle (sem o $)"
-          className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+          className="input-base"
         />
         <p className="mt-1 text-[11px] text-muted">
           É o seu nome de usuário no app InfinitePay. Use sem o símbolo <code>$</code> do início.
@@ -89,11 +89,11 @@ export function InfinitepayConfigClient({ initial }: { initial: IpIntegration | 
       {saved && <p className="rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-200">Salvo.</p>}
 
       <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={test} className="rounded-lg border border-line px-4 py-2 text-sm hover:border-brand">
+        <button type="button" onClick={test} className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand">
           Validar handle
         </button>
         {testResult && <span className="text-xs text-muted">{testResult}</span>}
-        <button type="submit" disabled={isPending} className="ml-auto rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        <button type="submit" disabled={isPending} className="btn-grad ml-auto disabled:opacity-50">
           Salvar
         </button>
       </div>

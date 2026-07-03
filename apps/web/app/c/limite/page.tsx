@@ -104,13 +104,13 @@ export default function PortalLimite() {
   if (done) {
     return (
       <main className="mx-auto max-w-xl px-4 py-16 text-center">
-        <div className="rounded-2xl border border-green-500/40 bg-green-500/10 p-8">
-          <h1 className="text-2xl font-semibold text-green-100">✓ Pedido enviado</h1>
+        <div className="rounded-2xl border border-success/40 bg-success/10 p-8 shadow-sm">
+          <h1 className="text-2xl font-extrabold tracking-tight text-success">✓ Pedido enviado</h1>
           <p className="mt-2 text-sm text-muted">
             Recebemos seus dados e documentos. A loja vai analisar e você será
             avisado pelo WhatsApp. Normalmente leva pouco tempo.
           </p>
-          <Link href="/c" className="mt-6 inline-block rounded-lg bg-brand px-6 py-2.5 text-sm font-semibold text-white">
+          <Link href="/c" className="btn-grad mt-6 inline-block px-6 py-2.5">
             Voltar ao painel
           </Link>
         </div>
@@ -120,8 +120,8 @@ export default function PortalLimite() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
-      <Link href="/c" className="text-sm text-brand hover:underline">← voltar</Link>
-      <h1 className="mt-4 text-2xl font-semibold">Pedir limite de crediário</h1>
+      <Link href="/c" className="text-sm font-medium text-brand hover:underline">← voltar</Link>
+      <h1 className="mt-3 text-2xl font-extrabold tracking-tight">Pedir limite de crediário</h1>
       <p className="mt-2 text-sm text-muted">
         Para liberar ou aumentar seu crediário, precisamos validar seus dados.
         Tudo é analisado pela loja. Seus documentos ficam protegidos.
@@ -129,7 +129,7 @@ export default function PortalLimite() {
 
       {/* linha do tempo das solicitações */}
       {!loadingApps && apps.length > 0 && (
-        <div className="mt-6 rounded-xl border border-line bg-bg/60 p-4">
+        <div className="card mt-6">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Suas solicitações</h2>
           <ol className="space-y-2">
             {apps.map((a) => (
@@ -155,8 +155,8 @@ export default function PortalLimite() {
 
       {/* trava: já existe pedido em análise */}
       {hasPending && (
-        <div className="mt-6 rounded-xl border border-orange-500/40 bg-orange-500/10 p-6 text-sm">
-          <p className="font-semibold text-orange-600 dark:text-orange-200">Você já tem um pedido em análise</p>
+        <div className="mt-6 rounded-2xl border border-warn/40 bg-warn/10 p-6 text-sm shadow-sm">
+          <p className="font-semibold text-warn">Você já tem um pedido em análise</p>
           <p className="mt-1 text-muted">
             Aguarde a resposta da loja. Você poderá fazer um novo pedido quando este for aprovado ou recusado.
           </p>
@@ -165,20 +165,20 @@ export default function PortalLimite() {
 
       {/* cliente que JÁ tem conta: pede só aumento (sem refazer KYC) */}
       {!hasPending && hasAccount && (
-        <div className="mt-6 space-y-4">
+        <div className="card mt-6 space-y-4">
           <p className="text-sm text-muted">Você já tem conta de crediário. Para pedir um aumento, informe o valor desejado:</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block">
-              <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Limite desejado (R$)</span>
-              <input value={requested} onChange={(e) => setRequested(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+              <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">Limite desejado (R$)</span>
+              <input value={requested} onChange={(e) => setRequested(e.target.value)} className="input-base" />
             </label>
             <label className="block">
-              <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Motivo (opcional)</span>
-              <input value={reason} onChange={(e) => setReason(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+              <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">Motivo (opcional)</span>
+              <input value={reason} onChange={(e) => setReason(e.target.value)} className="input-base" />
             </label>
           </div>
-          {error && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{error}</p>}
-          <button onClick={submitIncrease} disabled={submitting || !requested} className="w-full rounded-lg bg-brand py-3 text-sm font-semibold text-white disabled:opacity-50">
+          {error && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{error}</p>}
+          <button onClick={submitIncrease} disabled={submitting || !requested} className="btn-grad w-full py-3">
             {submitting ? "Enviando..." : "Pedir aumento de limite"}
           </button>
         </div>
@@ -189,24 +189,24 @@ export default function PortalLimite() {
       <>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Renda mensal (R$)</span>
-          <input value={income} onChange={(e) => setIncome(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">Renda mensal (R$)</span>
+          <input value={income} onChange={(e) => setIncome(e.target.value)} className="input-base" />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Limite desejado (R$)</span>
-          <input value={requested} onChange={(e) => setRequested(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">Limite desejado (R$)</span>
+          <input value={requested} onChange={(e) => setRequested(e.target.value)} className="input-base" />
         </label>
       </div>
 
-      <div className="mt-6 space-y-3">
+      <div className="mt-6 space-y-2.5">
         <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Documentos</h2>
         {DOCS.map((d) => (
-          <div key={d.type} className="flex items-center justify-between rounded-lg border border-line bg-bg/60 p-3">
+          <div key={d.type} className="flex items-center justify-between rounded-xl border border-line bg-surface p-3 shadow-sm">
             <span className="text-sm">{d.label}</span>
             {uploads[d.type] ? (
-              <span className="text-xs text-green-300">✓ enviado</span>
+              <span className="text-xs font-medium text-success">✓ enviado</span>
             ) : (
-              <label className="cursor-pointer rounded-md border border-line px-3 py-1.5 text-xs hover:border-brand">
+              <label className="cursor-pointer rounded-lg border border-line px-3 py-1.5 text-xs transition hover:border-brand/50 hover:text-brand">
                 {uploading === d.type ? "enviando..." : "enviar"}
                 <input
                   type="file"
@@ -221,12 +221,12 @@ export default function PortalLimite() {
         ))}
       </div>
 
-      {error && <p className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
+      {error && <p className="mt-4 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{error}</p>}
 
       <button
         onClick={submit}
         disabled={submitting || !allUploaded || !income || !requested}
-        className="mt-6 w-full rounded-lg bg-brand py-3 text-sm font-semibold text-white disabled:opacity-50"
+        className="btn-grad mt-6 w-full py-3"
       >
         {submitting ? "Enviando..." : "Enviar pedido"}
       </button>

@@ -11,7 +11,7 @@ export default async function RhPage() {
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-muted">
+        <p className="rounded-2xl border border-line bg-surface p-6 text-muted">
           Apenas administradores podem gerenciar o RH.
         </p>
       </div>

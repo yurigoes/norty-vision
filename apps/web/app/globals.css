@@ -141,7 +141,9 @@
 
   /* ========== CARDS / BOTOES ========== */
   .card {
-    @apply rounded-2xl border border-line bg-surface p-5 transition duration-300 hover:translate-y-[-2px] hover:border-brand/50;
+    /* calmo como o Norty: sem "pulo" (translate) — só realce sutil de borda/sombra no hover,
+       pra ficar bom tanto em cards clicáveis quanto em seções estáticas. */
+    @apply rounded-2xl border border-line bg-surface p-5 transition-colors duration-200 hover:border-brand/40;
     box-shadow: var(--shadow-sm);
   }
   .card:hover { box-shadow: var(--shadow-md); }

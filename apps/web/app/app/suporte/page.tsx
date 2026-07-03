@@ -30,7 +30,7 @@ export default function SuporteIndex() {
           <Link
             key={c.href}
             href={c.href}
-            className="block rounded-xl border border-line bg-bg/60 p-5 backdrop-blur-sm transition hover:border-brand/60"
+            className="card block"
           >
             <h3 className="text-base font-semibold">{c.title}</h3>
             <p className="mt-1 text-sm text-muted">{c.body}</p>

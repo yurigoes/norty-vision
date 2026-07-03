@@ -59,7 +59,7 @@ export default function MasterModulePricing() {
               {g.modules.map((m) => {
                 const cur = prices[m.key] ?? { priceReais: "", active: true };
                 return (
-                  <div key={m.key} className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-bg/60 p-3">
+                  <div key={m.key} className="card flex flex-wrap items-center gap-3 p-3">
                     <span className="min-w-[180px] flex-1 text-sm font-medium">{m.label}</span>
                     <div className="flex items-center gap-1">
                       <span className="text-xs text-muted">R$</span>
@@ -67,14 +67,14 @@ export default function MasterModulePricing() {
                         value={cur.priceReais}
                         onChange={(e) => setField(m.key, { priceReais: e.target.value })}
                         placeholder="0,00"
-                        className="w-28 rounded border border-line bg-bg/40 px-2 py-1 text-sm"
+                        className="input-base w-28"
                       />
                       <span className="text-xs text-muted">/mês</span>
                     </div>
                     <label className="flex items-center gap-1 text-xs text-muted">
                       <input type="checkbox" checked={cur.active} onChange={(e) => setField(m.key, { active: e.target.checked })} /> ativo
                     </label>
-                    <button onClick={() => save(m.key)} disabled={savingKey === m.key} className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">
+                    <button onClick={() => save(m.key)} disabled={savingKey === m.key} className="btn-grad px-3 py-1 text-xs">
                       {savingKey === m.key ? "..." : "Salvar"}
                     </button>
                   </div>

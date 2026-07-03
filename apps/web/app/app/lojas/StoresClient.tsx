@@ -124,7 +124,7 @@ export function StoresClient({ initialStores }: { initialStores: Store[] }) {
       {!showForm && !editing && (
         <button
           onClick={() => setShowForm(true)}
-          className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+          className="btn-grad px-5"
         >
           + Nova loja
         </button>
@@ -133,7 +133,7 @@ export function StoresClient({ initialStores }: { initialStores: Store[] }) {
       {showForm && (
         <form
           onSubmit={onCreate}
-          className="space-y-4 rounded-xl border border-line bg-bg/60 p-6"
+          className="space-y-4 rounded-2xl border border-line bg-surface p-6 shadow-sm"
         >
           <h2 className="text-lg font-semibold">Nova loja</h2>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -166,14 +166,14 @@ export function StoresClient({ initialStores }: { initialStores: Store[] }) {
                 setShowForm(false);
                 setError(null);
               }}
-              className="rounded-lg border border-line px-4 py-2 text-sm"
+              className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="btn-grad px-5 disabled:opacity-50"
             >
               Criar loja
             </button>
@@ -184,7 +184,7 @@ export function StoresClient({ initialStores }: { initialStores: Store[] }) {
       {editing && (
         <form
           onSubmit={onUpdate}
-          className="space-y-4 rounded-xl border border-line bg-bg/60 p-6"
+          className="space-y-4 rounded-2xl border border-line bg-surface p-6 shadow-sm"
         >
           <h2 className="text-lg font-semibold">
             Editar loja —{" "}
@@ -212,7 +212,7 @@ export function StoresClient({ initialStores }: { initialStores: Store[] }) {
           </div>
 
           {/* ===== Branding da loja ===== */}
-          <div className="rounded-lg border border-line bg-bg/40 p-4">
+          <div className="rounded-xl border border-line bg-surface-2 p-4">
             <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted">
               Branding (aparência da loja)
             </h3>
@@ -225,7 +225,7 @@ export function StoresClient({ initialStores }: { initialStores: Store[] }) {
                   type="color"
                   name="themePrimaryColor"
                   defaultValue={editing.themePrimaryColor ?? "#387af0"}
-                  className="h-10 w-full rounded-lg border border-line bg-bg/60"
+                  className="h-10 w-full rounded-xl border border-line bg-surface cursor-pointer"
                 />
               </label>
               <SelectField
@@ -246,7 +246,7 @@ export function StoresClient({ initialStores }: { initialStores: Store[] }) {
                   {editLogoUrl && (
                     <img src={editLogoUrl} alt="logo" className="h-8 w-auto rounded object-contain" />
                   )}
-                  <label className="cursor-pointer rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand">
+                  <label className="cursor-pointer rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">
                     {editLogoUrl ? "trocar" : "enviar"}
                     <input
                       type="file"
@@ -273,7 +273,7 @@ export function StoresClient({ initialStores }: { initialStores: Store[] }) {
                   name="examPrice"
                   inputMode="decimal"
                   defaultValue={((editing.examPriceCents ?? 14000) / 100).toFixed(2)}
-                  className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                  className="input-base"
                 />
               </label>
               <label className="block">
@@ -284,7 +284,7 @@ export function StoresClient({ initialStores }: { initialStores: Store[] }) {
                   name="examPaymentNote"
                   defaultValue={editing.examPaymentNote ?? "no Pix ou dinheiro"}
                   placeholder="no Pix ou dinheiro"
-                  className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm"
+                  className="input-base"
                 />
               </label>
             </div>
@@ -303,14 +303,14 @@ export function StoresClient({ initialStores }: { initialStores: Store[] }) {
                 setEditing(null);
                 setError(null);
               }}
-              className="rounded-lg border border-line px-4 py-2 text-sm"
+              className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="btn-grad px-5 disabled:opacity-50"
             >
               Salvar
             </button>
@@ -319,24 +319,24 @@ export function StoresClient({ initialStores }: { initialStores: Store[] }) {
       )}
 
       {initialStores.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">
+        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">
           Nenhuma loja cadastrada.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
-                <th className="px-4 py-3">Nome</th>
-                <th className="px-4 py-3">Slug</th>
-                <th className="px-4 py-3">Cidade/UF</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Ações</th>
+              <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
+                <th className="px-4 py-3 font-medium">Nome</th>
+                <th className="px-4 py-3 font-medium">Slug</th>
+                <th className="px-4 py-3 font-medium">Cidade/UF</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">Ações</th>
               </tr>
             </thead>
             <tbody>
               {initialStores.map((s) => (
-                <tr key={s.id} className="border-t border-line/50">
+                <tr key={s.id} className="border-t border-line transition hover:bg-surface-2">
                   <td className="px-4 py-3 font-medium">{s.name}</td>
                   <td className="px-4 py-3 font-mono text-xs text-muted">
                     {s.slug}
@@ -427,7 +427,7 @@ function Field({
         required={required}
         defaultValue={defaultValue}
         autoComplete="off"
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       />
       {help && <p className="mt-1 text-[11px] leading-snug text-muted">{help}</p>}
     </label>
@@ -453,7 +453,7 @@ function SelectField({
       <select
         name={name}
         defaultValue={defaultValue ?? ""}
-        className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none focus:border-brand"
+        className="input-base"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

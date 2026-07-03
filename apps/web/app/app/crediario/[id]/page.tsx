@@ -64,7 +64,7 @@ export default async function CreditAccountDetail({
     return (
       <div className="max-w-3xl">
         <Link href="/app/crediario" className="text-sm text-brand hover:underline">← voltar</Link>
-        <p className="mt-8 rounded-lg border border-line bg-bg/60 p-6 text-muted">Conta não encontrada.</p>
+        <p className="mt-8 rounded-2xl border border-line bg-surface p-6 text-muted">Conta não encontrada.</p>
       </div>
     );
   }
@@ -123,11 +123,11 @@ export default async function CreditAccountDetail({
       <section>
         <h2 className="mb-4 text-lg font-semibold">Compras ({acc.purchases.length})</h2>
         {acc.purchases.length === 0 ? (
-          <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhuma compra no crediário.</p>
+          <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhuma compra no crediário.</p>
         ) : (
           <div className="space-y-4">
             {acc.purchases.map((p) => (
-              <div key={p.id} className="rounded-xl border border-line bg-bg/60 p-5">
+              <div key={p.id} className="card">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium">{brl(p.totalCents)} em {p.installmentsCount}x</p>
@@ -182,9 +182,9 @@ export default async function CreditAccountDetail({
 
 function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className={`rounded-xl border bg-bg/60 p-4 ${highlight ? "border-brand/50" : "border-line"}`}>
-      <p className="text-[10px] uppercase tracking-wider text-muted">{label}</p>
-      <p className="mt-1 text-lg font-semibold">{value}</p>
+    <div className={`card ${highlight ? "border-brand/50" : ""}`}>
+      <p className="text-xs uppercase tracking-wider text-muted">{label}</p>
+      <p className={`mt-1 text-2xl font-semibold ${highlight ? "text-success" : ""}`}>{value}</p>
     </div>
   );
 }

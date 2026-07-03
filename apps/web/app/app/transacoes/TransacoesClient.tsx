@@ -73,7 +73,7 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
         ].map(([k, l]) => (
           <button key={k} onClick={() => setFilter(k)} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${filter === k ? "border-brand text-brand" : "border-line text-muted hover:text-fg"}`}>{l}</button>
         ))}
-        <button onClick={() => window.print()} className="ml-auto rounded-lg bg-brand px-4 py-1.5 text-xs font-semibold text-white transition hover:opacity-90">🖨️ PDF / Imprimir</button>
+        <button onClick={() => window.print()} className="btn-grad ml-auto px-4 py-1.5 text-xs">🖨️ PDF / Imprimir</button>
       </div>
 
       {/* versão branded só pra impressão */}
@@ -114,11 +114,11 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
       </div>
 
       {shown.length === 0 ? (
-        <p className="no-print rounded-xl border border-line bg-bg/60 p-8 text-center text-sm text-muted">Nenhuma transação.</p>
+        <p className="no-print rounded-2xl border border-line bg-surface p-8 text-center text-sm text-muted">Nenhuma transação.</p>
       ) : (
-        <div className="no-print overflow-x-auto rounded-xl border border-line bg-bg/60">
+        <div className="no-print overflow-x-auto rounded-2xl border border-line bg-surface">
           <table className="w-full text-sm">
-            <thead className="border-b border-line text-left text-[10px] uppercase tracking-wider text-muted">
+            <thead className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
               <tr>
                 <th className="px-4 py-3">Quando</th>
                 <th className="px-4 py-3">Origem</th>
@@ -134,7 +134,7 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
                 const s = STATUS[t.status] ?? { label: t.status, cls: "bg-line text-muted" };
                 const pending = ["pending"].includes(t.status);
                 return (
-                  <tr key={t.id} className="border-b border-line/60">
+                  <tr key={t.id} className="border-t border-line transition hover:bg-surface-2">
                     <td className="px-4 py-3 text-xs text-muted">{new Date(t.at).toLocaleString("pt-BR")}</td>
                     <td className="px-4 py-3">{t.origin}</td>
                     <td className="px-4 py-3">{[t.ref, t.who].filter(Boolean).join(" · ") || "—"}</td>
@@ -143,7 +143,7 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
                     <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.cls}`}>{s.label}</span></td>
                     <td className="px-4 py-3 text-right">
                       {!["paid", "approved"].includes(t.status) && (t.mpPaymentId || t.provider === "infinitepay") && (
-                        <button onClick={() => force(t)} disabled={busy === t.id} className="rounded-lg border border-line px-3 py-1 text-xs transition hover:border-brand disabled:opacity-50">
+                        <button onClick={() => force(t)} disabled={busy === t.id} className="rounded-lg border border-line px-3 py-1 text-xs transition hover:border-brand/60 hover:text-brand disabled:opacity-50">
                           {busy === t.id ? "..." : t.provider === "infinitepay" ? "verificar" : "forçar"}
                         </button>
                       )}

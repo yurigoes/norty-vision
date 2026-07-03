@@ -11,7 +11,7 @@ export default async function PermissoesPage() {
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-muted">
+        <p className="card text-muted">
           Apenas administradores ou owners da organização podem gerenciar
           papéis e permissões.
         </p>

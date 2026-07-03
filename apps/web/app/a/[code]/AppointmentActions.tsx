@@ -84,11 +84,11 @@ export function AppointmentActions({
 
   return (
     <>
-      {err && <p className="mt-4 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">{err}</p>}
+      {err && <p className="mt-4 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-medium text-danger">{err}</p>}
 
       {/* JÁ CONFIRMOU (aqui ou pelo WhatsApp) → sucesso, sem mais ações */}
       {outcome === "confirmed" ? (
-        <p className="mt-5 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-4 text-center text-sm font-medium text-green-200">
+        <p className="mt-5 rounded-xl border border-success/40 bg-success/10 px-3 py-4 text-center text-sm font-medium text-success">
           ✅ Presença confirmada! Estamos te esperando. 💙
         </p>
 

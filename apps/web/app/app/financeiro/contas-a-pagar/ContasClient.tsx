@@ -52,11 +52,11 @@ export function ContasClient() {
         {STATUS_TABS.map((t) => (
           <button key={t.k} onClick={() => setTab(t.k)} className={`rounded-full px-4 py-1.5 text-sm ${tab === t.k ? "bg-brand text-white" : "border border-line text-muted hover:border-brand"}`}>{t.label}</button>
         ))}
-        <a href={`/api/payables/report.pdf?status=${tab}`} target="_blank" rel="noreferrer" className="ml-auto rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">PDF</a>
-        <a href={`/api/payables/export?status=${tab}`} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">CSV</a>
-        <button onClick={() => setRecipientsOpen(true)} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Avisos</button>
-        <label className="cursor-pointer rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Importar DANFE (XML)<input type="file" accept=".xml,text/xml,application/xml" className="hidden" onChange={importDanfe} /></label>
-        <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">+ Nova conta</button>
+        <a href={`/api/payables/report.pdf?status=${tab}`} target="_blank" rel="noreferrer" className="ml-auto rounded-xl border border-line bg-surface px-3 py-2 text-sm font-medium transition hover:border-brand">PDF</a>
+        <a href={`/api/payables/export?status=${tab}`} className="rounded-xl border border-line bg-surface px-3 py-2 text-sm font-medium transition hover:border-brand">CSV</a>
+        <button onClick={() => setRecipientsOpen(true)} className="rounded-xl border border-line bg-surface px-3 py-2 text-sm font-medium transition hover:border-brand">Avisos</button>
+        <label className="cursor-pointer rounded-xl border border-line bg-surface px-3 py-2 text-sm font-medium transition hover:border-brand">Importar DANFE (XML)<input type="file" accept=".xml,text/xml,application/xml" className="hidden" onChange={importDanfe} /></label>
+        <button onClick={() => setCreating(true)} className="btn-grad px-4 py-2">+ Nova conta</button>
       </div>
 
       {sum && (
@@ -68,12 +68,12 @@ export function ContasClient() {
         </div>
       )}
 
-      <div className="rounded-xl border border-line bg-bg/60 p-4 text-sm">
+      <div className="card p-4 text-sm">
         <span className="text-muted">{loading ? "Carregando…" : `${items.length} parcela(s)`}</span>
         <span className="ml-3 font-semibold">Total ({STATUS_TABS.find((t) => t.k === tab)?.label}): {brl(total)}</span>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-line bg-bg/60">
+      <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">
           <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted">
             <th className="px-4 py-3">Fornecedor / descrição</th><th className="px-4 py-3">Parcela</th><th className="px-4 py-3">Vencimento</th><th className="px-4 py-3">Valor</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"></th>
@@ -109,8 +109,8 @@ export function ContasClient() {
 }
 
 function Card({ label, value, hint, tone }: { label: string; value: string; hint?: string; tone?: "green" | "amber" | "red" }) {
-  const cls = tone === "green" ? "text-green-300" : tone === "amber" ? "text-amber-200" : tone === "red" ? "text-red-300" : "text-fg";
-  return <div className="rounded-xl border border-line bg-bg/60 p-4"><p className="text-[10px] uppercase tracking-wider text-muted">{label}</p><p className={`mt-1 text-xl font-semibold ${cls}`}>{value}</p>{hint && <p className="mt-0.5 text-[11px] text-muted">{hint}</p>}</div>;
+  const cls = tone === "green" ? "text-success" : tone === "amber" ? "text-warn" : tone === "red" ? "text-danger" : "text-fg";
+  return <div className="card p-4"><p className="text-[10px] uppercase tracking-wider text-muted">{label}</p><p className={`mt-1 text-2xl font-semibold ${cls}`}>{value}</p>{hint && <p className="mt-0.5 text-[11px] text-muted">{hint}</p>}</div>;
 }
 
 function Recipients({ onClose, dialog }: { onClose: () => void; dialog: any }) {
@@ -141,12 +141,12 @@ function Recipients({ onClose, dialog }: { onClose: () => void; dialog: any }) {
           {list.length === 0 && <p className="text-xs text-muted">Ninguém ainda. Adicione o dono e quem mais precisar.</p>}
         </div>
         <div className="mt-3 grid grid-cols-1 gap-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome" className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome" className="input-base" />
           <div className="grid grid-cols-2 gap-2">
-            <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="WhatsApp" className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
-            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail" className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+            <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="WhatsApp" className="input-base" />
+            <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="E-mail" className="input-base" />
           </div>
-          <button onClick={add} className="rounded-lg bg-brand py-2 text-sm font-semibold text-white">+ Adicionar destinatário</button>
+          <button onClick={add} className="btn-grad py-2">+ Adicionar destinatário</button>
         </div>
         <button onClick={onClose} className="mt-4 w-full rounded-lg border border-line py-2 text-sm text-muted hover:text-fg">fechar</button>
       </div>
@@ -234,16 +234,16 @@ function NewPayable({ onClose, onSaved, dialog }: { onClose: () => void; onSaved
           <Field label="Categoria" v={category} on={setCategory} placeholder="aluguel, energia, fornecedor…" />
           <Field label="Descrição" v={description} on={setDescription} />
           <Field label="Nº do documento / NF" v={docNumber} on={setDocNumber} />
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Emissão</span><input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Emissão</span><input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} className="input-base" /></label>
         </div>
-        <label className="mt-4 flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+        <label className="mt-4 flex cursor-pointer items-center gap-2 rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm">
           <input type="checkbox" checked={recurring} onChange={(e) => setRecurring(e.target.checked)} className="h-4 w-4 accent-brand" />
           <span>Conta recorrente (mensal fixa — ex.: aluguel, internet). Gera a parcela do mês automaticamente.</span>
         </label>
         {recurring ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Dia do vencimento (1–28)</span><input value={recDay} onChange={(e) => setRecDay(e.target.value.replace(/\D/g, "").slice(0, 2))} inputMode="numeric" placeholder="5" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
-            <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Valor mensal</span><input value={recValue} onChange={(e) => setRecValue(e.target.value)} inputMode="decimal" placeholder="R$ valor" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+            <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Dia do vencimento (1–28)</span><input value={recDay} onChange={(e) => setRecDay(e.target.value.replace(/\D/g, "").slice(0, 2))} inputMode="numeric" placeholder="5" className="input-base" /></label>
+            <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Valor mensal</span><input value={recValue} onChange={(e) => setRecValue(e.target.value)} inputMode="decimal" placeholder="R$ valor" className="input-base" /></label>
             <p className="text-xs text-muted sm:col-span-2">A primeira parcela é criada agora para o mês corrente; nos meses seguintes o sistema gera automaticamente no dia configurado.</p>
           </div>
         ) : (
@@ -254,10 +254,10 @@ function NewPayable({ onClose, onSaved, dialog }: { onClose: () => void; onSaved
             <div className="space-y-2">
               {rows.map((r, i) => (
                 <div key={i} className="flex flex-wrap gap-2">
-                  <input type="date" value={r.dueDate} onChange={(e) => setRows((a) => a.map((x, idx) => idx === i ? { ...x, dueDate: e.target.value } : x))} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" />
-                  <input value={r.value} onChange={(e) => setRows((a) => a.map((x, idx) => idx === i ? { ...x, value: e.target.value } : x))} inputMode="decimal" placeholder="R$ valor" className="w-28 rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" />
-                  <input value={r.barcode} onChange={(e) => setRows((a) => a.map((x, idx) => idx === i ? { ...x, barcode: e.target.value } : x))} placeholder="linha digitável do boleto (opcional)" className="flex-1 rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" />
-                  <button onClick={() => lerBoleto(i)} title="Ler vencimento e valor do boleto" className="rounded-lg border border-line px-2 py-2 text-xs hover:border-brand">ler</button>
+                  <input type="date" value={r.dueDate} onChange={(e) => setRows((a) => a.map((x, idx) => idx === i ? { ...x, dueDate: e.target.value } : x))} className="input-base w-auto px-2" />
+                  <input value={r.value} onChange={(e) => setRows((a) => a.map((x, idx) => idx === i ? { ...x, value: e.target.value } : x))} inputMode="decimal" placeholder="R$ valor" className="input-base w-28 px-2" />
+                  <input value={r.barcode} onChange={(e) => setRows((a) => a.map((x, idx) => idx === i ? { ...x, barcode: e.target.value } : x))} placeholder="linha digitável do boleto (opcional)" className="input-base flex-1 px-2" />
+                  <button onClick={() => lerBoleto(i)} title="Ler vencimento e valor do boleto" className="rounded-xl border border-line px-2 py-2 text-xs transition hover:border-brand">ler</button>
                   {rows.length > 1 && <button onClick={() => setRows((a) => a.filter((_, idx) => idx !== i))} className="text-muted hover:text-red-300">×</button>}
                 </div>
               ))}
@@ -266,8 +266,8 @@ function NewPayable({ onClose, onSaved, dialog }: { onClose: () => void; onSaved
           </div>
         )}
         <div className="mt-4 flex gap-2">
-          <button disabled={busy} onClick={save} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Lançar conta"}</button>
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+          <button disabled={busy} onClick={save} className="btn-grad flex-1 py-2">{busy ? "Salvando…" : "Lançar conta"}</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
         </div>
       </div>
     </div>
@@ -296,19 +296,19 @@ function PayModal({ inst, onClose, onSaved, dialog }: { inst: any; onClose: () =
       <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Dar baixa</h3>
         <p className="mt-1 text-xs text-muted">{inst.payable?.supplier || inst.payable?.description} · parcela {inst.number} · vence {new Date(inst.dueDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</p>
-        <label className="mt-3 block"><span className="mb-1 block text-[10px] uppercase text-muted">Valor pago (R$)</span><input value={paid} onChange={(e) => setPaid(e.target.value)} inputMode="decimal" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+        <label className="mt-3 block"><span className="mb-1 block text-[10px] uppercase text-muted">Valor pago (R$)</span><input value={paid} onChange={(e) => setPaid(e.target.value)} inputMode="decimal" className="input-base" /></label>
         <div className="mt-2 grid grid-cols-2 gap-2">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Data</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Data</span><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input-base" /></label>
           <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Meio</span>
-            <select value={method} onChange={(e) => setMethod(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+            <select value={method} onChange={(e) => setMethod(e.target.value)} className="input-base">
               <option value="pix">Pix</option><option value="boleto">Boleto</option><option value="transferencia">Transferência</option><option value="cartao">Cartão</option><option value="dinheiro">Dinheiro</option>
             </select></label>
         </div>
-        <label className="mt-2 block"><span className="mb-1 block text-[10px] uppercase text-muted">Observação</span><input value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
-        <label className="mt-2 block cursor-pointer rounded-lg border border-dashed border-line px-3 py-3 text-center text-xs hover:border-brand">{proof ? `📎 ${proof.name}` : "Anexar comprovante (imagem/PDF)"}<input type="file" accept="image/*,application/pdf" className="hidden" onChange={onFile} /></label>
+        <label className="mt-2 block"><span className="mb-1 block text-[10px] uppercase text-muted">Observação</span><input value={notes} onChange={(e) => setNotes(e.target.value)} className="input-base" /></label>
+        <label className="mt-2 block cursor-pointer rounded-xl border border-dashed border-line px-3 py-3 text-center text-xs transition hover:border-brand">{proof ? `📎 ${proof.name}` : "Anexar comprovante (imagem/PDF)"}<input type="file" accept="image/*,application/pdf" className="hidden" onChange={onFile} /></label>
         <div className="mt-4 flex gap-2">
-          <button disabled={busy} onClick={save} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "…" : "Confirmar baixa"}</button>
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+          <button disabled={busy} onClick={save} className="btn-grad flex-1 py-2">{busy ? "…" : "Confirmar baixa"}</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
         </div>
       </div>
     </div>
@@ -316,5 +316,5 @@ function PayModal({ inst, onClose, onSaved, dialog }: { inst: any; onClose: () =
 }
 
 function Field({ label, v, on, placeholder }: { label: string; v: string; on: (v: string) => void; placeholder?: string }) {
-  return <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">{label}</span><input value={v} onChange={(e) => on(e.target.value)} placeholder={placeholder} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>;
+  return <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">{label}</span><input value={v} onChange={(e) => on(e.target.value)} placeholder={placeholder} className="input-base" /></label>;
 }

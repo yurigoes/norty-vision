@@ -28,20 +28,27 @@ export default function SupplierResetPassword() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border border-line bg-bg/60 p-8">
-        <h1 className="text-2xl font-semibold">Defina sua senha</h1>
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(680px 460px at 78% 6%, rgba(37,99,235,.16), transparent 60%), radial-gradient(560px 460px at 12% 96%, rgba(6,182,212,.14), transparent 58%)",
+        }}
+      />
+      <form onSubmit={submit} className="card relative w-full max-w-sm space-y-4 p-8 shadow-[0_24px_50px_-18px_rgba(15,23,42,0.22)]">
+        <h1 className="text-2xl font-extrabold tracking-tight">Defina sua senha</h1>
         <p className="text-sm text-muted">Crie uma senha pessoal para os próximos acessos.</p>
         <label className="block">
-          <span className="mb-1 block text-xs uppercase text-muted">Nova senha</span>
-          <input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <span className="mb-1.5 block text-xs font-semibold text-muted">Nova senha</span>
+          <input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} className="input-base" />
         </label>
         <label className="block">
-          <span className="mb-1 block text-xs uppercase text-muted">Confirmar senha</span>
-          <input type="password" value={pwd2} onChange={(e) => setPwd2(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+          <span className="mb-1.5 block text-xs font-semibold text-muted">Confirmar senha</span>
+          <input type="password" value={pwd2} onChange={(e) => setPwd2(e.target.value)} className="input-base" />
         </label>
-        {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p>}
-        <button type="submit" disabled={busy} className="w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
+        {err && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{err}</p>}
+        <button type="submit" disabled={busy} className="btn-grad w-full py-3 text-[15px]">
           {busy ? "Salvando..." : "Salvar senha"}
         </button>
       </form>

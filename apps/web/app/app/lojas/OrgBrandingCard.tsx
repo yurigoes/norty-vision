@@ -77,7 +77,7 @@ export function OrgBrandingCard({ initial }: { initial: OrgBrand | null }) {
   }
 
   return (
-    <section className="mb-8 rounded-xl border border-line bg-bg/60 p-5">
+    <section className="mb-8 rounded-2xl border border-line bg-surface p-5 shadow-sm">
       <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
         Marca da empresa
       </h2>
@@ -87,7 +87,7 @@ export function OrgBrandingCard({ initial }: { initial: OrgBrand | null }) {
 
       <div className="mt-4 grid gap-5 sm:grid-cols-[160px_1fr]">
         <div className="flex flex-col items-center gap-3">
-          <div className="flex h-20 w-full items-center justify-center rounded-lg border border-line bg-bg/40 p-2">
+          <div className="flex h-20 w-full items-center justify-center rounded-xl border border-line bg-surface-2 p-2">
             {logoUrl ? (
               <img src={logoUrl} alt="logo" className="max-h-16 w-auto object-contain" />
             ) : (
@@ -107,7 +107,7 @@ export function OrgBrandingCard({ initial }: { initial: OrgBrand | null }) {
           <button
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            className="w-full rounded-lg border border-line py-2 text-xs transition hover:border-brand disabled:opacity-50"
+            className="w-full rounded-xl border border-line py-2 text-xs transition hover:border-brand/60 hover:text-brand disabled:opacity-50"
           >
             Enviar logo
           </button>
@@ -120,7 +120,7 @@ export function OrgBrandingCard({ initial }: { initial: OrgBrand | null }) {
               value={logoUrl}
               onChange={(e) => setLogoUrl(e.target.value)}
               placeholder="https://..."
-              className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm"
+              className="input-base"
             />
           </label>
           <label className="block">
@@ -130,13 +130,13 @@ export function OrgBrandingCard({ initial }: { initial: OrgBrand | null }) {
                 type="color"
                 value={/^#[0-9a-fA-F]{6}$/.test(primaryColor) ? primaryColor : "#7c3aed"}
                 onChange={(e) => setPrimaryColor(e.target.value)}
-                className="h-8 w-12 cursor-pointer rounded border border-line bg-transparent"
+                className="h-8 w-12 cursor-pointer rounded-lg border border-line bg-transparent"
               />
               <input
                 value={primaryColor}
                 onChange={(e) => setPrimaryColor(e.target.value)}
                 placeholder="#RRGGBB"
-                className="w-32 rounded border border-line bg-bg/60 px-2 py-1 text-sm"
+                className="input-base w-32"
               />
             </div>
           </label>
@@ -145,7 +145,7 @@ export function OrgBrandingCard({ initial }: { initial: OrgBrand | null }) {
             <select
               value={themeMode}
               onChange={(e) => setThemeMode(e.target.value)}
-              className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm"
+              className="input-base"
             >
               <option value="system">Padrão (claro)</option>
               <option value="light">Sempre claro</option>
@@ -160,7 +160,7 @@ export function OrgBrandingCard({ initial }: { initial: OrgBrand | null }) {
           <button
             onClick={save}
             disabled={busy}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
+            className="btn-grad disabled:opacity-50"
           >
             {busy ? "Salvando..." : "Salvar marca"}
           </button>

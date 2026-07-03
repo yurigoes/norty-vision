@@ -27,18 +27,25 @@ export default function RedefinirSenha() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-4">
-      <form onSubmit={submit} className="w-full max-w-sm rounded-2xl border border-line bg-bg/60 p-6">
-        <h1 className="text-2xl font-semibold">Crie sua senha</h1>
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(680px 460px at 78% 6%, rgba(37,99,235,.16), transparent 60%), radial-gradient(560px 460px at 12% 96%, rgba(6,182,212,.14), transparent 58%)",
+        }}
+      />
+      <form onSubmit={submit} className="card relative w-full max-w-sm p-8 shadow-[0_24px_50px_-18px_rgba(15,23,42,0.22)]">
+        <h1 className="text-2xl font-extrabold tracking-tight">Crie sua senha</h1>
         <p className="mt-1 text-sm text-muted">Defina uma senha pessoal para o seu primeiro acesso.</p>
-        <label className="mt-5 block"><span className="mb-1 block text-xs uppercase text-muted">Nova senha</span>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+        <label className="mt-5 block"><span className="mb-1.5 block text-xs font-semibold text-muted">Nova senha</span>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-base" />
         </label>
-        <label className="mt-3 block"><span className="mb-1 block text-xs uppercase text-muted">Confirmar senha</span>
-          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm" />
+        <label className="mt-3 block"><span className="mb-1.5 block text-xs font-semibold text-muted">Confirmar senha</span>
+          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} className="input-base" />
         </label>
-        {err && <p className="mt-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{err}</p>}
-        <button disabled={busy} className="mt-5 w-full rounded-lg bg-brand py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando..." : "Salvar e entrar"}</button>
+        {err && <p className="mt-3 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{err}</p>}
+        <button disabled={busy} className="btn-grad mt-5 w-full py-3 text-[15px]">{busy ? "Salvando..." : "Salvar e entrar"}</button>
       </form>
     </main>
   );

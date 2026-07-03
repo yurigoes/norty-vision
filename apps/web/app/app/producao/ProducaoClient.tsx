@@ -65,7 +65,7 @@ export function ProducaoClient({ initial, features }: { initial: any[]; features
         <div className="flex items-center gap-2">
           <KioskLinkButton kind="recepcao" />
           <KioskLinkButton kind="producao" />
-          <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:opacity-90">+ Novo pedido</button>
+          <button onClick={() => setCreating(true)} className="btn-grad">+ Novo pedido</button>
         </div>
       </div>
 
@@ -95,14 +95,14 @@ export function ProducaoClient({ initial, features }: { initial: any[]; features
 function OrderList({ orders, onOpen }: { orders: any[]; onOpen: (id: string) => void }) {
   const [showDone, setShowDone] = useState(false);
   if (!orders.length) {
-    return <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-muted">Nenhum pedido ainda.</p>;
+    return <p className="rounded-2xl border border-line bg-surface p-8 text-center text-muted">Nenhum pedido ainda.</p>;
   }
   const isDone = (o: any) => o.status === "finalizado" || o.status === "cancelado";
   const pending = orders.filter((o) => !isDone(o));
   const done = orders.filter((o) => isDone(o));
 
   const renderCard = (o: any) => (
-    <button key={o.id} onClick={() => onOpen(o.id)} className="flex w-full flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-bg/60 p-4 text-left hover:border-brand">
+    <button key={o.id} onClick={() => onOpen(o.id)} className="card flex w-full flex-wrap items-center justify-between gap-3 p-4 text-left">
       <div>
         <p className="font-medium">{o.contactName} <span className="ml-1 text-xs text-muted">{o.shortCode}</span></p>
         <p className="text-xs text-muted">{o.items?.length ?? 0} item(ns) · {brl(o.totalCents)}{o.dueDate ? ` · prazo ${new Date(o.dueDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })}` : ""}</p>
@@ -119,12 +119,12 @@ function OrderList({ orders, onOpen }: { orders: any[]; onOpen: (id: string) => 
       <div>
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">Em produção ({pending.length})</p>
         {pending.length === 0
-          ? <p className="rounded-lg border border-line bg-bg/40 p-4 text-center text-xs text-muted">Nenhum pedido pendente.</p>
+          ? <p className="rounded-xl border border-line bg-surface-2 p-4 text-center text-xs text-muted">Nenhum pedido pendente.</p>
           : <div className="space-y-2">{pending.map(renderCard)}</div>}
       </div>
 
       {done.length > 0 && (
-        <div className="rounded-xl border border-line bg-bg/40">
+        <div className="rounded-xl border border-line bg-surface-2">
           <button onClick={() => setShowDone((v) => !v)} className="flex w-full items-center justify-between px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted hover:bg-line/30">
             <span>{showDone ? "▾" : "▸"} Finalizados / cancelados ({done.length})</span>
             <span className="text-[10px] normal-case text-muted/70">{showDone ? "ocultar" : "mostrar"}</span>
@@ -157,7 +157,7 @@ function Kanban({ onOpen }: { onOpen: (id: string) => void }) {
       {view === "kanban" ? (
         <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
           {data.columns.map((col) => (
-            <div key={col} className="rounded-xl border border-line bg-bg/40 p-2">
+            <div key={col} className="rounded-xl border border-line bg-surface-2 p-2">
               <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wider text-muted">{ART_LABEL[col] ?? col} <span className="text-muted/60">({data.byColumn[col]?.length ?? 0})</span></p>
               <div className="space-y-2">
                 {(data.byColumn[col] ?? []).map((c) => (
@@ -243,7 +243,7 @@ function NfTab({ onOpen }: { onOpen: (id: string) => void }) {
   const [data, setData] = useState<{ pending: any[]; generated: any[] } | null>(null);
   useEffect(() => { fetch("/api/production/nf/pending", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setData({ pending: d?.pending ?? [], generated: d?.generated ?? [] })).catch(() => setData({ pending: [], generated: [] })); }, []);
   if (data === null) return <p className="text-sm text-muted">Carregando…</p>;
-  if (data.pending.length === 0 && data.generated.length === 0) return <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-muted">Nenhum pedido com nota fiscal. 👍</p>;
+  if (data.pending.length === 0 && data.generated.length === 0) return <p className="rounded-2xl border border-line bg-surface p-8 text-center text-muted">Nenhum pedido com nota fiscal. 👍</p>;
   return (
     <div className="space-y-5">
       <div className="space-y-2">
@@ -251,7 +251,7 @@ function NfTab({ onOpen }: { onOpen: (id: string) => void }) {
         {data.pending.length === 0 ? <p className="text-sm text-muted">Nenhuma NF pendente.</p> : data.pending.map((o) => {
           const missing = [["nome", o.contactName], ["CPF", o.fiscalCpf], ["telefone", o.contactPhone]].filter(([, v]) => !v).map(([k]) => k);
           return (
-            <button key={o.id} onClick={() => onOpen(o.id)} className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-bg/60 p-4 text-left hover:border-brand">
+            <button key={o.id} onClick={() => onOpen(o.id)} className="card flex w-full items-center justify-between gap-3 p-4 text-left">
               <div><p className="font-medium">{o.contactName} <span className="ml-1 text-xs text-muted">{o.shortCode}</span></p>
                 <p className="text-xs text-muted">{brl(o.totalCents)}{o.paymentStatus === "partial" ? " · sinal pago" : o.paymentStatus === "none" ? " · aguardando pagamento" : ""}</p></div>
               {missing.length > 0
@@ -286,7 +286,7 @@ function CancelamentosTab({ onOpen, onChanged }: { onOpen: (id: string) => void;
   const load = () => fetch("/api/production/cancel-requests", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setItems(d?.items ?? [])).catch(() => setItems([]));
   useEffect(() => { load(); }, []);
   if (items === null) return <p className="text-sm text-muted">Carregando…</p>;
-  if (items.length === 0) return <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-muted">Nenhum cancelamento aguardando estorno. 👍</p>;
+  if (items.length === 0) return <p className="rounded-2xl border border-line bg-surface p-8 text-center text-muted">Nenhum cancelamento aguardando estorno. 👍</p>;
   return (
     <div className="space-y-2">
       <p className="text-xs text-muted">Pedidos cancelados com pagamento eletrônico (Pix/cartão). Faça o estorno por fora, lance aqui com o comprovante — a NFS-e vinculada é cancelada automaticamente.</p>
@@ -300,7 +300,7 @@ function CancelamentosTab({ onOpen, onChanged }: { onOpen: (id: string) => void;
                 <p className="font-medium">{o.contactName} <span className="ml-1 text-xs text-muted">{o.shortCode}</span></p>
                 <p className="text-xs text-muted">Total {brl(o.totalCents)} · pago eletrônico {brl(totalPago)}</p>
               </button>
-              <button onClick={() => setEstorno({ ...o, totalPago })} className="rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white">Lançar estorno</button>
+              <button onClick={() => setEstorno({ ...o, totalPago })} className="btn-grad px-3 py-1.5 text-xs">Lançar estorno</button>
             </div>
             {pagoEletronico.map((p: any) => (
               <p key={p.id} className="mt-1 text-[11px] text-red-200/80">{p.provider} · {brl(p.amountCents)} {p.paidAt ? `· ${new Date(p.paidAt).toLocaleDateString("pt-BR")}` : ""}</p>
@@ -341,22 +341,22 @@ function EstornoModal({ order, onClose, onDone }: { order: any; onClose: () => v
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Lançar estorno — {order.shortCode}</h3>
         <p className="mt-1 text-xs text-muted">Após confirmar, o pedido é cancelado e a NFS-e vinculada (se houver) é cancelada automaticamente.</p>
         <div className="mt-3 space-y-2">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Valor estornado (R$)</span><input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Valor estornado (R$)</span><input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" className="input-base" /></label>
           <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Forma</span>
-            <select value={method} onChange={(e) => setMethod(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+            <select value={method} onChange={(e) => setMethod(e.target.value)} className="input-base">
               <option value="pix">Pix</option><option value="card">Cartão</option><option value="cash">Dinheiro</option>
             </select>
           </label>
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Observações</span><input value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Observações</span><input value={notes} onChange={(e) => setNotes(e.target.value)} className="input-base" /></label>
           <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Comprovante (PDF/imagem)</span><input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="w-full text-xs" /></label>
         </div>
         <div className="mt-4 flex gap-2">
-          <button disabled={busy} onClick={submit} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Lançando…" : "Confirmar estorno + cancelar"}</button>
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+          <button disabled={busy} onClick={submit} className="btn-grad flex-1 disabled:opacity-50">{busy ? "Lançando…" : "Confirmar estorno + cancelar"}</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
         </div>
       </div>
     </div>
@@ -392,23 +392,23 @@ function DiscountAuthModal({ discountCents, orderId, onClose, onConfirmed }: { d
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Autorizar desconto de {brl(discountCents)}</h3>
         <p className="mt-1 text-xs text-muted">Só admin, gerente, supervisor ou dono pode liberar. A pessoa recebe um código de 4 dígitos no WhatsApp.</p>
         <div className="mt-3 space-y-2">
-          <select value={adminId} onChange={(e) => setAdminId(e.target.value)} disabled={!!reqId} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm disabled:opacity-60">
+          <select value={adminId} onChange={(e) => setAdminId(e.target.value)} disabled={!!reqId} className="input-base disabled:opacity-60">
             <option value="">— quem autoriza —</option>
             {admins.map((a) => <option key={a.membershipId} value={a.membershipId} disabled={!a.hasWhatsapp}>{a.name} · {a.role}{a.hasWhatsapp ? "" : " (sem WhatsApp)"}</option>)}
           </select>
           {!reqId ? (
-            <button disabled={busy || !adminId} onClick={requestCode} className="w-full rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Enviando…" : "Enviar código"}</button>
+            <button disabled={busy || !adminId} onClick={requestCode} className="btn-grad w-full disabled:opacity-50">{busy ? "Enviando…" : "Enviar código"}</button>
           ) : (
             <>
               <p className="text-xs text-green-300">Código enviado para {reqName}.</p>
-              <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder="0000" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-center font-mono text-lg tracking-[0.5em]" />
+              <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder="0000" className="input-base text-center font-mono text-lg tracking-[0.5em]" />
               <div className="flex gap-2">
-                <button onClick={requestCode} className="rounded-lg border border-line px-3 py-2 text-xs text-muted hover:text-fg">Reenviar</button>
-                <button disabled={code.length !== 4} onClick={confirm} className="flex-1 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Confirmar</button>
+                <button onClick={requestCode} className="rounded-xl border border-line px-3 py-2 text-xs text-muted transition hover:text-fg">Reenviar</button>
+                <button disabled={code.length !== 4} onClick={confirm} className="btn-grad flex-1 disabled:opacity-50">Confirmar</button>
               </div>
             </>
           )}
@@ -448,12 +448,12 @@ function PaymentModal({ orderId, defaultAmountCents, kind = "entrada", totalCent
   }
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Gerar pagamento</h3>
         {!result ? (
           <>
             <label className="mt-3 block"><span className="mb-1 block text-[10px] uppercase text-muted">Valor a cobrar (R$)</span>
-              <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-lg font-semibold" />
+              <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" className="input-base text-lg font-semibold" />
             </label>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-muted">
               <span>Sugestão {kind === "saldo" ? "(saldo)" : "(entrada)"}: <b>{brl(defaultAmountCents)}</b></span>
@@ -463,7 +463,7 @@ function PaymentModal({ orderId, defaultAmountCents, kind = "entrada", totalCent
             <p className="mt-2 text-[11px] text-muted">Pode cobrar a entrada, o saldo ou qualquer valor (até maior que o total).</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {METHODS.map((m) => (
-                <button key={m.key} disabled={busy || amountCents <= 0} onClick={() => gerar(m.key)} className="rounded-xl border border-line bg-bg/40 p-3 text-left hover:border-brand disabled:opacity-50">
+                <button key={m.key} disabled={busy || amountCents <= 0} onClick={() => gerar(m.key)} className="rounded-xl border border-line bg-surface-2 p-3 text-left transition hover:border-brand disabled:opacity-50">
                   <p className="text-sm font-semibold">{m.label}</p>
                   <p className="mt-0.5 text-[11px] text-muted">{m.desc}</p>
                 </button>
@@ -473,7 +473,7 @@ function PaymentModal({ orderId, defaultAmountCents, kind = "entrada", totalCent
         ) : (
           <div className="mt-3 space-y-2">
             {result.qrCodeBase64 && <img src={`data:image/png;base64,${result.qrCodeBase64}`} alt="QR Pix" className="mx-auto h-44 w-44" />}
-            {result.qrCode && <textarea readOnly value={result.qrCode} onClick={(e) => (e.target as HTMLTextAreaElement).select()} className="h-20 w-full rounded-lg border border-line bg-bg/40 p-2 font-mono text-[10px]" />}
+            {result.qrCode && <textarea readOnly value={result.qrCode} onClick={(e) => (e.target as HTMLTextAreaElement).select()} className="input-base h-20 font-mono text-[10px]" />}
             {result.qrCode && <button onClick={() => { navigator.clipboard?.writeText(result.qrCode); dialog.toast("Copia-e-cola copiado ✅", "success"); }} className="w-full rounded-lg bg-brand py-1.5 text-xs font-semibold text-white">Copiar copia-e-cola</button>}
             {result.link && <a href={result.link} target="_blank" rel="noreferrer" className="block truncate rounded-lg border border-line px-3 py-2 text-xs text-sky-300 hover:underline">{result.link}</a>}
             {result.link && <button onClick={() => { navigator.clipboard?.writeText(result.link); dialog.toast("Link copiado ✅", "success"); }} className="w-full rounded-lg bg-brand py-1.5 text-xs font-semibold text-white">Copiar link</button>}
@@ -536,7 +536,7 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
   const proofs = (o.files ?? []).filter((f: any) => f.kind === "payment_proof");
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <div><h3 className="text-base font-semibold">{o.contactName} <span className="text-xs text-muted">{o.shortCode}</span></h3>
             <p className="text-xs text-muted">{brl(o.totalCents)}{o.dueDate ? ` · prazo ${new Date(o.dueDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })}` : ""} · {o.delivery ? "entrega" : "retirada"}</p>
@@ -572,7 +572,7 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
         )}
 
         {/* pagamento — baixa pelo operador */}
-        <div className="mt-4 rounded-lg border border-line bg-bg/40 p-3">
+        <div className="mt-4 rounded-xl border border-line bg-surface-2 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm font-medium">Pagamento
               <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] uppercase ${o.paymentStatus === "paid" ? "bg-green-500/20 text-green-300" : o.paymentStatus === "partial" ? "bg-sky-500/20 text-sky-200" : "bg-amber-500/20 text-amber-200"}`}>
@@ -602,7 +602,7 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
         </div>
 
         {/* arte */}
-        <div className="mt-4 rounded-lg border border-line bg-bg/40 p-3">
+        <div className="mt-4 rounded-xl border border-line bg-surface-2 p-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium">Arte <span className="ml-1 rounded-full bg-line px-2 py-0.5 text-[10px] uppercase text-muted">{ART_LABEL[o.artStatus] ?? o.artStatus}</span></p>
             <label className="cursor-pointer rounded-md border border-line px-2 py-1 text-xs hover:border-brand">+ Enviar arte
@@ -652,7 +652,7 @@ function Detail({ id, onClose, onChanged }: { id: string; onClose: () => void; o
         <SignatureSection order={o} onChanged={() => { load(); onChanged(); }} />
 
         <NfSection order={o} onChanged={() => { load(); onChanged(); }} />
-        {o.notes && <p className="mt-3 rounded-lg border border-line/60 bg-bg/40 p-2 text-xs text-muted">{o.notes}</p>}
+        {o.notes && <p className="mt-3 rounded-xl border border-line bg-surface-2 p-2 text-xs text-muted">{o.notes}</p>}
       </div>
       {payModal && <PaymentModal orderId={id} defaultAmountCents={payModal.amountCents} kind={payModal.kind} totalCents={Number(o.totalCents)} paidCents={Number(o.downPaymentCents)} onClose={() => { setPayModal(null); load(); onChanged(); }} onDone={() => { load(); onChanged(); }} />}
     </div>
@@ -815,8 +815,8 @@ function NfSection({ order, onChanged }: { order: any; onChanged: () => void }) 
       {!pago && <p className="mt-1 text-[11px] text-amber-300">⚠ Pagamento não está total — a emissão exige autorização (código de 4 dígitos de um admin/gerente/supervisor).</p>}
       <p className="mt-1 text-[11px] text-amber-200">Dados do cliente p/ emitir a NF (nome: <b>{order.contactName || "—"}</b>):</p>
       <div className="mt-2 grid gap-2 sm:grid-cols-3">
-        <input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="CPF (obrigatório)" className="rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
-        <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Endereço (opcional)" className="rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm sm:col-span-2" />
+        <input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="CPF (obrigatório)" className="input-base" />
+        <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Endereço (opcional)" className="input-base sm:col-span-2" />
       </div>
       <div className="mt-2 flex gap-2">
         <label className="cursor-pointer rounded-md border border-line px-3 py-1 text-xs hover:border-brand">{busy ? "..." : "Anexar NF manual (PDF)"}
@@ -826,23 +826,23 @@ function NfSection({ order, onChanged }: { order: any; onChanged: () => void }) 
 
       {authOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setAuthOpen(false)}>
-          <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-semibold">Autorizar emissão sem pagamento total</h3>
             <p className="mt-1 text-xs text-muted">Escolha quem vai autorizar. A pessoa recebe um código de 4 dígitos no WhatsApp; digite-o aqui para gerar a NFS-e.</p>
             <div className="mt-3 space-y-2">
-              <select value={adminId} onChange={(e) => setAdminId(e.target.value)} disabled={!!reqId} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm disabled:opacity-60">
+              <select value={adminId} onChange={(e) => setAdminId(e.target.value)} disabled={!!reqId} className="input-base disabled:opacity-60">
                 <option value="">— quem autoriza —</option>
                 {admins.map((a) => <option key={a.membershipId} value={a.membershipId} disabled={!a.hasWhatsapp}>{a.name} · {a.role}{a.hasWhatsapp ? "" : " (sem WhatsApp)"}</option>)}
               </select>
               {!reqId ? (
-                <button disabled={busy || !adminId} onClick={requestCode} className="w-full rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Enviando…" : "Enviar código"}</button>
+                <button disabled={busy || !adminId} onClick={requestCode} className="btn-grad w-full disabled:opacity-50">{busy ? "Enviando…" : "Enviar código"}</button>
               ) : (
                 <>
                   <p className="text-xs text-green-300">Código enviado para {reqName}. Peça os 4 dígitos e informe abaixo.</p>
-                  <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder="0000" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-center font-mono text-lg tracking-[0.5em]" />
+                  <input value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 4))} inputMode="numeric" placeholder="0000" className="input-base text-center font-mono text-lg tracking-[0.5em]" />
                   <div className="flex gap-2">
-                    <button disabled={busy} onClick={requestCode} className="rounded-lg border border-line px-3 py-2 text-xs text-muted hover:text-fg disabled:opacity-50">Reenviar</button>
-                    <button disabled={busy || code.length !== 4} onClick={confirmAuth} className="flex-1 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Gerando…" : "Confirmar e gerar NFS-e"}</button>
+                    <button disabled={busy} onClick={requestCode} className="rounded-xl border border-line px-3 py-2 text-xs text-muted transition hover:text-fg disabled:opacity-50">Reenviar</button>
+                    <button disabled={busy || code.length !== 4} onClick={confirmAuth} className="btn-grad flex-1 disabled:opacity-50">{busy ? "Gerando…" : "Confirmar e gerar NFS-e"}</button>
                   </div>
                 </>
               )}
@@ -898,7 +898,7 @@ function RosterEditor({ order, onChanged }: { order: any; onChanged: () => void 
 
   const cols = hasGrade ? "grid-cols-[1fr_48px_110px_88px_44px_24px]" : "grid-cols-[1fr_56px_72px_56px_28px]";
   return (
-    <div className="mt-4 rounded-lg border border-line bg-bg/40 p-3">
+    <div className="mt-4 rounded-xl border border-line bg-surface-2 p-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Ficha técnica {totalQty > 0 && <span className="ml-1 text-[11px] text-muted">({rows.length} jogador(es) · {totalQty} peça(s))</span>}{hasGrade && <span className="ml-1 rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-brand">grade fixa</span>}</p>
         <button onClick={() => setOpen((v) => !v)} className="text-xs text-brand hover:underline">{open ? "ocultar" : "abrir"}</button>
@@ -978,7 +978,7 @@ function GradeEditor({ order, onChanged }: { order: any; onChanged: () => void }
   }
 
   return (
-    <div className="mt-4 rounded-lg border border-line bg-bg/40 p-3">
+    <div className="mt-4 rounded-xl border border-line bg-surface-2 p-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Grade do pedido {models.length > 0 && <span className="ml-1 text-[11px] text-muted">({models.length} modelo(s))</span>}</p>
         <button onClick={() => setOpen((v) => !v)} className="text-xs text-brand hover:underline">{open ? "ocultar" : "abrir"}</button>
@@ -1050,7 +1050,7 @@ function SignatureSection({ order, onChanged }: { order: any; onChanged: () => v
   }
 
   return (
-    <div className="mt-4 rounded-lg border border-line bg-bg/40 p-3">
+    <div className="mt-4 rounded-xl border border-line bg-surface-2 p-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Assinatura do cliente</p>
         {!order.customerSignatureUrl && !pad && <button onClick={() => setPad(true)} className="rounded-md border border-line px-3 py-1 text-xs hover:border-brand">✍️ Colher assinatura</button>}
@@ -1112,7 +1112,7 @@ function FabricEditor({ order, onChanged }: { order: any; onChanged: () => void 
   }
 
   return (
-    <div className="mt-4 rounded-lg border border-line bg-bg/40 p-3">
+    <div className="mt-4 rounded-xl border border-line bg-surface-2 p-3">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium">Tecido / insumos {consumed ? <span className="ml-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-green-300">baixado do estoque</span> : <span className="ml-1 text-[11px] text-muted">(baixa ao entrar em produção)</span>}</p>
         <button onClick={() => setOpen((v) => !v)} className="text-xs text-brand hover:underline">{open ? "ocultar" : "abrir"}</button>
@@ -1130,9 +1130,9 @@ function FabricEditor({ order, onChanged }: { order: any; onChanged: () => void 
           {!consumed && (
             <>
               <div className="relative">
-                <input value={q} onChange={(e) => search(e.target.value)} placeholder="Buscar tecido/insumo no estoque…" className="w-full rounded border border-line bg-bg/40 px-2 py-1 text-sm" />
+                <input value={q} onChange={(e) => search(e.target.value)} placeholder="Buscar tecido/insumo no estoque…" className="input-base" />
                 {results.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full rounded-lg border border-line bg-bg shadow-xl">
+                  <div className="absolute z-10 mt-1 w-full rounded-xl border border-line bg-surface shadow-xl">
                     {results.map((p) => (
                       <button key={p.id} onClick={() => add(p)} className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-line/40">
                         <span className="truncate">{p.name}</span>
@@ -1181,28 +1181,28 @@ function LotesTab({ orders, onOpen }: { orders: any[]; onOpen: (id: string) => v
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted">Agrupe pedidos pra produzir e avançar juntos. Ao marcar o lote como "Em produção", os pedidos em etapas iniciais avançam pra Produção.</p>
-        <button onClick={() => setCreating((v) => !v)} className="rounded-lg border border-line px-3 py-1.5 text-sm hover:border-brand">{creating ? "cancelar" : "+ Novo lote"}</button>
+        <button onClick={() => setCreating((v) => !v)} className="rounded-xl border border-line px-3 py-1.5 text-sm transition hover:border-brand/60 hover:text-brand">{creating ? "cancelar" : "+ Novo lote"}</button>
       </div>
 
       {creating && (
-        <div className="rounded-xl border border-line bg-bg/60 p-4">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do lote (ex.: Sublimação 12/06)" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+        <div className="card">
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do lote (ex.: Sublimação 12/06)" className="input-base" />
           <p className="mt-3 text-[10px] uppercase text-muted">Pedidos disponíveis ({free.length})</p>
           <div className="mt-1 max-h-52 space-y-1 overflow-y-auto">
             {free.length === 0 ? <p className="text-xs text-muted">Nenhum pedido livre pra agrupar.</p> : free.map((o) => (
-              <label key={o.id} className="flex cursor-pointer items-center gap-2 rounded-lg border border-line/60 bg-bg/40 p-2 text-sm">
+              <label key={o.id} className="flex cursor-pointer items-center gap-2 rounded-xl border border-line bg-surface-2 p-2 text-sm">
                 <input type="checkbox" checked={!!picked[o.id]} onChange={(e) => setPicked((p) => ({ ...p, [o.id]: e.target.checked }))} />
                 <span className="flex-1">{o.contactName} <span className="text-xs text-muted">{o.shortCode}</span></span>
                 <span className="text-[10px] text-muted">{STATUS_LABEL[o.status] ?? o.status}{o.dueDate ? ` · ${new Date(o.dueDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })}` : ""}</span>
               </label>
             ))}
           </div>
-          <button disabled={busy} onClick={create} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "..." : "Criar lote"}</button>
+          <button disabled={busy} onClick={create} className="btn-grad mt-3 disabled:opacity-50">{busy ? "..." : "Criar lote"}</button>
         </div>
       )}
 
-      {items.length === 0 ? <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-muted">Nenhum lote ainda.</p> : items.map((b) => (
-        <div key={b.id} className="rounded-xl border border-line bg-bg/60 p-4">
+      {items.length === 0 ? <p className="rounded-2xl border border-line bg-surface p-8 text-center text-muted">Nenhum lote ainda.</p> : items.map((b) => (
+        <div key={b.id} className="card p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="font-medium">{b.name} <span className="ml-1 rounded-full bg-brand/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-brand">{BATCH_LABEL[b.status] ?? b.status}</span></p>
@@ -1358,13 +1358,13 @@ function NewOrder({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Novo pedido de produção</h3>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           <label className="relative block"><span className="mb-1 block text-[10px] uppercase text-muted">Cliente {customerId ? <span className="text-green-300">· cadastrado</span> : ""}</span>
-            <input value={name} onChange={(e) => searchCustomer(e.target.value)} onFocus={() => { if (name.trim().length >= 2 && !customerId) searchCustomer(name); }} onBlur={() => setTimeout(() => setCustOpen(false), 150)} autoComplete="off" placeholder="Nome (busca na base)…" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+            <input value={name} onChange={(e) => searchCustomer(e.target.value)} onFocus={() => { if (name.trim().length >= 2 && !customerId) searchCustomer(name); }} onBlur={() => setTimeout(() => setCustOpen(false), 150)} autoComplete="off" placeholder="Nome (busca na base)…" className="input-base" />
             {custOpen && custSugs.length > 0 && (
-              <div className="absolute z-40 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-line bg-bg shadow-xl">
+              <div className="absolute z-40 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-line bg-surface shadow-xl">
                 {custSugs.map((c) => (
                   <button type="button" key={c.id} onMouseDown={(e) => { e.preventDefault(); pickCustomer(c); }} className="block w-full px-3 py-1.5 text-left text-xs hover:bg-line">
                     <span className="font-medium">{c.name}</span>{c.phone || c.whatsappPhone ? <span className="text-muted"> · {c.phone || c.whatsappPhone}</span> : null}{c.document ? <span className="text-muted"> · {c.document}</span> : null}
@@ -1373,8 +1373,8 @@ function NewOrder({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
               </div>
             )}
           </label>
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">WhatsApp</span><input value={phone} onChange={(e) => { setPhone(e.target.value); setCustomerId(null); }} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">E-mail</span><input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">WhatsApp</span><input value={phone} onChange={(e) => { setPhone(e.target.value); setCustomerId(null); }} className="input-base" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">E-mail</span><input value={email} onChange={(e) => setEmail(e.target.value)} className="input-base" /></label>
         </div>
         <div className="mt-3">
           <div className="mb-1 flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wider text-muted">Itens</span><button onClick={() => setItems((a) => [...a, { description: "", qty: "1", price: "" }])} className="text-xs text-brand hover:underline">+ item</button></div>
@@ -1388,10 +1388,10 @@ function NewOrder({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
                   onBlur={() => setTimeout(() => setSugRow((r) => (r === i ? null : r)), 150)}
                   placeholder="Buscar produto (tabela de valores ou PDV)…"
                   autoComplete="off"
-                  className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"
+                  className="input-base"
                 />
                 {sugRow === i && sugs.length > 0 && (
-                  <div className="absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-line bg-bg shadow-xl">
+                  <div className="absolute z-30 mt-1 max-h-60 w-full overflow-y-auto rounded-xl border border-line bg-surface shadow-xl">
                     {sugs.map((s) => (
                       <button type="button" key={`${s.source}-${s.id}`} onMouseDown={(e) => { e.preventDefault(); pickSug(i, s); }} className="flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-xs hover:bg-line">
                         <span>{s.name}{s.category ? <span className="text-muted"> · {s.category}</span> : null}</span>
@@ -1408,8 +1408,8 @@ function NewOrder({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
           ))}
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Prazo de entrega</span><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
-          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Entrada (R$){downPct > 0 ? ` · sugestão ${downPct}%` : ""}</span><input value={downPayment} onChange={(e) => { setDownTouched(true); setDownPayment(e.target.value); }} inputMode="decimal" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Prazo de entrega</span><input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input-base" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Entrada (R$){downPct > 0 ? ` · sugestão ${downPct}%` : ""}</span><input value={downPayment} onChange={(e) => { setDownTouched(true); setDownPayment(e.target.value); }} inputMode="decimal" className="input-base" /></label>
           <div className="flex flex-col items-start justify-end"><span className="text-sm">Total: <b className="text-lg">{brl(total)}</b></span>{discountCents > 0 && <span className="text-[11px] text-green-300">desconto {brl(discountCents)} (de {brl(gross)})</span>}{total > 0 && toCents(downPayment) > 0 && toCents(downPayment) < total && <span className="text-[11px] text-muted">Restante: {brl(remainingCents)}</span>}</div>
         </div>
         <div className="mt-3 flex flex-wrap items-end gap-3">
@@ -1462,16 +1462,16 @@ function NewOrder({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
           <div className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
             <p className="mb-2 text-[11px] text-amber-200">Para emitir a NF precisamos do nome (já informado acima) e do CPF do cliente. Endereço é opcional. Pode completar depois na aba Notas fiscais.</p>
             <div className="grid gap-3 sm:grid-cols-3">
-              <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">CPF</span><input value={fiscalCpf} onChange={(e) => setFiscalCpf(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
-              <label className="block sm:col-span-2"><span className="mb-1 block text-[10px] uppercase text-muted">Endereço (opcional)</span><input value={fiscalAddress} onChange={(e) => setFiscalAddress(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+              <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">CPF</span><input value={fiscalCpf} onChange={(e) => setFiscalCpf(e.target.value)} className="input-base" /></label>
+              <label className="block sm:col-span-2"><span className="mb-1 block text-[10px] uppercase text-muted">Endereço (opcional)</span><input value={fiscalAddress} onChange={(e) => setFiscalAddress(e.target.value)} className="input-base" /></label>
             </div>
           </div>
         )}
-        <label className="mt-3 block"><span className="mb-1 block text-[10px] uppercase text-muted">Observações</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+        <label className="mt-3 block"><span className="mb-1 block text-[10px] uppercase text-muted">Observações</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} className="input-base" /></label>
         <div className="mt-4 flex flex-wrap gap-2">
-          <button disabled={busy} onClick={() => save()} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Criar pedido"}</button>
-          <button disabled={busy || toCents(downPayment) <= 0} onClick={() => save({ thenPay: true })} title={toCents(downPayment) <= 0 ? "Informe a entrada" : ""} className="rounded-lg border border-brand px-4 py-2 text-sm font-semibold text-brand hover:bg-brand/10 disabled:opacity-50">Criar e cobrar entrada</button>
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+          <button disabled={busy} onClick={() => save()} className="btn-grad flex-1 disabled:opacity-50">{busy ? "Salvando…" : "Criar pedido"}</button>
+          <button disabled={busy || toCents(downPayment) <= 0} onClick={() => save({ thenPay: true })} title={toCents(downPayment) <= 0 ? "Informe a entrada" : ""} className="rounded-xl border border-brand px-4 py-2 text-sm font-semibold text-brand transition hover:bg-brand/10 disabled:opacity-50">Criar e cobrar entrada</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
         </div>
       </div>
       {discModal && <DiscountAuthModal discountCents={discountCents} onClose={() => setDiscModal(false)} onConfirmed={(v) => { setDiscAuth(v); setDiscModal(false); dialog.toast(`Desconto autorizado por ${v.adminName} ✅`, "success"); }} />}
@@ -1498,7 +1498,7 @@ function SizesModal({ name, tiers, sizes, onConfirm, onClose }: { name: string; 
   const sorted = [...(tiers ?? [])].filter((t) => t && t.minQty > 0).sort((a, b) => a.minQty - b.minQty);
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">{name}</h3>
         <p className="mt-1 text-xs text-muted">Informe a quantidade por tamanho. O preço por unidade é definido pela faixa da quantidade total.</p>
         {sorted.length > 0 && (
@@ -1512,17 +1512,17 @@ function SizesModal({ name, tiers, sizes, onConfirm, onClose }: { name: string; 
           {sizes.map((sz) => (
             <label key={sz} className="block">
               <span className="mb-1 block text-[10px] uppercase text-muted">{sz}</span>
-              <input type="number" min={0} value={qtys[sz] ?? ""} onChange={(e) => setQtys((q) => ({ ...q, [sz]: e.target.value }))} placeholder="0" className="w-full rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
+              <input type="number" min={0} value={qtys[sz] ?? ""} onChange={(e) => setQtys((q) => ({ ...q, [sz]: e.target.value }))} placeholder="0" className="input-base" />
             </label>
           ))}
         </div>
-        <div className="mt-4 flex items-center justify-between rounded-lg border border-line bg-bg/40 p-3 text-sm">
+        <div className="mt-4 flex items-center justify-between rounded-xl border border-line bg-surface-2 p-3 text-sm">
           <span>Total: <b>{total}</b> un · unit. <b>{brl(unit)}</b></span>
           <span className="text-base font-semibold">{brl(line)}</span>
         </div>
         <div className="mt-4 flex gap-2">
-          <button disabled={total < 1} onClick={() => onConfirm(Object.fromEntries(sizes.map((s) => [s, Number(qtys[s]) || 0])), total, unit)} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">Adicionar ao pedido</button>
-          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm text-muted hover:text-fg">cancelar</button>
+          <button disabled={total < 1} onClick={() => onConfirm(Object.fromEntries(sizes.map((s) => [s, Number(qtys[s]) || 0])), total, unit)} className="btn-grad flex-1 disabled:opacity-50">Adicionar ao pedido</button>
+          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2 text-sm text-muted transition hover:text-fg">cancelar</button>
         </div>
       </div>
     </div>
@@ -1556,15 +1556,15 @@ function KioskLinkButton({ kind = "recepcao" }: { kind?: "recepcao" | "producao"
 
   return (
     <>
-      <button onClick={openPanel} className="rounded-lg border border-line px-3 py-2 text-sm font-medium hover:border-brand">📺 {label}</button>
+      <button onClick={openPanel} className="rounded-xl border border-line px-3 py-2 text-sm font-medium transition hover:border-brand/60 hover:text-brand">📺 {label}</button>
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setOpen(false)}>
-          <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-md rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-base font-semibold">{kind === "producao" ? "Painel de produção (TV)" : "Painel de recepção (TV)"}</h3>
             <p className="mt-1 text-xs text-muted">Abra este link no navegador da TV/computador {kind === "producao" ? "da produção" : "da recepção"}. Atualiza sozinho e não precisa de login.</p>
             {busy ? <p className="mt-4 text-sm text-muted">Gerando…</p> : url ? (
               <>
-                <input readOnly value={url} onClick={(e) => (e.target as HTMLInputElement).select()} className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 font-mono text-xs" />
+                <input readOnly value={url} onClick={(e) => (e.target as HTMLInputElement).select()} className="input-base mt-3 font-mono text-xs" />
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button onClick={() => { navigator.clipboard?.writeText(url); dialog.toast("Link copiado ✅", "success"); }} className="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white">Copiar</button>
                   <a href={url} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand">Abrir ↗</a>
@@ -1601,11 +1601,11 @@ function TabelasTab() {
     } finally { setBusy(false); }
   }
 
-  if (!data) return <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Carregando…</p>;
+  if (!data) return <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Carregando…</p>;
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-bg/60 p-4">
+      <div className="card flex flex-wrap items-center justify-between gap-2 p-4">
         <div>
           <p className="text-sm font-semibold">Tabelas da gráfica</p>
           <p className="text-xs text-muted">A IA usa estes valores (por faixa de quantidade) e medidas para atender sozinha. Exclusivo do nicho gráfica.</p>
@@ -1670,11 +1670,11 @@ function PriceItemCard({ item, onSaved }: { item: any | null; onSaved: () => voi
   }
 
   return (
-    <div className={`rounded-xl border p-3 ${isNew ? "border-dashed border-line bg-bg/40" : "border-line bg-bg/60"}`}>
+    <div className={`rounded-xl border p-3 transition ${isNew ? "border-dashed border-line bg-surface-2" : "border-line bg-surface hover:border-brand/50"}`}>
       <div className="grid gap-2 sm:grid-cols-3">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={isNew ? "+ Novo item (ex.: Camisa Polo)" : "Nome"} className="rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
-        <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Categoria (ex.: Camisas)" className="rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
-        <input value={unitLabel} onChange={(e) => setUnitLabel(e.target.value)} placeholder="Unidade p/ IA (ex.: camisa)" className="rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder={isNew ? "+ Novo item (ex.: Camisa Polo)" : "Nome"} className="input-base" />
+        <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Categoria (ex.: Camisas)" className="input-base" />
+        <input value={unitLabel} onChange={(e) => setUnitLabel(e.target.value)} placeholder="Unidade p/ IA (ex.: camisa)" className="input-base" />
       </div>
       <div className="mt-2 flex flex-wrap items-end gap-2">
         {tiers.map((t, i) => (
@@ -1728,7 +1728,7 @@ function SizeChartCard({ chart, onSaved }: { chart: any | null; onSaved: () => v
   }
 
   return (
-    <div className={`rounded-xl border p-3 ${isNew ? "border-dashed border-line bg-bg/40" : "border-line bg-bg/60"}`}>
+    <div className={`rounded-xl border p-3 transition ${isNew ? "border-dashed border-line bg-surface-2" : "border-line bg-surface hover:border-brand/50"}`}>
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder={isNew ? "+ Nova grade (ex.: Masculina)" : "Nome da grade"} className="w-full rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm sm:w-64" />
       <div className="mt-2 space-y-1">
         {rows.map((r, i) => (

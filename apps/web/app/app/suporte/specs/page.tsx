@@ -45,7 +45,7 @@ export default async function SpecsPage() {
           <Link
             key={doc.id}
             href={`/app/suporte/specs/${doc.slug}`}
-            className="block rounded-lg border border-line bg-bg/60 p-4 backdrop-blur-sm transition hover:border-brand/60"
+            className="card block"
           >
             <p className="text-[10px] font-semibold uppercase tracking-wider text-muted">
               {doc.category}

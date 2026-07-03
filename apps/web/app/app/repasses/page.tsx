@@ -11,7 +11,7 @@ export default async function RepassesPage() {
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-muted">
+        <p className="card p-6 text-muted">
           Apenas administradores podem ver os repasses.
         </p>
       </div>

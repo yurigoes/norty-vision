@@ -127,43 +127,43 @@ function ChannelTemplates({
         <p className="text-sm text-muted">
           Use variáveis no corpo: <code className="rounded bg-line px-1.5 py-0.5 text-[11px]">{VARS}</code>
         </p>
-        <button onClick={() => setCreating(true)} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90">
+        <button onClick={() => setCreating(true)} className="btn-grad">
           Novo modelo
         </button>
       </div>
       {templates.length === 0 ? (
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum modelo de {channel} personalizado ainda.</p>
+        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhum modelo de {channel} personalizado ainda.</p>
       ) : (
         templates.map((t) => (
-          <div key={t.id} className="flex items-center justify-between gap-3 rounded-lg border border-line bg-bg/60 px-4 py-3">
+          <div key={t.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-4 py-3">
             <div className="min-w-0">
               <p className="text-sm font-medium">{t.name} <span className="font-mono text-[11px] text-muted">· {t.code}</span></p>
               {t.subject && <p className="truncate text-xs text-muted">Assunto: {t.subject}</p>}
               <p className="truncate text-xs text-muted">{t.body.slice(0, 80)}</p>
             </div>
-            <button onClick={() => setEditing(t)} className="shrink-0 rounded border border-line px-3 py-1 text-xs transition hover:border-brand">Editar</button>
+            <button onClick={() => setEditing(t)} className="shrink-0 rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">Editar</button>
           </div>
         ))
       )}
 
       {sysForChannel.length > 0 && (
-        <div className="mt-4 rounded-lg border border-line bg-bg/40 p-4">
+        <div className="mt-4 rounded-2xl border border-line bg-surface p-4">
           <p className="text-sm font-semibold">Modelos automáticos do sistema</p>
           <p className="mb-3 text-xs text-muted">Mensagens que o sistema envia sozinho. Clique em <b>Personalizar</b> para criar a sua versão (com o branding da empresa no e-mail). Enquanto não personalizar, vale o texto padrão.</p>
           <div className="space-y-2">
             {sysForChannel.map((c) => {
               const done = existingCodes.has(c.code);
               return (
-                <div key={c.code} className="flex items-center justify-between gap-3 rounded-lg border border-line/60 bg-bg/60 px-3 py-2">
+                <div key={c.code} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface-2 px-3 py-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium">{c.name} <span className="font-mono text-[10px] text-muted">· {c.code}</span>{done && <span className="ml-2 rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] text-green-300">personalizado</span>}</p>
                     <p className="text-[11px] text-muted">{c.description}</p>
                     {c.variables?.length > 0 && <p className="mt-0.5 font-mono text-[10px] text-muted">{c.variables.map((v: string) => `{{${v}}}`).join(" ")}</p>}
                   </div>
                   {done ? (
-                    <button onClick={() => { const t = templates.find((x) => x.code === c.code); if (t) setEditing(t); }} className="shrink-0 rounded border border-line px-3 py-1 text-xs transition hover:border-brand">Editar</button>
+                    <button onClick={() => { const t = templates.find((x) => x.code === c.code); if (t) setEditing(t); }} className="shrink-0 rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">Editar</button>
                   ) : (
-                    <button onClick={() => personalizar(c)} className="shrink-0 rounded border border-brand px-3 py-1 text-xs text-brand transition hover:bg-brand hover:text-white">Personalizar</button>
+                    <button onClick={() => personalizar(c)} className="shrink-0 rounded-xl border border-brand px-3 py-1.5 text-xs text-brand transition hover:bg-brand hover:text-white">Personalizar</button>
                   )}
                 </div>
               );
@@ -296,25 +296,25 @@ function TemplateForm({
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-brand/40 bg-bg/60 p-5">
+    <section className="space-y-4 rounded-2xl border border-brand/40 bg-surface p-5">
       <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">
         {initial.id ? "Editar modelo" : "Novo modelo"} · {channel}
       </h2>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Nome</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+          <input value={name} onChange={(e) => setName(e.target.value)} className="input-base" />
         </label>
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Código {initial.id && "(fixo)"}</span>
-          <input value={code} onChange={(e) => setCode(e.target.value)} disabled={!!initial.id} placeholder="cobranca_vencida" className="w-full rounded border border-line bg-bg/60 px-2 py-1 font-mono text-xs disabled:opacity-50" />
+          <input value={code} onChange={(e) => setCode(e.target.value)} disabled={!!initial.id} placeholder="cobranca_vencida" className="input-base font-mono text-xs disabled:opacity-50" />
         </label>
       </div>
       {channel === "email" && (
         <>
           <label className="block">
             <span className="mb-1 block text-[10px] uppercase text-muted">Assunto</span>
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+            <input value={subject} onChange={(e) => setSubject(e.target.value)} className="input-base" />
           </label>
           <div>
             <span className="mb-1 block text-[10px] uppercase text-muted">Tipo / urgência (cor do email)</span>
@@ -347,7 +347,7 @@ function TemplateForm({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={channel === "email" ? 12 : 6}
-              className="w-full rounded border border-line bg-bg/60 px-2 py-1 font-mono text-xs"
+              className="input-base font-mono text-xs"
             />
           </label>
           {groups.length > 0 && (
@@ -363,7 +363,7 @@ function TemplateForm({
                         type="button"
                         title={it.label}
                         onClick={() => insertVar(it.key)}
-                        className="rounded border border-line bg-bg/40 px-2 py-0.5 font-mono text-[10px] text-muted transition hover:border-brand hover:text-fg"
+                        className="rounded border border-line bg-surface-2 px-2 py-0.5 font-mono text-[10px] text-muted transition hover:border-brand hover:text-fg"
                       >
                         {`{{${it.key}}}`}
                       </button>
@@ -392,23 +392,23 @@ function TemplateForm({
       {err && <p className="text-xs text-red-300">{err}</p>}
 
       <div className="flex flex-wrap items-center gap-2">
-        <button onClick={save} disabled={busy || !name.trim() || !body.trim()} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
+        <button onClick={save} disabled={busy || !name.trim() || !body.trim()} className="btn-grad disabled:opacity-50">
           {busy ? "..." : "Salvar"}
         </button>
-        <button onClick={onCancel} className="rounded-lg border border-line px-4 py-2 text-sm transition hover:border-brand">Cancelar</button>
+        <button onClick={onCancel} className="rounded-xl border border-line px-4 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Cancelar</button>
         {initial.id && (
           <button onClick={remove} className="rounded-lg border border-line px-4 py-2 text-sm text-red-300 transition hover:border-red-400">Remover</button>
         )}
       </div>
 
-      <div className="rounded-lg border border-line bg-bg/40 p-3">
+      <div className="rounded-2xl border border-line bg-surface-2 p-3">
         <p className="mb-2 text-[10px] uppercase text-muted">Testar envio</p>
         <div className="flex flex-wrap items-center gap-2">
           <input
             value={testTo}
             onChange={(e) => setTestTo(e.target.value)}
             placeholder={channel === "email" ? "email@destino.com" : "DDD + número"}
-            className="flex-1 rounded border border-line bg-bg/60 px-2 py-1 text-sm"
+            className="input-base flex-1"
           />
           <button onClick={sendTest} disabled={busy} className="rounded-lg border border-brand px-4 py-2 text-sm text-brand transition hover:bg-brand hover:text-white disabled:opacity-50">
             Enviar teste
@@ -455,7 +455,7 @@ function SmtpForm({ initial, onSaved }: { initial: Smtp | null; onSaved: () => v
   }
 
   return (
-    <section className="space-y-4 rounded-xl border border-line bg-bg/60 p-5">
+    <section className="space-y-4 rounded-2xl border border-line bg-surface p-5">
       <p className="text-sm text-muted">
         Configure o SMTP da sua empresa. Se desabilitado ou vazio, usamos o servidor da plataforma —
         mas sempre <strong>em nome da sua empresa</strong>, com reply-to seu.
@@ -479,7 +479,7 @@ function SmtpForm({ initial, onSaved }: { initial: Smtp | null; onSaved: () => v
       </div>
       {err && <p className="text-xs text-red-300">{err}</p>}
       {msg && <p className="text-xs text-green-300">{msg}</p>}
-      <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50">
+      <button onClick={save} disabled={busy} className="btn-grad disabled:opacity-50">
         {busy ? "Salvando..." : "Salvar SMTP"}
       </button>
     </section>
@@ -490,7 +490,7 @@ function Inp({ label, value, onChange, placeholder, type = "text" }: { label: st
   return (
     <label className="block">
       <span className="mb-1 block text-[10px] uppercase text-muted">{label}</span>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="w-full rounded border border-line bg-bg/60 px-2 py-1 text-sm" />
+      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="input-base" />
     </label>
   );
 }

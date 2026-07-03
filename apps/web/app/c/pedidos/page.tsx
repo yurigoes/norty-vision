@@ -24,15 +24,15 @@ export default function PedidosPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Meus pedidos</h1>
-        <Link href="/c" className="text-sm text-muted hover:text-fg">← voltar</Link>
+        <h1 className="text-2xl font-extrabold tracking-tight">Meus pedidos</h1>
+        <Link href="/c" className="text-sm font-medium text-muted transition-colors hover:text-fg">← voltar</Link>
       </div>
       {orders === null ? <p className="text-muted">Carregando…</p>
-        : orders.length === 0 ? <p className="rounded-xl border border-line bg-bg/60 p-8 text-center text-muted">Você ainda não tem pedidos.</p>
+        : orders.length === 0 ? <p className="rounded-2xl border border-line bg-surface p-8 text-center text-muted">Você ainda não tem pedidos.</p>
         : (
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {orders.map((o) => (
-              <div key={o.id} className="rounded-xl border border-line bg-bg/60">
+              <div key={o.id} className="card p-0">
                 <button onClick={() => setOpenId(openId === o.id ? null : o.id)} className="flex w-full items-center justify-between gap-3 p-4 text-left">
                   <div>
                     <p className="font-medium">{o.shortCode}</p>
@@ -229,8 +229,8 @@ function RosterForm({ order, onChanged }: { order: any; onChanged: () => void })
         </table>
       </div>
       <div className="mt-2 flex items-center gap-2">
-        <button onClick={addRow} className="rounded border border-line px-3 py-1 text-xs hover:border-brand">+ adicionar linha</button>
-        <button onClick={save} disabled={busy} className="ml-auto rounded bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Salvar lista"}</button>
+        <button onClick={addRow} className="rounded-lg border border-line px-3 py-1 text-xs transition hover:border-brand/50 hover:text-brand">+ adicionar linha</button>
+        <button onClick={save} disabled={busy} className="btn-grad ml-auto px-4 py-1.5 text-xs">{busy ? "Salvando…" : "Salvar lista"}</button>
       </div>
       {msg && <p className="mt-2 text-[11px] text-muted">{msg}</p>}
     </div>
@@ -289,8 +289,8 @@ function SignaturePad({ order, onChanged }: { order: any; onChanged: () => void 
         style={{ aspectRatio: "400/150" }}
       />
       <div className="mt-2 flex items-center gap-2">
-        <button onClick={clear} className="rounded border border-line px-3 py-1 text-xs text-muted hover:border-amber-400">limpar</button>
-        <button onClick={save} disabled={busy} className="ml-auto rounded bg-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Confirmar e assinar"}</button>
+        <button onClick={clear} className="rounded-lg border border-line px-3 py-1 text-xs text-muted transition hover:border-amber-400">limpar</button>
+        <button onClick={save} disabled={busy} className="btn-grad ml-auto px-4 py-1.5 text-xs">{busy ? "Salvando…" : "Confirmar e assinar"}</button>
       </div>
       {msg && <p className="mt-2 text-[11px] text-red-300">{msg}</p>}
     </div>

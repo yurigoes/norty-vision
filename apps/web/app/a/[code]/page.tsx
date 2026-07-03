@@ -63,7 +63,7 @@ export default async function AppointmentPortal({ params }: { params: Promise<{ 
         )}
       </header>
 
-      <div className="rounded-2xl border border-line bg-bg/60 p-6">
+      <div className="glass rounded-2xl p-6">
         <p className="text-sm text-muted">Olá {info.customerName?.split(" ")[0] ?? "cliente"} 👋</p>
         <h2 className="mt-1 text-lg font-semibold">Seu {info.serviceName || "exame de vista"}</h2>
 

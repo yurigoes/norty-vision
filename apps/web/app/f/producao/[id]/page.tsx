@@ -54,11 +54,11 @@ export default function CostureiraOrderDetail() {
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-6">
-      <Link href="/f" className="text-xs text-muted hover:text-fg">← Voltar</Link>
+      <Link href="/f" className="text-xs text-muted transition-colors hover:text-fg">← Voltar</Link>
 
       <header className="mt-4 mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">OS #{order.shortCode ?? "—"}</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">OS #{order.shortCode ?? "—"}</h1>
           <p className="text-xs text-muted">{order.totalPieces ?? 0} peças{order.dueDate ? ` · prazo ${new Date(order.dueDate).toLocaleDateString("pt-BR")}` : ""}</p>
         </div>
         {order.producedAt && (
@@ -68,7 +68,7 @@ export default function CostureiraOrderDetail() {
 
       {/* Arte */}
       {order.artUrl ? (
-        <section className="mb-6 overflow-hidden rounded-xl border border-line bg-bg/40">
+        <section className="mb-6 overflow-hidden rounded-2xl border border-line bg-surface shadow-[var(--shadow-sm)]">
           {/\.(png|jpg|jpeg|webp|gif)$/i.test(order.artUrl) ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={order.artUrl} alt="Arte" className="w-full" />
@@ -84,7 +84,7 @@ export default function CostureiraOrderDetail() {
 
       {/* Itens / descrição */}
       {order.items?.length > 0 && (
-        <section className="mb-6 rounded-xl border border-line bg-bg/40 p-4">
+        <section className="mb-6 rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-sm)]">
           <p className="text-[10px] uppercase tracking-wider text-muted">Itens</p>
           <ul className="mt-2 space-y-1 text-sm">
             {order.items.map((it: any) => (
@@ -99,7 +99,7 @@ export default function CostureiraOrderDetail() {
 
       {/* Ficha técnica / roster */}
       {order.roster?.length > 0 && (
-        <section className="mb-6 rounded-xl border border-line bg-bg/40 p-4">
+        <section className="mb-6 rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-sm)]">
           <p className="text-[10px] uppercase tracking-wider text-muted">Ficha técnica</p>
           <table className="mt-2 w-full text-sm">
             <thead className="text-[10px] uppercase text-muted">
@@ -120,7 +120,7 @@ export default function CostureiraOrderDetail() {
       )}
 
       {order.notes && (
-        <section className="mb-6 rounded-xl border border-line bg-bg/40 p-4">
+        <section className="mb-6 rounded-2xl border border-line bg-surface p-4 shadow-[var(--shadow-sm)]">
           <p className="text-[10px] uppercase tracking-wider text-muted">Observações</p>
           <p className="mt-1 whitespace-pre-wrap text-sm">{order.notes}</p>
         </section>
@@ -130,15 +130,15 @@ export default function CostureiraOrderDetail() {
 
       {!order.producedAt && (
         confirm ? (
-          <div className="rounded-xl border border-green-500/40 bg-green-500/5 p-4 text-center">
-            <p className="text-sm text-green-200">Confirma que está tudo pronto?</p>
+          <div className="rounded-2xl border border-success/40 bg-success/5 p-4 text-center shadow-[var(--shadow-sm)]">
+            <p className="text-sm font-medium text-green-200">Confirma que está tudo pronto?</p>
             <div className="mt-3 flex gap-2">
-              <button onClick={() => setConfirm(false)} disabled={!!busy} className="flex-1 rounded-lg border border-line py-3 text-sm">Não</button>
-              <button onClick={markDone} disabled={!!busy} className="flex-1 rounded-lg bg-green-600 py-3 text-sm font-semibold text-white">{busy === "done" ? "Marcando…" : "Sim, está pronto"}</button>
+              <button onClick={() => setConfirm(false)} disabled={!!busy} className="flex-1 rounded-xl border border-line py-3.5 text-sm font-semibold transition hover:border-brand/50 active:scale-[.98]">Não</button>
+              <button onClick={markDone} disabled={!!busy} className="flex-1 rounded-xl bg-green-600 py-3.5 text-sm font-semibold text-white shadow-[0_8px_22px_-8px_rgba(22,163,74,0.7)] transition hover:brightness-105 active:scale-[.98] disabled:opacity-50">{busy === "done" ? "Marcando…" : "Sim, está pronto"}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setConfirm(true)} className="w-full rounded-xl bg-green-600 py-4 text-base font-semibold text-white shadow-lg transition active:scale-95">
+          <button onClick={() => setConfirm(true)} className="w-full rounded-2xl bg-green-600 py-4 text-base font-semibold text-white shadow-[0_12px_28px_-10px_rgba(22,163,74,0.75)] transition hover:brightness-105 active:scale-[.98]">
             ✓ Pedido pronto
           </button>
         )

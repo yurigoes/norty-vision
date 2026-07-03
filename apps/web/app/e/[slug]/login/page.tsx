@@ -67,41 +67,68 @@ export default function TeamSlugLogin({ params }: { params: Promise<{ slug: stri
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-10">
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "radial-gradient(680px 460px at 78% 6%, rgba(37,99,235,.16), transparent 60%), radial-gradient(560px 460px at 12% 96%, rgba(6,182,212,.14), transparent 58%)",
-        }}
-      />
-      <form onSubmit={submit} className="card relative w-full max-w-sm p-8 shadow-[0_24px_50px_-18px_rgba(15,23,42,0.22)]">
-        <div className="mb-5 flex justify-center">
+    <div className="grid min-h-screen grid-cols-[1.05fr_0.95fr] max-md:grid-cols-1">
+      {/* MARCA — painel premium com arte/gradiente */}
+      <aside className="relative flex flex-col overflow-hidden bg-[#060a15] p-12 text-white max-md:hidden">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(900px 500px at 70% 8%, rgba(37,99,235,.45), transparent 60%), radial-gradient(720px 520px at 8% 92%, rgba(6,182,212,.30), transparent 55%)",
+          }}
+        />
+        <div className="relative flex items-center gap-3">
           {brand?.logoUrl ? (
-            <img src={brand.logoUrl} alt={brand.name} className="h-12 w-auto max-w-[200px] object-contain" />
+            <img src={brand.logoUrl} alt={brand.name} className="h-9 w-auto max-w-[200px] object-contain" />
           ) : (
-            <span className="text-lg font-extrabold tracking-tight" style={{ color: "rgb(var(--brand))" }}>{brand?.name ?? "Acesso da equipe"}</span>
+            <img src="/brand/norty-vision.png" alt="Norty Vision" className="h-9 w-auto object-contain" />
           )}
         </div>
-        <h1 className="text-2xl font-extrabold tracking-tight">Equipe / administração</h1>
-        <p className="mt-1 text-sm text-muted">{brand?.name ? `Acesso interno da ${brand.name}.` : "Acesso interno da empresa."}</p>
-        <label className="mt-5 block">
-          <span className="mb-1.5 block text-xs font-semibold text-muted">E-mail</span>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-base" />
-        </label>
-        <label className="mt-3 block">
-          <span className="mb-1.5 block text-xs font-semibold text-muted">Senha</span>
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-base" />
-        </label>
-        {needMfa && (
-          <label className="mt-3 block">
-            <span className="mb-1.5 block text-xs font-semibold text-muted">Código 2FA</span>
-            <input value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} inputMode="numeric" className="input-base text-center text-lg tracking-widest" />
+        <div className="relative my-auto">
+          <h2 className="max-w-md text-4xl font-extrabold leading-tight tracking-tight">
+            Toque a operação{" "}
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+              por dentro
+            </span>
+            .
+          </h2>
+          <p className="mt-4 max-w-md text-slate-300">
+            {brand?.name ? `Acesso interno da ${brand.name} — agenda, vendas e financeiro.` : "Acesso interno da empresa — agenda, vendas e financeiro."}
+          </p>
+        </div>
+        <div className="relative text-xs text-slate-500">Acesso restrito · YUGO</div>
+      </aside>
+
+      {/* FORM */}
+      <main className="grid place-items-center bg-bg p-6 md:p-10">
+        <form onSubmit={submit} className="w-full max-w-sm">
+          <div className="mb-8 flex justify-center md:hidden">
+            {brand?.logoUrl ? (
+              <img src={brand.logoUrl} alt={brand.name} className="h-12 w-auto max-w-[200px] object-contain" />
+            ) : (
+              <img src="/brand/norty-vision.png" alt="Norty Vision" className="h-9 w-auto object-contain" />
+            )}
+          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight">Equipe / administração</h1>
+          <p className="mt-1 text-sm text-muted">{brand?.name ? `Acesso interno da ${brand.name}.` : "Acesso interno da empresa."}</p>
+          <label className="mt-5 block">
+            <span className="mb-1.5 block text-xs font-semibold text-muted">E-mail</span>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-base" />
           </label>
-        )}
-        {err && <p className="mt-3 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{err}</p>}
-        <button disabled={busy} className="btn-grad mt-5 w-full py-3 text-[15px]">{busy ? "Entrando..." : "Entrar"}</button>
-      </form>
-    </main>
+          <label className="mt-3 block">
+            <span className="mb-1.5 block text-xs font-semibold text-muted">Senha</span>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-base" />
+          </label>
+          {needMfa && (
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-xs font-semibold text-muted">Código 2FA</span>
+              <input value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} inputMode="numeric" className="input-base text-center text-lg tracking-widest" />
+            </label>
+          )}
+          {err && <p className="mt-3 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{err}</p>}
+          <button disabled={busy} className="btn-grad mt-5 w-full py-3 text-[15px]">{busy ? "Entrando..." : "Entrar"}</button>
+        </form>
+      </main>
+    </div>
   );
 }

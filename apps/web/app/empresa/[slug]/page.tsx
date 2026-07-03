@@ -105,7 +105,7 @@ export default async function CompanyVitrine({ params }: { params: Promise<{ slu
           )}
           <div className="flex items-center gap-3">
             {org.catalogSlug && <a href="#produtos" className="hidden text-sm text-muted hover:text-fg sm:block">Produtos</a>}
-            <a href="#entrar" className="rounded-lg bg-brand px-5 py-2 text-sm font-semibold text-white transition hover:opacity-90">Entrar</a>
+            <a href="#entrar" className="inline-flex items-center rounded-xl px-5 py-2 text-sm font-semibold text-white shadow-[0_8px_22px_-8px_rgb(var(--brand)/0.7)] transition-all duration-150 hover:brightness-[1.06] active:scale-[.98]" style={{ background: "var(--grad-brand)" }}>Entrar</a>
           </div>
         </div>
       </nav>
@@ -124,9 +124,9 @@ export default async function CompanyVitrine({ params }: { params: Promise<{ slu
           {local && <p className="mt-3 text-sm text-muted">📍 {local}</p>}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             {org.catalogSlug && (
-              <a href="#produtos" className="rounded-lg bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90">Ver produtos</a>
+              <a href="#produtos" className="inline-flex items-center rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_28px_-10px_rgb(var(--brand)/0.7)] transition-all duration-150 hover:brightness-[1.06] active:scale-[.98]" style={{ background: "var(--grad-brand)" }}>Ver produtos</a>
             )}
-            <a href="#entrar" className="rounded-lg border border-line px-6 py-3 text-sm font-semibold transition hover:border-brand">Acessar minha conta</a>
+            <a href="#entrar" className="inline-flex items-center rounded-xl border border-line bg-surface px-6 py-3 text-sm font-semibold text-fg transition hover:border-brand/50 hover:text-brand">Acessar minha conta</a>
           </div>
         </div>
       </section>
@@ -203,7 +203,7 @@ export default async function CompanyVitrine({ params }: { params: Promise<{ slu
           </div>
           {org.catalogSlug && (
             <div className="mt-8 text-center">
-              <Link href={`/loja/${org.slug}`} className="inline-block rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_28px_-10px_rgb(var(--brand)/0.7)] transition hover:opacity-90 active:scale-[.98]">
+              <Link href={`/loja/${org.slug}`} className="inline-flex items-center rounded-xl px-6 py-3 text-sm font-semibold text-white shadow-[0_10px_28px_-10px_rgb(var(--brand)/0.7)] transition-all duration-150 hover:brightness-[1.06] active:scale-[.98]" style={{ background: "var(--grad-brand)" }}>
                 Ver catálogo completo
               </Link>
             </div>
@@ -224,12 +224,12 @@ export default async function CompanyVitrine({ params }: { params: Promise<{ slu
               href={b.href}
               className="group flex items-center gap-4 rounded-2xl border border-line bg-surface p-5 shadow-[var(--shadow-sm)] transition duration-300 hover:-translate-y-1 hover:border-brand/50 hover:shadow-[var(--shadow-md)]"
             >
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-2xl">{b.icon}</span>
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand/10 text-2xl ring-1 ring-inset ring-brand/10 transition group-hover:bg-brand/15">{b.icon}</span>
               <span className="min-w-0 flex-1">
-                <span className="block font-semibold">{b.label}</span>
+                <span className="block font-semibold tracking-tight">{b.label}</span>
                 <span className="block text-sm text-muted">{b.desc}</span>
               </span>
-              <span className="text-muted transition group-hover:translate-x-0.5 group-hover:text-brand">→</span>
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-surface-2 text-muted transition group-hover:bg-brand/10 group-hover:text-brand" aria-hidden>→</span>
             </Link>
           ))}
         </div>

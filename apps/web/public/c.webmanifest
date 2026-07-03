@@ -1,0 +1,15 @@
+{
+  "name": "Portal do Cliente",
+  "short_name": "Cliente",
+  "description": "Pedidos, ordens de serviço, contratos, chamados e dados da sua conta.",
+  "start_url": "/c",
+  "scope": "/c",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f8fb",
+  "theme_color": "#2563eb",
+  "categories": ["business", "productivity"],
+  "icons": [
+    { "src": "/brand/norty-n-azul.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

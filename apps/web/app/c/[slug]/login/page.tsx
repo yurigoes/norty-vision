@@ -126,22 +126,59 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col justify-center px-6 py-10">
-      <div className="mb-8 text-center">
-        {brand?.logoUrl ? (
-          <img src={brand.logoUrl} alt={brand.name} className="mx-auto h-14 w-auto max-w-[220px] object-contain" />
-        ) : brandLoading ? (
-          <span className="opacity-0">•</span>
-        ) : (
-          <span className="text-2xl font-bold" style={{ color: "rgb(var(--brand))" }}>{brand?.name ?? "Painel do cliente"}</span>
-        )}
-        <h1 className="mt-6 text-2xl font-extrabold tracking-tight">Painel do cliente</h1>
-        <p className="mt-1 text-sm text-muted">
-          {brand?.name ? `Acompanhe suas compras e parcelas na ${brand.name}.` : "Acompanhe suas compras e parcelas do crediário."}
-        </p>
-      </div>
+    <div className="grid min-h-screen grid-cols-[1.05fr_0.95fr] max-md:grid-cols-1">
+      {/* MARCA — painel premium com arte/gradiente */}
+      <aside className="relative flex flex-col overflow-hidden bg-[#060a15] p-12 text-white max-md:hidden">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(900px 500px at 70% 8%, rgba(37,99,235,.45), transparent 60%), radial-gradient(720px 520px at 8% 92%, rgba(6,182,212,.30), transparent 55%)",
+          }}
+        />
+        <div className="relative flex items-center gap-3">
+          {brand?.logoUrl ? (
+            <img src={brand.logoUrl} alt={brand.name} className="h-9 w-auto max-w-[200px] object-contain" />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/brand/norty-vision.png" alt="Norty Vision" className="h-9 w-auto object-contain" />
+          )}
+        </div>
+        <div className="relative my-auto">
+          <h2 className="max-w-md text-4xl font-extrabold leading-tight tracking-tight">
+            Seu crediário,{" "}
+            <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+              na palma
+            </span>{" "}
+            da mão.
+          </h2>
+          <p className="mt-4 max-w-md text-slate-300">
+            {brand?.name ? `Acompanhe compras, parcelas e boletos na ${brand.name}.` : "Acompanhe suas compras e parcelas do crediário."}
+          </p>
+        </div>
+        <div className="relative text-xs text-slate-500">Portal seguro por YUGO</div>
+      </aside>
 
-      <div className="card p-6 sm:p-7">
+      {/* FORM */}
+      <main className="grid place-items-center bg-bg p-6 md:p-10">
+        <div className="w-full max-w-sm">
+          <div className="mb-8 text-center md:hidden">
+            {brand?.logoUrl ? (
+              <img src={brand.logoUrl} alt={brand.name} className="mx-auto h-12 w-auto max-w-[200px] object-contain" />
+            ) : brandLoading ? (
+              <span className="opacity-0">•</span>
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/brand/norty-vision.png" alt="Norty Vision" className="mx-auto h-9 w-auto object-contain" />
+            )}
+          </div>
+
+          <h1 className="text-2xl font-extrabold tracking-tight">Painel do cliente</h1>
+          <p className="mt-1 text-sm text-muted">
+            {brand?.name ? `Acompanhe suas compras e parcelas na ${brand.name}.` : "Acompanhe suas compras e parcelas do crediário."}
+          </p>
+
+          <div className="card mt-6 p-6 sm:p-7">
         {step === "input" && (
           <>
             {/* Toggle de modo: telefone (default) ou CPF/CNPJ */}
@@ -248,9 +285,11 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
         )}
 
         {error && <p className="mt-4 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{error}</p>}
-      </div>
+          </div>
 
-      <p className="mt-6 text-center text-[11px] text-muted">Portal seguro por YUGO</p>
-    </main>
+          <p className="mt-6 text-center text-[11px] text-muted">Portal seguro por YUGO</p>
+        </div>
+      </main>
+    </div>
   );
 }

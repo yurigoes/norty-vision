@@ -1,0 +1,66 @@
+# ==============================================================================
+# yugo-platform - overlay para modo Cloudflare Tunnel
+#
+# Combinar com docker-compose.prod.yml (e opcionalmente services.yml):
+#
+#   docker compose \
+#     -f docker-compose.prod.yml \
+#     -f docker-compose.services.yml \
+#     -f docker-compose.tunnel.yml \
+#     --env-file .env.production \
+#     up -d
+#
+# O que muda:
+#   - Caddy NAO publica 80/443 pro host (cloudflared atinge pela rede docker)
+#   - Caddy usa Caddyfile.tunnel (HTTP only, sem ACME)
+#   - Servico cloudflared sobe, usa CLOUDFLARED_TOKEN do .env.production
+#
+# Pre-requisitos no .env.production:
+#   CLOUDFLARED_TOKEN=eyJh...   (vem do dashboard CF, Zero Trust)
+#   TUNNEL_BASE_DOMAIN=local.yugochat.com.br  (zona delegada na Hostinger)
+# ==============================================================================
+
+name: yugo-prod
+
+services:
+  caddy:
+    # remove publicacao de portas — so cloudflared chega
+    ports: !reset []
+    expose:
+      - "80"
+    volumes:
+      - ../caddy/Caddyfile.tunnel:/etc/caddy/Caddyfile:ro
+      - ../caddy/maintenance:/srv/maintenance:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      TUNNEL_BASE_DOMAIN: ${TUNNEL_BASE_DOMAIN:-local.yugochat.com.br}
+    # healthcheck via HTTP 80 dentro da rede
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: yugo-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARED_TOKEN}
+    # Permite o cloudflared alcançar serviços do HOST (ex.: SSH na porta 22),
+    # pra publicar a rota ssh.yugochat.com.br → ssh://host.docker.internal:22.
+    # host-gateway resolve pro IP do host na rede docker.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - edge
+    depends_on:
+      caddy:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

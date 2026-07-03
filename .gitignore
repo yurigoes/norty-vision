@@ -1,0 +1,75 @@
+# --- secrets ---
+.env
+.env.local
+.env.*.local
+.env.production
+*.pem
+*.key
+!*.pub
+id_rsa
+id_ed25519
+secrets/
+.sops.decrypted.*
+infra/docker/chatwoot.env
+infra/docker/.gdrive.env
+
+# --- node / pnpm / turbo ---
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+.npm
+.yarn/
+.turbo/
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+
+# --- next.js ---
+.next/
+next-env.d.ts
+
+# --- nestjs ---
+apps/api/dist/
+
+# --- prisma ---
+packages/db/prisma/migrations/dev.db*
+packages/db/.env
+
+# --- editor / OS ---
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+
+# --- logs ---
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# --- docker / local data ---
+.docker-data/
+postgres-data/
+redis-data/
+minio-data/
+
+# --- caches diversos ---
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# --- coverage / test artifacts ---
+.nyc_output/
+playwright-report/
+test-results/
+cookies.txt
+.commitmsg
+tributavel/

@@ -1,0 +1,26 @@
+# Caddy do PABX externo: termina o TLS do WSS (porta 443) e repassa pro
+# FreeSWITCH em ws://...:5066. O softphone do app conecta em
+# wss://voip.<seu-dominio>. Cert Let's Encrypt automático (precisa 80/443
+# abertos e DNS A apontando pra cá).
+#
+# Config MÍNIMA — só ALPN restrito a http/1.1 no site. Sem mexer em header,
+# sem `servers { protocols }` global: aprendemos na prática que essas duas
+# coisas quebram o RELAY dos frames WS após o 101 Switching Protocols
+# (Caddy fazia o upgrade com o FS mas não enviava os bytes do REGISTER).
+{$VOIP_DOMAIN} {
+	tls {
+		alpn http/1.1
+	}
+	# WebSocket SIP do FreeSWITCH. O FS amarra o ws no IP do profile (IP público),
+	# não em 127.0.0.1 — por isso usamos FS_UPSTREAM (= PUBLIC_IP:5066).
+	#
+	# keepalive OFF no transport: descobrimos via tcpdump que Caddy estava
+	# reusando conexões keepalive zumbis pra fazer o upgrade WS — o handshake
+	# acontecia, mas os frames de REGISTER nunca eram repassados. Sem
+	# keepalive, cada WS abre uma conexão TCP nova e limpa.
+	reverse_proxy {$FS_UPSTREAM:127.0.0.1:5066} {
+		transport http {
+			keepalive off
+		}
+	}
+}

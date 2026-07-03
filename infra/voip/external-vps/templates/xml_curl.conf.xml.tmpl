@@ -1,0 +1,12 @@
+<!-- xml_curl.conf.xml do PABX externo — gerado pelo setup.sh.
+     FreeSWITCH consulta a API do yugo (directory=auth do ramal, dialplan=roteamento).
+     Secret na URL (?secret=...): extra-args do FS não passa em todos os builds
+     quando method=POST; querystring é universal. -->
+<configuration name="xml_curl.conf" description="cURL XML Gateway">
+  <bindings>
+    <binding name="yugo">
+      <param name="gateway-url" value="__API_URL__/api/voip/fs/xml?secret=__VOIP_FS_SECRET__" bindings="directory|dialplan"/>
+      <param name="method" value="POST"/>
+    </binding>
+  </bindings>
+</configuration>

@@ -1,0 +1,16 @@
+<!-- xml_curl.conf.xml — FreeSWITCH consulta a API do yugo (directory + dialplan).
+     Copie/mescle este arquivo no /etc/freeswitch/autoload_configs/ do container
+     (ver infra/voip/README.md). Troque a URL/host e o VOIP_FS_SECRET. -->
+<configuration name="xml_curl.conf" description="cURL XML Gateway">
+  <bindings>
+    <binding name="yugo">
+      <!-- directory = auth dos ramais; dialplan = roteamento ramal↔ramal -->
+      <param name="gateway-url" value="http://127.0.0.1:3001/api/voip/fs/xml" bindings="directory|dialplan"/>
+      <param name="method" value="POST"/>
+      <!-- segredo enviado em todo request (combine com VOIP_FS_SECRET no .env) -->
+      <param name="gateway-credentials" value=""/>
+      <param name="auth-scheme" value="basic"/>
+      <param name="extra-args" value="&amp;secret=TROQUE_VOIP_FS_SECRET"/>
+    </binding>
+  </bindings>
+</configuration>

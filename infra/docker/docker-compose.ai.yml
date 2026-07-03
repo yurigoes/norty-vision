@@ -1,0 +1,121 @@
+# ==============================================================================
+# docker-compose.ai.yml  —  IA Fase 4: modelos open-source LOCAIS (na sua infra)
+#
+# Sobe um Ollama na mesma VPS, exposto SÓ na rede interna (nunca publicado).
+# Serve dois papéis, ambos via endpoint OpenAI-compatible:
+#   - chat  (Llama/Qwen/DeepSeek/Mistral)  ->  LOCAL_AI_URL
+#   - embeddings (bge-m3, RAG semântico)   ->  EMBEDDINGS_URL
+#
+# Vantagem: dado NÃO sai da infra, sem custo por token, sem cota diária. É o
+# fallback de plataforma — cada empresa ainda pode cadastrar o próprio provedor.
+#
+# Uso (em conjunto com o compose principal):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.ai.yml up -d
+#
+# RAM/CPU: um modelo 7-8B quantizado (Q4) usa ~5-6GB de RAM e responde em CPU
+# (lento: ~10-40s). Para produção fluida, use GPU (descomente o bloco `deploy`
+# em `ollama`) ou um modelo menor (ex.: qwen2.5:3b, llama3.2:3b).
+#
+# Modelos baixados pelo init (ollama-pull). Ajuste OLLAMA_PULL no .env:
+#   OLLAMA_PULL="llama3.1:8b bge-m3"
+# ==============================================================================
+
+name: yugo-prod
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+services:
+  # ----------------------------------------------------------------------------
+  # OLLAMA — runtime de modelos locais (open-source), OpenAI-compatible em /v1
+  # ----------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: yugo-ollama
+    <<: *default-restart
+    logging: *default-logging
+    networks:
+      - internal
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      # mantém 1 modelo na memória; evita estourar RAM em VPS pequena
+      OLLAMA_KEEP_ALIVE: "10m"
+      OLLAMA_MAX_LOADED_MODELS: "1"
+      OLLAMA_NUM_PARALLEL: "1"
+    healthcheck:
+      test: ["CMD-SHELL", "ollama --version >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+    # --- GPU (descomente se a VPS tiver GPU NVIDIA + nvidia-container-toolkit) ---
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+  # ----------------------------------------------------------------------------
+  # OLLAMA-PULL — baixa os modelos uma vez e sai (idempotente: re-pull é no-op)
+  # ----------------------------------------------------------------------------
+  ollama-pull:
+    image: ollama/ollama:latest
+    container_name: yugo-ollama-pull
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks:
+      - internal
+    environment:
+      OLLAMA_HOST: "http://ollama:11434"
+      # padrão seguro: só o modelo de embeddings (leve). O chat (Llama/Qwen…) é
+      # adicionado aqui pelo ai-local-up.sh quando há RAM suficiente.
+      OLLAMA_PULL: ${OLLAMA_PULL:-bge-m3}
+    entrypoint: >
+      sh -c "
+      set -e;
+      for m in $$OLLAMA_PULL; do
+        echo 'baixando modelo: '$$m;
+        ollama pull $$m;
+      done;
+      echo 'modelos prontos: '$$OLLAMA_PULL;
+      "
+    restart: "no"
+
+  # ----------------------------------------------------------------------------
+  # API — overlay: aponta o fallback de plataforma + embeddings pro Ollama local
+  # (merge com o serviço `api` do docker-compose.prod.yml)
+  # ----------------------------------------------------------------------------
+  api:
+    environment:
+      # chat local (fallback de plataforma): VAZIO por padrão = desligado. Só liga
+      # quando LOCAL_AI_URL é setado no .env (precisa de RAM pro modelo de chat).
+      LOCAL_AI_URL: ${LOCAL_AI_URL:-}
+      LOCAL_AI_MODEL: ${LOCAL_AI_MODEL:-}
+      LOCAL_AI_KEY: ${LOCAL_AI_KEY:-}
+      # embeddings (RAG semântico — Fase 2b): LIGADO por padrão quando o overlay
+      # sobe (bge-m3 é leve e roda sob demanda).
+      EMBEDDINGS_URL: ${EMBEDDINGS_URL:-http://ollama:11434}
+      EMBEDDINGS_MODEL: ${EMBEDDINGS_MODEL:-bge-m3}
+      EMBEDDINGS_DIM: ${EMBEDDINGS_DIM:-1024}
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+volumes:
+  ollama_models: { name: yugo-ollama-models }
+
+networks:
+  internal:
+    name: yugo-internal

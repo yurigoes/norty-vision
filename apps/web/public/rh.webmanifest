@@ -1,0 +1,14 @@
+{
+  "name": "yugochat — Portal do Funcionário",
+  "short_name": "RH yugochat",
+  "description": "Ponto, holerite, escala, solicitações e documentos.",
+  "start_url": "/rh",
+  "scope": "/rh",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0b0f",
+  "theme_color": "#7c3aed",
+  "icons": [
+    { "src": "/rh-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

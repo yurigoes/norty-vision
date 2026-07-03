@@ -1,0 +1,41 @@
+# ==============================================================================
+# .dockerignore — reduz o contexto enviado ao daemon nos builds (api/web).
+# Sem isto, o Docker envia o repo inteiro (node_modules, .git, .next, etc),
+# o que deixa o `docker compose build` lento a ponto de parecer travado.
+# Os Dockerfiles instalam as deps com pnpm dentro do build, então NÃO precisamos
+# enviar node_modules nem artefatos de build.
+# ==============================================================================
+
+# dependências (reinstaladas no build)
+**/node_modules
+
+# artefatos de build / cache
+**/.next
+**/dist
+**/.turbo
+**/coverage
+**/*.tsbuildinfo
+
+# git e metadados
+.git
+.gitignore
+**/.DS_Store
+
+# ambientes locais e segredos (nunca vão pra imagem)
+**/.env
+**/.env.*
+!**/.env.example
+infra/docker/.env.production
+
+# editores / IDE
+.vscode
+.idea
+
+# logs e temporários
+**/*.log
+**/tmp
+**/.cache
+
+# docs e infra que não entram nas imagens da app
+*.md
+**/*.md

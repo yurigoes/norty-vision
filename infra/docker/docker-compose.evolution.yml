@@ -1,0 +1,70 @@
+# ==============================================================================
+# docker-compose.evolution.yml
+# Evolution API (WhatsApp) SOZINHO — separado do Chatwoot/GLPI pra rodar em VPS
+# pequena (a plataforma + Evolution cabem; Chatwoot/GLPI não).
+#
+# Carregue junto do compose principal:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.evolution.yml up -d
+#
+# O deploy-prod.sh inclui este arquivo automaticamente quando EVOLUTION_API_KEY
+# está preenchida no .env.production.
+# ==============================================================================
+
+name: yugo-prod
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+services:
+  evolution:
+    image: evoapicloud/evolution-api:v2.3.4
+    container_name: yugo-evolution
+    <<: *default-restart
+    logging: *default-logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+    environment:
+      SERVER_TYPE: http
+      SERVER_PORT: "8080"
+      SERVER_URL: "https://evo.${DOMAIN}"
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY}
+      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "false"
+      DATABASE_ENABLED: "true"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: "postgresql://evolution:${EVOLUTION_DB_PASSWORD}@postgres:5432/evolution?schema=public"
+      DATABASE_CONNECTION_CLIENT_NAME: evolution_exchange
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: "redis://:${REDIS_PASSWORD}@redis:6379/3"
+      CACHE_REDIS_PREFIX_KEY: evolution
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+      WEBHOOK_GLOBAL_URL: "http://api:3001/api/webhooks/evolution"
+      WEBHOOK_GLOBAL_ENABLED: "true"
+      WEBHOOK_GLOBAL_WEBHOOK_BY_EVENTS: "false"
+      LOG_LEVEL: ERROR
+      LOG_COLOR: "true"
+    volumes:
+      - evolution_instances:/evolution/instances
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8080/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  evolution_instances: { name: yugo-evolution-instances }
+
+networks:
+  internal:
+    name: yugo-internal

@@ -1,0 +1,10 @@
+import { Module } from "@nestjs/common";
+import { SupportAccessController } from "./support-access.controller";
+import { SupportAccessService } from "./support-access.service";
+
+@Module({
+  controllers: [SupportAccessController],
+  providers: [SupportAccessService],
+  exports: [SupportAccessService],
+})
+export class SupportAccessModule {}

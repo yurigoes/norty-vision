@@ -1,0 +1,172 @@
+# ==============================================================================
+# docker-compose.services.yml
+# Chatwoot + GLPI + Evolution self-hosted, na mesma VPS, atras do Caddy.
+#
+# Carregue em conjunto com o compose principal:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.services.yml up -d
+#
+# Subdominios atendidos (criar registros A apontando pra 178.105.111.15):
+#   chatwoot.yugochat.com.br
+#   chamados.yugochat.com.br
+#   evo.yugochat.com.br
+#
+# ATENCAO RAM: stack inteira (yugo + 3 servicos) usa ~3GB. VPS de 3.7GB
+# pode ficar apertada. Considere upgrade pra 6GB+.
+# ==============================================================================
+
+name: yugo-prod
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+services:
+  # ============================================================================
+  # CHATWOOT - chat omnichannel
+  # ============================================================================
+  chatwoot:
+    image: chatwoot/chatwoot:v4.12.0
+    container_name: yugo-chatwoot
+    <<: *default-restart
+    logging: *default-logging
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+    env_file:
+      - ./chatwoot.env
+    environment:
+      # core
+      FRONTEND_URL: "https://chatwoot.${DOMAIN}"
+      DEFAULT_LOCALE: pt_BR
+      # FORCE_SSL=false: Caddy faz a terminacao TLS na frente. Habilitar
+      # FORCE_SSL aqui causa loop de redirect HTTP -> HTTPS na rede interna
+      # e quebra o healthcheck do Docker. Os cookies sao marcados Secure
+      # via FRONTEND_URL https.
+      FORCE_SSL: "false"
+      # DB (compartilha postgres yugo num DB separado)
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USERNAME: chatwoot
+      POSTGRES_PASSWORD: ${CHATWOOT_DB_PASSWORD}
+      POSTGRES_DATABASE: chatwoot
+      # Redis (DB diferente do yugo)
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/2"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      # storage
+      # storage local em volume Docker (mais simples; migrar pra S3 depois)
+      ACTIVE_STORAGE_SERVICE: local
+      # --- performance: VPS compartilhada (muitos containers) ---
+      # reduz footprint do Puma pra evitar swap (helpdesk de baixo tráfego).
+      WEB_CONCURRENCY: "1"
+      RAILS_MAX_THREADS: "3"
+      RAILS_LOG_LEVEL: warn
+      LOG_LEVEL: warn
+    entrypoint: docker/entrypoints/rails.sh
+    command: bundle exec rails s -p 3000 -b 0.0.0.0
+    volumes:
+      - chatwoot_storage:/app/storage
+    healthcheck:
+      # GET / retorna 302 -> /installation/onboarding ate setup ser feito,
+      # depois 302 -> /app/login. --tries=1 evita seguir redirect (wget
+      # nao considera 3xx como sucesso com --spider).
+      # Trocamos pra checar a rota /api que sempre retorna JSON 200.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  chatwoot-sidekiq:
+    image: chatwoot/chatwoot:v4.12.0
+    container_name: yugo-chatwoot-sidekiq
+    <<: *default-restart
+    logging: *default-logging
+    depends_on:
+      chatwoot:
+        condition: service_healthy
+    networks:
+      - internal
+    env_file:
+      - ./chatwoot.env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_USERNAME: chatwoot
+      POSTGRES_PASSWORD: ${CHATWOOT_DB_PASSWORD}
+      POSTGRES_DATABASE: chatwoot
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/2"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      ACTIVE_STORAGE_SERVICE: local
+      RAILS_LOG_LEVEL: warn
+    volumes:
+      - chatwoot_storage:/app/storage
+    # -c 3: reduz a concorrência do Sidekiq (default 10) p/ poupar RAM/CPU
+    command: bundle exec sidekiq -C config/sidekiq.yml -c 3
+
+  # ============================================================================
+  # GLPI - helpdesk / ITSM
+  # ============================================================================
+  glpi-db:
+    image: mariadb:11
+    container_name: yugo-glpi-db
+    <<: *default-restart
+    logging: *default-logging
+    networks:
+      - internal
+    environment:
+      MARIADB_ROOT_PASSWORD: ${GLPI_DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: glpi
+      MARIADB_USER: glpi
+      MARIADB_PASSWORD: ${GLPI_DB_PASSWORD}
+    volumes:
+      - glpi_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin -u root -p$$MARIADB_ROOT_PASSWORD ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+
+  glpi:
+    # diouxx/glpi mantida pela comunidade. latest aponta pro release atual.
+    # Pin pra tag major quando estabilizar (ex: :10).
+    image: diouxx/glpi:latest
+    container_name: yugo-glpi
+    <<: *default-restart
+    logging: *default-logging
+    depends_on:
+      glpi-db:
+        condition: service_healthy
+    networks:
+      - internal
+    environment:
+      TIMEZONE: America/Sao_Paulo
+    volumes:
+      - glpi_data:/var/www/html/glpi
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 60s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ============================================================================
+  # EVOLUTION API → movido para docker-compose.evolution.yml (roda separado, pra
+  # poder ter WhatsApp sem Chatwoot/GLPI em VPS pequena).
+  # ============================================================================
+
+volumes:
+  glpi_db_data:        { name: yugo-glpi-db-data }
+  glpi_data:           { name: yugo-glpi-data }
+  chatwoot_storage:    { name: yugo-chatwoot-storage }
+
+networks:
+  internal:
+    name: yugo-internal

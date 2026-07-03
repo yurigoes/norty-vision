@@ -1,0 +1,138 @@
+# ==============================================================================
+# yugo-platform - Caddyfile (producao)
+#
+# Domínio único: yugochat.com.br (apex)
+#   /                 -> Next.js (landing + app autenticado)
+#   /api/*            -> NestJS API
+#   /storage/*        -> MinIO (presigned URLs)
+#   /health           -> health-check publico
+#
+# Por enquanto app/api/minio nao existem; servimos pagina de manutencao.
+# ==============================================================================
+
+{
+    # email para Let's Encrypt
+    email {$ACME_EMAIL}
+
+    # servidor admin so interno (nao expor)
+    # IPv4 explicito - 'localhost' no Alpine resolve pra ::1 (IPv6) e o admin
+    # so escuta IPv4, o que quebra healthcheck do docker.
+    admin 127.0.0.1:2019
+
+    # logs no stdout em JSON pra ser engolido pelo docker logs
+    log default {
+        output stdout
+        format json {
+            time_format iso8601
+        }
+        level INFO
+    }
+
+    # otimizacoes
+    servers {
+        protocols h1 h2 h3
+    }
+}
+
+# ------------------------------------------------------------------------------
+{$DOMAIN} {
+    encode zstd gzip
+
+    # headers de seguranca em TODAS as respostas
+    header {
+        Strict-Transport-Security  "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options     "nosniff"
+        X-Frame-Options            "DENY"
+        Referrer-Policy            "strict-origin-when-cross-origin"
+        Permissions-Policy         "geolocation=(self), microphone=(self), camera=(self), payment=()"
+        Cross-Origin-Opener-Policy "same-origin"
+        # CSP compativel com Next.js 15:
+        # - script-src 'unsafe-inline' + 'unsafe-eval': necessario para hydration
+        #   inline (__NEXT_DATA__, RSC chunks). Eliminar exige nonce per-request
+        #   via middleware do Next.js - pode ser endurecido depois.
+        # - Google Fonts permitido em style/font (caso seja usado)
+        Content-Security-Policy    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; frame-src 'self' blob: https://meet.jit.si; connect-src 'self' https: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        # remove header que vaza versao
+        -Server
+        -X-Powered-By
+    }
+
+    # health-check publico - sempre responde, mesmo sem app
+    handle /health {
+        respond "ok" 200
+    }
+
+    # ROTA /api/* - reverse proxy pra NestJS
+    handle /api/* {
+        reverse_proxy api:3001 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up Host {host}
+        }
+    }
+
+    # ROTA /storage/* -> MinIO
+    # Path /storage/<bucket>/<key> mapeia para minio:9000/<bucket>/<key>.
+    # Bucket 'yugo-public' tem policy de leitura publica (configurado pelo
+    # minio-init). Buckets privados exigem presigned URL (gerada pela API).
+    handle_path /storage/* {
+        reverse_proxy minio:9000 {
+            header_up Host {upstream_hostport}
+        }
+    }
+
+    # FALLBACK - todo o resto vai pro Next.js (landing + login + /app + ...)
+    handle {
+        reverse_proxy web:3000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up Host {host}
+        }
+    }
+
+    # log de acesso em arquivo dentro do volume (pra debug)
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 10mb
+            roll_keep 14
+        }
+        format json {
+            time_format iso8601
+        }
+    }
+}
+
+# ------------------------------------------------------------------------------
+# Servicos integrados em subdominios (mesma VPS, atras do mesmo Caddy).
+# Cada um e self-hosted no docker-compose.services.yml.
+# Cert Let's Encrypt automatico desde que o DNS A esteja apontado.
+# ------------------------------------------------------------------------------
+
+chatwoot.{$DOMAIN} {
+    encode zstd gzip
+    reverse_proxy chatwoot:3000 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+chamados.{$DOMAIN} {
+    encode zstd gzip
+    reverse_proxy glpi:80 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+evo.{$DOMAIN} {
+    encode zstd gzip
+    reverse_proxy evolution:8080 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}

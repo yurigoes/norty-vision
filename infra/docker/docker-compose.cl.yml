@@ -1,0 +1,136 @@
+# ==============================================================================
+# Central de Leads — deploy PRÓPRIO reusando código + infra do yugo.
+#
+# Sobe cl-api + cl-web (mesmas imagens yugo/api:latest e yugo/web:latest) na
+# rede yugo-internal (externa), apontando pra:
+#   - DB próprio  : postgres:5432/centraldeleads  (mesmo container yugo-postgres)
+#   - Redis       : redis:6379 DB lógico /1        (mesmo container yugo-redis)
+#   - MinIO       : bucket próprio centraldeleads   (mesmo container yugo-minio)
+# Login/usuários/dados ISOLADOS do yugo (banco + cookie próprios).
+#
+# Uso (na VPS, em /opt/yugo-platform):
+#   1) bash infra/scripts/cl-db-apply.sh           # cria DB + schema
+#   2) docker compose -f infra/docker/docker-compose.cl.yml \
+#        --env-file infra/docker/.env.production up -d
+#   3) docker exec -e MASTER_EMAIL=.. -e MASTER_NAME=.. -e MASTER_PASSWORD=.. \
+#        cl-api node dist/scripts/create-master.js   # admin (você digita a senha)
+# ==============================================================================
+
+name: central-de-leads
+
+networks:
+  yugo-internal:
+    external: true
+    name: yugo-internal
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  cl-api:
+    image: yugo/api:latest
+    container_name: cl-api
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - yugo-internal
+    environment:
+      NODE_ENV: production
+      TZ: America/Sao_Paulo
+      API_PORT: "3001"
+      # DB PRÓPRIO (mesmo container postgres, database centraldeleads)
+      DATABASE_URL: "postgresql://yugo_app:${YUGO_APP_PASSWORD}@postgres:5432/centraldeleads?schema=public"
+      # Redis compartilhado, DB lógico 1 (sessões/cache isolados do yugo no DB 0)
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/1"
+      # cookie próprio: nome diferente + escopo só no subdomínio (não vaza pro yugo)
+      COOKIE_SECRET: ${AUTH_SECRET}
+      SESSION_COOKIE_NAME: cl_session
+      SESSION_COOKIE_DOMAIN: centraldeleads.yugochat.com.br
+      SESSION_DURATION_DAYS: "30"
+      MASTER_COOKIE_NAME: cl_master
+      CUSTOMER_COOKIE_NAME: cl_customer
+      PLATFORM_ORG_SLUG: centraldeleads
+      CORS_ORIGINS: "https://centraldeleads.yugochat.com.br"
+      LOG_LEVEL: info
+      # MinIO compartilhado, bucket próprio
+      MINIO_ENDPOINT: "http://minio:9000"
+      MINIO_REGION: us-east-1
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET_PRIVATE: centraldeleads
+      MINIO_BUCKET_PUBLIC: centraldeleads-public
+      MINIO_PUBLIC_BASE_URL: "https://centraldeleads.yugochat.com.br/storage"
+      APP_PUBLIC_URL: "https://centraldeleads.yugochat.com.br"
+      # SMTP reaproveitado do yugo (opcional)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-Central de Leads <no-reply@yugochat.com.br>}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3001/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    security_opt:
+      - no-new-privileges:true
+
+  cl-web:
+    # build PRÓPRIO: mesma codebase do yugo, mas com NEXT_PUBLIC_ROOT_DOMAIN da CL
+    # (faz centraldeleads.yugochat.com.br ser o apex próprio: login master + orgs).
+    image: cl/web:latest
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_ROOT_DOMAIN: centraldeleads.yugochat.com.br
+        NEXT_PUBLIC_DEFAULT_THEME: dark
+    container_name: cl-web
+    restart: unless-stopped
+    logging: *default-logging
+    networks:
+      - yugo-internal
+    environment:
+      NODE_ENV: production
+      TZ: America/Sao_Paulo
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      API_INTERNAL_URL: "http://cl-api:3001"
+      RUNBOOK_PASSWORD: "${RUNBOOK_PASSWORD:-}"
+    depends_on:
+      cl-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  # cria os buckets próprios da Central de Leads no MinIO compartilhado
+  cl-minio-init:
+    image: minio/mc:RELEASE.2024-11-21T17-21-54Z
+    container_name: cl-minio-init
+    networks:
+      - yugo-internal
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    entrypoint: >
+      sh -c "
+      set -e;
+      mc alias set local http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD;
+      mc mb --ignore-existing local/centraldeleads;
+      mc version enable local/centraldeleads || true;
+      mc mb --ignore-existing local/centraldeleads-public;
+      mc anonymous set download local/centraldeleads-public;
+      echo 'buckets CL prontos: centraldeleads (privado) + centraldeleads-public';
+      "
+    restart: "no"

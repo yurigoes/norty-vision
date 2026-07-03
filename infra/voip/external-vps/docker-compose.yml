@@ -1,0 +1,53 @@
+# ==============================================================================
+# PABX externo (VPS com IP PÚBLICO) — Fase B.2 modo SIP.
+# Roda FORA da VPS local: aqui é onde as portas ficam abertas (mídia RTP/UDP).
+# A sinalização de auth/roteamento dos ramais vem da API do yugo (que fica na VPS
+# local atrás do Cloudflare Tunnel) via mod_xml_curl → ${API_URL}/api/voip/fs/xml.
+#
+# Subir:  bash setup.sh   (gera configs do .env, abre firewall e sobe tudo)
+# Pré-req: DNS A de voip.<seu-dominio> apontando pra ESTE IP (DNS only / sem proxy),
+#          IPv4 público de verdade (não CGNAT). Ver README.md.
+# ==============================================================================
+services:
+  freeswitch:
+    image: safarov/freeswitch:latest
+    container_name: yugo-fs
+    restart: unless-stopped
+    network_mode: host                 # RTP precisa das portas UDP reais do host
+    environment:
+      - SOUND_RATES=8000:16000
+      - SOUND_TYPES=music
+    volumes:
+      # config completo gerado/patchado pelo setup.sh (defaults da imagem + nossos ajustes)
+      - ./generated/freeswitch-conf:/etc/freeswitch
+      - yugo-fs-data:/var/lib/freeswitch
+    # Portas (host): ws 5066 (atrás do Caddy), RTP 16384-32768/udp.
+
+  coturn:
+    image: coturn/coturn:latest
+    container_name: yugo-coturn
+    restart: unless-stopped
+    network_mode: host                 # TURN precisa de range UDP + IP público
+    volumes:
+      - ./generated/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: yugo-voip-caddy
+    restart: unless-stopped
+    network_mode: host                 # termina TLS do WSS e repassa pro ws do FreeSWITCH
+    environment:
+      - VOIP_DOMAIN=${VOIP_DOMAIN}
+      # FreeSWITCH amarra o ws-binding no IP do profile (= IP público); apontamos
+      # o Caddy pra ele. Default 127.0.0.1 caso PUBLIC_IP não venha.
+      - FS_UPSTREAM=${PUBLIC_IP:-127.0.0.1}:5066
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - yugo-voip-caddy-data:/data
+      - yugo-voip-caddy-config:/config
+
+volumes:
+  yugo-fs-data: { name: yugo-fs-data }
+  yugo-voip-caddy-data: { name: yugo-voip-caddy-data }
+  yugo-voip-caddy-config: { name: yugo-voip-caddy-config }

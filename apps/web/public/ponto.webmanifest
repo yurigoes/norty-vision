@@ -1,0 +1,14 @@
+{
+  "name": "yugochat — Ponto (dispositivo)",
+  "short_name": "Ponto",
+  "description": "Bater ponto no balcão da filial: PIN, GPS e selfie, com modo offline.",
+  "start_url": "/ponto-app",
+  "scope": "/ponto-app",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0b0b0f",
+  "theme_color": "#7c3aed",
+  "icons": [
+    { "src": "/rh-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

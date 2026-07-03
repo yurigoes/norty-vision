@@ -1,0 +1,351 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================================
+   Variaveis de tema
+   - CSS vars de cor em formato "R G B" (sem rgb()) pra usar com Tailwind
+     alpha modifier: bg-bg/80, text-fg/60, etc
+   - --app-gradient: pintado no body, sempre presente
+   ============================================================================ */
+@layer base {
+  :root,
+  .light {
+    --bg:    250 250 252;
+    --fg:    24 24 28;
+    --muted: 100 100 110;
+    --line:  225 225 232;
+    --brand: 56 122 240;
+
+    /* gradiente mais vivo (light): 3 blobs + base */
+    --app-gradient:
+      radial-gradient(circle 700px at 15% 0%,    rgba(56 122 240 / 0.22), transparent 60%),
+      radial-gradient(circle 600px at 85% 25%,   rgba(168 85 247 / 0.18), transparent 60%),
+      radial-gradient(circle 800px at 50% 100%,  rgba(236 72 153 / 0.14), transparent 60%),
+      linear-gradient(180deg, rgb(248 248 252) 0%, rgb(238 238 246) 100%);
+  }
+
+  .dark {
+    --bg:    10 10 11;
+    --fg:    244 244 245;
+    --muted: 138 138 146;
+    --line:  31 31 35;
+    --brand: 96 165 250;
+
+    /* gradiente mais vivo (dark): blobs maiores e mais opacos */
+    --app-gradient:
+      radial-gradient(circle 700px at 15% 0%,    rgba(96 165 250 / 0.30), transparent 60%),
+      radial-gradient(circle 600px at 85% 25%,   rgba(168 85 247 / 0.22), transparent 60%),
+      radial-gradient(circle 800px at 50% 100%,  rgba(236 72 153 / 0.16), transparent 60%),
+      linear-gradient(180deg, rgb(8 8 10) 0%, rgb(14 14 18) 100%);
+  }
+
+  html,
+  body {
+    min-height: 100%;
+    background: var(--app-gradient);
+    background-attachment: fixed;
+    color: rgb(var(--fg));
+    -webkit-font-smoothing: antialiased;
+    color-scheme: light dark;
+  }
+
+  html:not(.light):not(.dark) body {
+    visibility: hidden;
+  }
+
+  /* scroll suave em ancoras + foco visivel respeitando a brand */
+  html {
+    scroll-behavior: smooth;
+  }
+  *:focus-visible {
+    outline: 2px solid rgb(var(--brand));
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  /* ========== GLASSMORPHISM ========== */
+  .glass {
+    @apply relative border border-line/60 bg-bg/40 backdrop-blur-xl;
+    box-shadow:
+      0 8px 32px -8px rgba(0, 0, 0, 0.16),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  .dark .glass {
+    box-shadow:
+      0 12px 36px -8px rgba(0, 0, 0, 0.5),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  .glass::before {
+    content: "";
+    @apply pointer-events-none absolute inset-0 rounded-[inherit];
+    background: linear-gradient(
+      120deg,
+      rgba(var(--brand) / 0.10),
+      transparent 35%,
+      transparent 65%,
+      rgba(var(--brand) / 0.05)
+    );
+    opacity: 0.8;
+  }
+  .glass-soft {
+    @apply relative border border-line/70 bg-bg/40 backdrop-blur-md;
+    box-shadow:
+      0 4px 16px -6px rgba(0, 0, 0, 0.10),
+      inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+
+  /* ========== CARDS / BOTOES ========== */
+  .card {
+    @apply rounded-xl border border-line bg-bg/60 p-5 backdrop-blur-sm transition duration-300 hover:translate-y-[-2px] hover:border-brand/60;
+  }
+  .btn-primary {
+    @apply rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50;
+  }
+  .input-base {
+    @apply w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none transition placeholder:text-muted focus:border-brand;
+  }
+
+  /* ========== MARKDOWN PROSE ========== */
+  .prose-yugo h1 { @apply mt-6 mb-3 text-2xl font-semibold; }
+  .prose-yugo h2 { @apply mt-6 mb-2 text-xl font-semibold; }
+  .prose-yugo h3 { @apply mt-4 mb-2 text-lg font-semibold; }
+  .prose-yugo p  { @apply mb-3 leading-relaxed text-fg; }
+  .prose-yugo ul { @apply mb-3 ml-6 list-disc space-y-1 text-fg; }
+  .prose-yugo strong { @apply font-semibold; }
+  .prose-yugo code { @apply rounded bg-line px-1.5 py-0.5 font-mono text-[12px]; }
+  .prose-yugo pre.code { @apply mb-3 overflow-x-auto rounded-lg border border-line bg-bg/40 p-4 font-mono text-xs; }
+  .prose-yugo a { @apply text-brand underline hover:opacity-80; }
+}
+
+@layer utilities {
+  /* ========== BACKGROUND ART (marca dagua YUGO — vidro monocromatico) ========== */
+  .bg-art {
+    /* monocromatico: usa o tom do texto (fg) bem diluido — efeito vidro fosco. */
+    color: rgb(var(--fg));
+  }
+  .light .bg-art { opacity: 0.16; }
+  .dark  .bg-art { opacity: 0.12; }
+
+  /* traco fino e constante, independente do tamanho do icone */
+  .bg-icon * { vector-effect: non-scaling-stroke; }
+
+  /* transicao ao trocar de modulo: slide curto da direita + escala */
+  .bg-icon-swap { animation: bg-icon-swap 0.8s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  @keyframes bg-icon-swap {
+    from { transform: translateX(7%) scale(0.94); }
+    to   { transform: translateX(0)  scale(1); }
+  }
+  /* engrenagem (config): gira ao trocar de sub-aba */
+  .bg-icon-spin { animation: bg-icon-spin 0.9s cubic-bezier(0.16, 1, 0.3, 1) both; transform-origin: 50% 50%; }
+  @keyframes bg-icon-spin {
+    from { transform: rotate(0deg)   scale(0.96); }
+    to   { transform: rotate(360deg) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bg-icon-swap, .bg-icon-spin { animation: none; }
+  }
+
+  /* Camada 1: halo amplo — pulsa de leve pra dar respiracao */
+  .bg-yugo-halo {
+    transform-origin: 50% 50%;
+    animation: yugo-breathe 8s ease-in-out infinite;
+    opacity: 0.45;
+  }
+  /* Camada 2: corpo de vidro — drift quase imperceptivel */
+  .bg-yugo-glass {
+    transform-origin: 50% 50%;
+    animation: yugo-drift 18s ease-in-out infinite;
+    opacity: 0.7;
+  }
+  /* Camada 3: traco fino — mostra ~60% do path com light-beam correndo.
+     stroke-dasharray vem inline (varia por aba); aqui so o beam + transicao. */
+  .bg-yugo-line use {
+    animation: yugo-beam 12s linear infinite;
+    transition: stroke-dasharray 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* morph entre abas: anima posicao/escala/rotacao do simbolo */
+  .bg-morph {
+    transition: transform 1.4s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bg-morph { transition: none; }
+  }
+
+  @keyframes yugo-breathe {
+    0%, 100% { transform: scale(1);    opacity: 0.45; }
+    50%      { transform: scale(1.04); opacity: 0.60; }
+  }
+  @keyframes yugo-drift {
+    0%, 100% { transform: translate(0, 0)     rotate(0deg); }
+    50%      { transform: translate(-6px, 4px) rotate(0.4deg); }
+  }
+  @keyframes yugo-beam {
+    from { stroke-dashoffset: 0; }
+    to   { stroke-dashoffset: -1; }
+  }
+
+  /* ========== ANIMACOES ========== */
+  @keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-6px); }
+  }
+
+  .animate-fade-in-up { animation: fade-in-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+  .animate-fade-in    { animation: fade-in 0.6s ease-out both; }
+  .animate-float      { animation: float 4s ease-in-out infinite; }
+
+  /* transicao de conteudo ao trocar de rota.
+     SÓ opacidade: nada de transform. Qualquer transform no wrapper (mesmo
+     terminando em 'none') faz o Chrome tratar o elemento como containing block
+     e quebra o position:fixed dos modais (apareciam "muito em cima" e o backdrop
+     só cobria a área central). Fade puro resolve em todos os modais de uma vez. */
+  @keyframes route-fade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .animate-route-fade { animation: route-fade 0.3s ease both; }
+  @media (prefers-reduced-motion: reduce) { .animate-route-fade { animation: none; } }
+
+  /* ========== LOADING GLOBAL (overlay de ação/navegação) ========== */
+  .yugo-loading-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    background: rgb(var(--bg) / 0.55); backdrop-filter: blur(3px);
+    animation: fade-in 0.18s ease both;
+  }
+  .yugo-loading-card {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: 26px 30px; border-radius: 18px;
+    border: 1px solid rgb(var(--line)); background: rgb(var(--bg) / 0.92);
+    box-shadow: 0 18px 50px rgb(0 0 0 / 0.35);
+  }
+  .yugo-loading-label { font-size: 12px; color: rgb(var(--muted)); letter-spacing: 0.02em; }
+  /* anel de 8 bolinhas girando (estilo boot do Windows), na cor da marca */
+  .yugo-loader { position: relative; width: 52px; height: 52px; }
+  .yugo-loader i { position: absolute; inset: 0; }
+  .yugo-loader i b {
+    position: absolute; top: 1px; left: 50%; width: 8px; height: 8px;
+    margin-left: -4px; border-radius: 9999px; background: rgb(var(--brand));
+    animation: yugo-loader-dot 1s ease-in-out infinite;
+  }
+  @keyframes yugo-loader-dot {
+    0%, 100% { opacity: 0.18; transform: scale(0.55); }
+    40%      { opacity: 1;    transform: scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .yugo-loader i b { animation: none; opacity: 0.7; }
+  }
+
+  /* barra de rolamento no tema do sistema */
+  .scroll-themed { scrollbar-width: thin; scrollbar-color: rgb(var(--line)) transparent; }
+  .scroll-themed::-webkit-scrollbar { width: 8px; }
+  .scroll-themed::-webkit-scrollbar-track { background: transparent; }
+  .scroll-themed::-webkit-scrollbar-thumb {
+    background: rgb(var(--line));
+    border-radius: 999px;
+  }
+  .scroll-themed::-webkit-scrollbar-thumb:hover { background: rgb(var(--brand)); }
+
+  /* ========== CREDIARIO: badge inadimplente (gradiente animado) ========== */
+  .credit-defaulted-badge {
+    background: linear-gradient(90deg, #ef4444, #f97316, #eab308, #ef4444);
+    background-size: 300% 100%;
+    animation: credit-alert 2.5s linear infinite;
+  }
+  /* moldura animada ao redor do quadro da divida (painel do cliente) */
+  .credit-defaulted-frame {
+    position: relative;
+  }
+  .credit-defaulted-frame::before {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: inherit;
+    padding: 3px;
+    background: linear-gradient(90deg, #ef4444, #f97316, #eab308, #ef4444);
+    background-size: 300% 100%;
+    animation: credit-alert 2.5s linear infinite;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  @keyframes credit-alert {
+    0%   { background-position: 0% 50%; }
+    100% { background-position: 300% 50%; }
+  }
+
+  /* ========== GRADIENTE DE TEXTO ========== */
+  .text-gradient-brand {
+    background: linear-gradient(
+      90deg,
+      rgb(var(--brand)),
+      rgb(168 85 247),
+      rgb(var(--brand))
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: shimmer 6s linear infinite;
+  }
+
+  /* respeita prefers-reduced-motion */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ============================================================================
+   Contraste no MODO CLARO para tons de status (verde/amarelo/vermelho/laranja)
+   - As classes -200/-300/-400 do Tailwind são pensadas pra fundo escuro; no
+     light mode ficam apagadas. Aqui escurecemos só fora do .dark, mantendo o
+     padrão visual nas badges (bg-*-500/20 + texto escuro legível).
+   - Variantes dark: (.dark .text-*) NÃO são afetadas (seletor exige :not(.dark)).
+   ============================================================================ */
+html:not(.dark) .text-green-200,
+html:not(.dark) .text-green-300,
+html:not(.dark) .text-green-400 { color: rgb(21 128 61) !important; }   /* green-700 */
+
+html:not(.dark) .text-emerald-200,
+html:not(.dark) .text-emerald-300,
+html:not(.dark) .text-emerald-400 { color: rgb(4 120 87) !important; }  /* emerald-700 */
+
+html:not(.dark) .text-amber-200,
+html:not(.dark) .text-amber-300,
+html:not(.dark) .text-amber-400,
+html:not(.dark) .text-yellow-200,
+html:not(.dark) .text-yellow-300,
+html:not(.dark) .text-yellow-400 { color: rgb(180 83 9) !important; }   /* amber-700 */
+
+html:not(.dark) .text-orange-200,
+html:not(.dark) .text-orange-300,
+html:not(.dark) .text-orange-400 { color: rgb(194 65 12) !important; }  /* orange-700 */
+
+html:not(.dark) .text-red-200,
+html:not(.dark) .text-red-300,
+html:not(.dark) .text-red-400 { color: rgb(185 28 28) !important; }     /* red-700 */

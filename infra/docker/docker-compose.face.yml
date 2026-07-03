@@ -1,0 +1,61 @@
+# ==============================================================================
+# docker-compose.face.yml  —  Ponto Fase 3: reconhecimento facial GRÁTIS (DeepFace)
+#
+# Sobe o micro-serviço yugo-face na MESMA rede interna, exposto SÓ internamente
+# (nunca publicado). A API não precisa de env: cada empresa configura no painel
+# (Empregador → facial) o provedor HTTP apontando para:
+#     http://yugo-face:8080/verify
+#
+# Uso (junto do compose principal):
+#   docker compose -f docker-compose.prod.yml -f docker-compose.face.yml up -d --build yugo-face
+#
+# Turnkey: setando FACE_LOCAL_ENABLED=1 no .env.production, o deploy-prod.sh já
+# inclui este overlay automaticamente (build + up). Mesma rede yugo-internal do
+# projeto yugo-prod — a API alcança em http://yugo-face:8080/verify.
+#
+# RAM: DeepFace usa TensorFlow em CPU (~0.8–1.2GB). 1º request baixa o modelo e
+# é lento (~10–30s); depois fica em memória e responde rápido.
+#
+# Tunagem (.env): FACE_MODEL (SFace|Facenet|Facenet512|ArcFace), FACE_DETECTOR
+# (opencv|retinaface), FACE_API_KEY (opcional — se setar, configure a mesma
+# chave no painel). Limiar de similaridade é ajustado no painel (sugestão SFace: ~55).
+# ==============================================================================
+
+name: yugo-prod
+
+services:
+  yugo-face:
+    build:
+      context: ../face
+    image: yugo-face:local
+    container_name: yugo-face
+    restart: unless-stopped
+    networks:
+      - internal
+    environment:
+      FACE_MODEL: ${FACE_MODEL:-Facenet512}
+      FACE_DETECTOR: ${FACE_DETECTOR:-retinaface}
+      FACE_API_KEY: ${FACE_API_KEY:-}
+    volumes:
+      - face_weights:/weights
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  face_weights: { name: yugo-face-weights }
+
+networks:
+  internal:
+    name: yugo-internal
+    internal: false

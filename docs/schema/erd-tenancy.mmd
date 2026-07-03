@@ -1,0 +1,91 @@
+erDiagram
+    organizations ||--o{ stores : "has many"
+    organizations ||--o{ roles : "custom roles"
+    organizations ||--o{ memberships : "members"
+    stores ||--o{ memberships : "members"
+    users ||--o{ memberships : "belongs to"
+    users ||--o{ sessions : "has"
+    roles ||--o{ memberships : "assigned to"
+    memberships }o--|| sessions : "active context"
+
+    organizations {
+        uuid id PK
+        citext slug UK
+        text name
+        text legal_name
+        text document
+        text status
+        timestamptz trial_ends_at
+        text plan_code
+        text default_timezone
+        timestamptz deleted_at
+        timestamptz created_at
+    }
+
+    stores {
+        uuid id PK
+        uuid organization_id FK
+        citext slug
+        text name
+        text city
+        text state
+        text timezone
+        text status
+        jsonb business_hours
+        text whatsapp_instance_id
+        timestamptz deleted_at
+    }
+
+    users {
+        uuid id PK
+        citext email UK
+        text name
+        text password_hash "Argon2id"
+        boolean mfa_enabled
+        text mfa_secret "encrypted"
+        text status
+        timestamptz email_verified_at
+        timestamptz last_login_at
+        inet last_login_ip
+        timestamptz locked_until
+    }
+
+    roles {
+        uuid id PK
+        uuid organization_id FK "null=global template"
+        citext slug
+        text name
+        jsonb permissions
+        boolean is_system
+    }
+
+    memberships {
+        uuid id PK
+        uuid user_id FK
+        uuid organization_id FK
+        uuid store_id FK "null=org-level"
+        uuid role_id FK
+        text status
+        boolean is_primary
+        timestamptz revoked_at
+    }
+
+    sessions {
+        uuid id PK
+        uuid user_id FK
+        text token_hash UK "sha256"
+        uuid active_membership_id FK
+        inet ip_address
+        text user_agent
+        timestamptz expires_at
+        timestamptz revoked_at
+    }
+
+    platform_users {
+        uuid id PK
+        citext email UK
+        text name
+        text password_hash
+        boolean mfa_enabled "true required"
+        text status
+    }

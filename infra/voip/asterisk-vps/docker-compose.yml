@@ -1,0 +1,56 @@
+# ==============================================================================
+# PABX externo (VPS com IP PÚBLICO) — Asterisk + coturn + Caddy.
+# Substitui o FreeSWITCH/safarov por Asterisk + chan_pjsip + res_http_websocket,
+# que tem suporte WS sólido e maduro pra softphones JsSIP no navegador.
+#
+# Subir:  bash setup.sh   (gera configs do .env, abre firewall e sobe tudo)
+# Pré-req: DNS A de voip.<seu-dominio> apontando pra ESTE IP (DNS only),
+#          IPv4 público (não CGNAT). Ver README.md.
+# ==============================================================================
+services:
+  asterisk:
+    image: mlan/asterisk:latest
+    container_name: yugo-asterisk
+    restart: unless-stopped
+    network_mode: host                 # mídia RTP precisa das portas UDP reais do host
+    volumes:
+      # Configs (mountamos pra poder regenerar dinâmico via sync-config.sh)
+      - ./generated/asterisk-etc:/etc/asterisk
+      - yugo-ast-lib:/var/lib/asterisk
+      - yugo-ast-spool:/var/spool/asterisk
+      - yugo-ast-log:/var/log/asterisk
+    # ports: usa host network — 8088 (HTTP/WS), 5060 (SIP UDP/TCP), 10000-20000/udp (RTP).
+    healthcheck:
+      test: ["CMD-SHELL", "asterisk -rx 'core show uptime' >/dev/null 2>&1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  coturn:
+    image: coturn/coturn:latest
+    container_name: yugo-coturn
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./generated/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: yugo-voip-caddy
+    restart: unless-stopped
+    network_mode: host                  # termina TLS do WSS e fala com Asterisk em 127.0.0.1:8088
+    environment:
+      - VOIP_DOMAIN=${VOIP_DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - yugo-voip-caddy-data:/data
+      - yugo-voip-caddy-config:/config
+
+volumes:
+  yugo-ast-lib: { name: yugo-ast-lib }
+  yugo-ast-spool: { name: yugo-ast-spool }
+  yugo-ast-log: { name: yugo-ast-log }
+  yugo-voip-caddy-data: { name: yugo-voip-caddy-data }
+  yugo-voip-caddy-config: { name: yugo-voip-caddy-config }

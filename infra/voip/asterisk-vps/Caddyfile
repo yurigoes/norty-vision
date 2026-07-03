@@ -1,0 +1,31 @@
+# Caddy do PABX externo: termina o TLS do WSS (porta 443) e repassa pro
+# Asterisk em 127.0.0.1:8088 (HTTP server do Asterisk, que serve o WebSocket
+# SIP em /ws). Cert Let's Encrypt automático.
+#
+# Diferente do FreeSWITCH, o suporte WS do Asterisk é nativo no res_http_websocket
+# e res_pjsip_transport_websocket — extremamente maduro.
+{$VOIP_DOMAIN} {
+	# Restringe ALPN a HTTP/1.1: WS upgrade clássico é o caminho mais robusto.
+	tls {
+		alpn http/1.1
+	}
+
+	# WebSocket SIP do Asterisk
+	handle /ws {
+		reverse_proxy 127.0.0.1:8088 {
+			transport http {
+				keepalive off
+			}
+		}
+	}
+
+	# Healthcheck público (Caddy responde, não precisa Asterisk)
+	handle /health {
+		respond "ok" 200
+	}
+
+	# Bloqueia o resto (não vaza interface HTTP do Asterisk pra fora)
+	handle {
+		respond 404
+	}
+}

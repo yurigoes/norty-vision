@@ -1,0 +1,35 @@
+# ==============================================================================
+# docker-compose.voip.yml — Fase B.2: VoIP interno (FreeSWITCH + coturn).
+# Sobe ISOLADO (não toca nos volumes/dados existentes). Junta-se à rede do
+# compose principal pra falar com a API (mod_xml_curl → yugo-api).
+#
+# Subir:  docker compose -f docker-compose.prod.yml -f docker-compose.voip.yml up -d freeswitch coturn
+# Pré-requisitos: ver infra/voip/README.md (Caddy WSS em voip.yugochat.com.br,
+# firewall UDP RTP, variáveis VOIP_* no .env.production).
+# ==============================================================================
+services:
+  freeswitch:
+    image: safarov/freeswitch:latest
+    container_name: yugo-freeswitch
+    restart: unless-stopped
+    network_mode: host            # mídia RTP precisa das portas UDP reais do host
+    environment:
+      - SOUND_RATES=8000:16000
+      - SOUND_TYPES=music
+    volumes:
+      - ../voip/freeswitch:/etc/freeswitch/overlay:ro   # nossos overrides (ver README)
+      - yugo-fs-data:/var/lib/freeswitch
+    # Portas (host): 7443 wss (sinalização, via Caddy), 16384-32768/udp (RTP).
+    # Com network_mode: host, as portas já ficam no host — só liberar no firewall.
+
+  coturn:
+    image: coturn/coturn:latest
+    container_name: yugo-coturn
+    restart: unless-stopped
+    network_mode: host            # TURN precisa de range UDP e IP público
+    volumes:
+      - ../voip/coturn/turnserver.conf:/etc/coturn/turnserver.conf:ro
+    command: ["-c", "/etc/coturn/turnserver.conf"]
+
+volumes:
+  yugo-fs-data: { name: yugo-fs-data }

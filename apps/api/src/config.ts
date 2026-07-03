@@ -15,7 +15,13 @@ const EnvSchema = z.object({
 
   // auth (user normal)
   SESSION_COOKIE_NAME: z.string().default("nv_session"),
-  SESSION_COOKIE_DOMAIN: z.string().default("vision.norty.com.br"),
+  // vazio/undefined => cookie HOST-ONLY (sem atributo Domain). É o correto pro
+  // esquema multi-tenant por subdomínio: cada host (apex master + <slug>.norty.com.br)
+  // gerencia sua própria sessão, sem depender de wildcard de domínio de cookie.
+  SESSION_COOKIE_DOMAIN: z.preprocess(
+    (v) => (typeof v === "string" && v.trim() ? v.trim() : undefined),
+    z.string().optional(),
+  ),
 
   // Norty Vision — identidade + API de licenciamento (/api/norty/v1)
   NORTY_SYSTEM_NAME: z.string().default("Norty Vision"),

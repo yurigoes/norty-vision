@@ -128,8 +128,8 @@ services:
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/3"
       COOKIE_SECRET: ${AUTH_SECRET}
       SESSION_COOKIE_NAME: nv_session
-      # cookie no root compartilhado (norty.com.br) p/ cobrir apex (vision) + slugs de empresa
-      SESSION_COOKIE_DOMAIN: ${NORTY_ROOT_DOMAIN:-norty.com.br}
+      # vazio = cookie HOST-ONLY (cada host gerencia sua sessão: apex master + <slug>.norty.com.br)
+      SESSION_COOKIE_DOMAIN: ""
       SESSION_DURATION_DAYS: "30"
       MASTER_COOKIE_NAME: nv_master
       CUSTOMER_COOKIE_NAME: nv_customer

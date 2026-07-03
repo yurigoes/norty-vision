@@ -1,0 +1,92 @@
+# ==============================================================================
+# Norty Vision — Caddyfile para modo Cloudflare Tunnel.
+#
+# O tráfego entra via nv-cloudflared; a CF Edge termina o TLS. O Caddy escuta
+# plain HTTP :80 dentro da rede docker (norty-internal) e roteia por path:
+#   /api/*      -> nv-api:3001   (NestJS)
+#   /storage/*  -> nv-minio:9000 (bucket no path)
+#   resto       -> nv-web:3000   (Next.js)
+#
+# Atende o apex (vision.norty.com.br) E qualquer slug de empresa
+# (<slug>.vision.norty.com.br) — o roteamento por empresa é resolvido pela app
+# a partir do Host, então um único bloco :80 serve todos.
+# ==============================================================================
+
+{
+    admin 127.0.0.1:2019
+
+    log default {
+        output stdout
+        format json {
+            time_format iso8601
+        }
+        level INFO
+    }
+
+    servers {
+        # confia em CF (lista pública) + bridges docker pra X-Forwarded-* funcionar
+        trusted_proxies static 172.16.0.0/12 192.168.0.0/16 10.0.0.0/8 \
+            173.245.48.0/20 103.21.244.0/22 103.22.200.0/22 103.31.4.0/22 \
+            141.101.64.0/18 108.162.192.0/18 190.93.240.0/20 188.114.96.0/20 \
+            197.234.240.0/22 198.41.128.0/17 162.158.0.0/15 104.16.0.0/13 \
+            104.24.0.0/14 172.64.0.0/13 131.0.72.0/22
+        protocols h1 h2c
+    }
+
+    auto_https off
+}
+
+:80 {
+    encode zstd gzip
+
+    header {
+        X-Content-Type-Options     "nosniff"
+        X-Frame-Options            "DENY"
+        Referrer-Policy            "strict-origin-when-cross-origin"
+        Permissions-Policy         "geolocation=(self), microphone=(self), camera=(self), payment=()"
+        Content-Security-Policy    "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://sdk.mercadopago.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob: https:; media-src 'self' blob: https:; frame-src 'self' blob: https://*.mercadopago.com https://meet.jit.si; connect-src 'self' https: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+        -Server
+        -X-Powered-By
+    }
+
+    handle /health {
+        respond "ok" 200
+    }
+
+    # API NestJS
+    handle /api/* {
+        reverse_proxy nv-api:3001 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+            header_up X-Forwarded-Proto https
+            header_up Host {host}
+        }
+    }
+
+    # Storage (MinIO) — bucket no path
+    handle_path /storage/* {
+        reverse_proxy nv-minio:9000 {
+            header_up Host {upstream_hostport}
+        }
+    }
+
+    # App Next.js (apex + slugs de empresa)
+    handle {
+        reverse_proxy nv-web:3000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+            header_up X-Forwarded-Proto https
+            header_up Host {host}
+        }
+    }
+
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 10mb
+            roll_keep 14
+        }
+        format json {
+            time_format iso8601
+        }
+    }
+}

@@ -127,14 +127,15 @@ services:
       # Redis COMPARTILHADO, índice /3 (yugo usa 0-2)
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/3"
       COOKIE_SECRET: ${AUTH_SECRET}
-      SESSION_COOKIE_NAME: nv_session
+      # nomes v2: invalidam cookies antigos (nv_*) presos no browser das trocas de domínio
+      SESSION_COOKIE_NAME: nv2_session
       # vazio = cookie HOST-ONLY (cada host gerencia sua sessão: apex master + <slug>.norty.com.br)
       SESSION_COOKIE_DOMAIN: ""
       SESSION_DURATION_DAYS: "30"
-      MASTER_COOKIE_NAME: nv_master
-      CUSTOMER_COOKIE_NAME: nv_customer
-      EMPLOYEE_COOKIE_NAME: nv_employee
-      SUPPLIER_COOKIE_NAME: nv_supplier
+      MASTER_COOKIE_NAME: nv2_master
+      CUSTOMER_COOKIE_NAME: nv2_customer
+      EMPLOYEE_COOKIE_NAME: nv2_employee
+      SUPPLIER_COOKIE_NAME: nv2_supplier
       PLATFORM_ORG_SLUG: ${PLATFORM_ORG_SLUG:-norty-vision}
       # root do esquema de slug (1 nível): empresas em <slug>.norty.com.br
       DOMAIN: ${NORTY_ROOT_DOMAIN:-norty.com.br}

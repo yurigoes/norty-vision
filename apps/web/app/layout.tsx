@@ -1,10 +1,20 @@
 import type { Metadata, Viewport } from "next";
+import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeScript } from "../components/ThemeScript";
 import { CompanyThemeScript } from "../components/CompanyThemeScript";
 import { BackgroundArt } from "../components/BackgroundArt";
 import { getPublicSettings } from "../lib/platform";
 import { getOrgBrandingFromHost } from "../lib/orgBranding";
+
+// Norty Vision — tipografia oficial (400–800), exposta como var CSS --font-sans
+// e ligada ao Tailwind fontFamily.sans.
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-sans",
+  display: "swap",
+});
 
 export async function generateMetadata(): Promise<Metadata> {
   const [s, org] = await Promise.all([getPublicSettings(), getOrgBrandingFromHost()]);
@@ -37,8 +47,8 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#fafafc" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0b" },
+    { media: "(prefers-color-scheme: light)", color: "#f6f8fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#060a15" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -50,7 +60,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html lang="pt-BR" suppressHydrationWarning className={jakarta.variable}>
       <head>
         <ThemeScript />
       </head>

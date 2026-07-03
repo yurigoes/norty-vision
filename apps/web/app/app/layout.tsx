@@ -30,7 +30,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   manifest: "/app.webmanifest",
-  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "yugochat" },
+  appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Norty Vision" },
   icons: { apple: "/yugo-app-icon.svg" },
 };
 
@@ -342,7 +342,7 @@ export default async function AppLayout({
           }}
         />
       )}
-      <aside className="scroll-themed sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto border-r border-line bg-bg/60 px-4 py-6 backdrop-blur-sm md:block">
+      <aside className="scroll-themed sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto border-r border-line bg-surface/70 px-4 py-6 backdrop-blur-md md:block">
         <Link
           href="/app"
           className="mb-8 block transition-opacity hover:opacity-80"
@@ -490,7 +490,7 @@ export default async function AppLayout({
         </div>
       </aside>
 
-      <main className="flex-1 px-6 py-8 md:px-10">
+      <main className="mx-auto w-full max-w-[1320px] flex-1 px-6 py-8 md:px-10">
         <DialogProvider>
           {session.impersonating && <ImpersonationBanner orgName={session.impersonating.orgName} />}
           {cancelPhase === "grace" && (

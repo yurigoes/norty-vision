@@ -9,35 +9,77 @@
    - --app-gradient: pintado no body, sempre presente
    ============================================================================ */
 @layer base {
+  /* ==========================================================================
+     Norty Vision — design system (paleta brand #2563EB → #06B6D4).
+     Cores em "R G B" pra usar com Tailwind alpha modifier (bg-bg/80 etc).
+     Tokens legados (bg/fg/muted/line/brand) remapeados na nova paleta → todo o
+     app adota a cara nova de uma vez; tokens novos (surface/surface-2/
+     border-strong/text-3/brand-2/grad/shadow/semânticas) pro ui.tsx.
+     ========================================================================== */
   :root,
   .light {
-    --bg:    250 250 252;
-    --fg:    24 24 28;
-    --muted: 100 100 110;
-    --line:  225 225 232;
-    --brand: 56 122 240;
+    --bg:            246 248 251;   /* #f6f8fb */
+    --surface:       255 255 255;   /* #ffffff */
+    --surface-2:     241 245 249;   /* #f1f5f9 */
+    --fg:             15  23  42;   /* #0f172a  (text)   */
+    --muted:          85  97 112;   /* #556170  (text-2) */
+    --text-3:        148 163 184;   /* #94a3b8 */
+    --line:          230 235 242;   /* #e6ebf2  (border) */
+    --border-strong: 211 219 230;   /* #d3dbe6 */
+    --brand:          37  99 235;   /* #2563eb */
+    --brand-2:         6 182 212;   /* #06b6d4 */
+    --ring:           37  99 235;
 
-    /* gradiente mais vivo (light): 3 blobs + base */
+    /* semânticas */
+    --success: 16 185 129;   /* #10b981 */
+    --warn:   245 158  11;   /* #f59e0b */
+    --danger: 239  68  68;   /* #ef4444 */
+
+    /* gradiente da marca (btn grad, texto, halos) */
+    --grad-brand: linear-gradient(135deg, #2563eb 0%, #0ea5e9 55%, #06b6d4 100%);
+
+    /* sombras suaves (light) */
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.05);
+    --shadow-md: 0 6px 20px -6px rgba(15, 23, 42, 0.14);
+    --shadow-lg: 0 24px 50px -18px rgba(15, 23, 42, 0.22);
+
+    /* fundo do app: blobs brand/cyan discretos + base clara */
     --app-gradient:
-      radial-gradient(circle 700px at 15% 0%,    rgba(56 122 240 / 0.22), transparent 60%),
-      radial-gradient(circle 600px at 85% 25%,   rgba(168 85 247 / 0.18), transparent 60%),
-      radial-gradient(circle 800px at 50% 100%,  rgba(236 72 153 / 0.14), transparent 60%),
-      linear-gradient(180deg, rgb(248 248 252) 0%, rgb(238 238 246) 100%);
+      radial-gradient(circle 720px at 12% -5%,  rgba(37 99 235 / 0.14), transparent 60%),
+      radial-gradient(circle 640px at 92% 8%,   rgba(6 182 212 / 0.12), transparent 60%),
+      radial-gradient(circle 820px at 50% 108%, rgba(14 165 233 / 0.08), transparent 62%),
+      linear-gradient(180deg, rgb(248 250 252) 0%, rgb(240 244 249) 100%);
   }
 
   .dark {
-    --bg:    10 10 11;
-    --fg:    244 244 245;
-    --muted: 138 138 146;
-    --line:  31 31 35;
-    --brand: 96 165 250;
+    --bg:            6  10  21;    /* #060a15 */
+    --surface:      13  21  38;    /* #0d1526 */
+    --surface-2:    19  29  51;    /* #131d33 */
+    --fg:          238 242 248;    /* #eef2f8 */
+    --muted:       154 167 189;    /* #9aa7bd */
+    --text-3:      100 116 139;    /* #64748b */
+    --line:         31  43  69;    /* #1f2b45 */
+    --border-strong: 42  56  90;   /* #2a385a */
+    --brand:        59 130 246;    /* #3b82f6 (mais claro p/ contraste no escuro) */
+    --brand-2:      34 211 238;    /* #22d3ee */
+    --ring:         59 130 246;
 
-    /* gradiente mais vivo (dark): blobs maiores e mais opacos */
+    --success: 52 211 153;   /* #34d399 */
+    --warn:   251 191  36;   /* #fbbf24 */
+    --danger: 248 113 113;   /* #f87171 */
+
+    --grad-brand: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 55%, #22d3ee 100%);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 30px 60px -20px rgba(0, 0, 0, 0.7);
+
+    /* fundo do app (dark): blobs maiores e mais presentes */
     --app-gradient:
-      radial-gradient(circle 700px at 15% 0%,    rgba(96 165 250 / 0.30), transparent 60%),
-      radial-gradient(circle 600px at 85% 25%,   rgba(168 85 247 / 0.22), transparent 60%),
-      radial-gradient(circle 800px at 50% 100%,  rgba(236 72 153 / 0.16), transparent 60%),
-      linear-gradient(180deg, rgb(8 8 10) 0%, rgb(14 14 18) 100%);
+      radial-gradient(circle 760px at 12% -5%,  rgba(59 130 246 / 0.22), transparent 60%),
+      radial-gradient(circle 680px at 92% 8%,   rgba(34 211 238 / 0.14), transparent 60%),
+      radial-gradient(circle 860px at 50% 108%, rgba(14 165 233 / 0.10), transparent 62%),
+      linear-gradient(180deg, rgb(4 7 15) 0%, rgb(8 13 26) 100%);
   }
 
   html,
@@ -99,13 +141,20 @@
 
   /* ========== CARDS / BOTOES ========== */
   .card {
-    @apply rounded-xl border border-line bg-bg/60 p-5 backdrop-blur-sm transition duration-300 hover:translate-y-[-2px] hover:border-brand/60;
+    @apply rounded-2xl border border-line bg-surface p-5 transition duration-300 hover:translate-y-[-2px] hover:border-brand/50;
+    box-shadow: var(--shadow-sm);
   }
+  .card:hover { box-shadow: var(--shadow-md); }
   .btn-primary {
-    @apply rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50;
+    @apply rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 active:scale-[.98] disabled:opacity-50;
+  }
+  .btn-grad {
+    @apply rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:opacity-95 active:scale-[.98] disabled:opacity-50;
+    background: var(--grad-brand);
   }
   .input-base {
-    @apply w-full rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm text-fg outline-none transition placeholder:text-muted focus:border-brand;
+    @apply w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-fg outline-none transition placeholder:text-muted focus:border-brand focus:ring-2;
+    --tw-ring-color: rgb(var(--ring) / 0.35);
   }
 
   /* ========== MARKDOWN PROSE ========== */
@@ -297,7 +346,7 @@
     background: linear-gradient(
       90deg,
       rgb(var(--brand)),
-      rgb(168 85 247),
+      rgb(var(--brand-2)),
       rgb(var(--brand))
     );
     background-size: 200% 100%;

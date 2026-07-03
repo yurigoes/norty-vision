@@ -128,15 +128,17 @@ services:
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379/3"
       COOKIE_SECRET: ${AUTH_SECRET}
       SESSION_COOKIE_NAME: nv_session
-      SESSION_COOKIE_DOMAIN: ${NORTY_BASE_DOMAIN}
+      # cookie no root compartilhado (norty.com.br) p/ cobrir apex (vision) + slugs de empresa
+      SESSION_COOKIE_DOMAIN: ${NORTY_ROOT_DOMAIN:-norty.com.br}
       SESSION_DURATION_DAYS: "30"
       MASTER_COOKIE_NAME: nv_master
       CUSTOMER_COOKIE_NAME: nv_customer
       EMPLOYEE_COOKIE_NAME: nv_employee
       SUPPLIER_COOKIE_NAME: nv_supplier
       PLATFORM_ORG_SLUG: ${PLATFORM_ORG_SLUG:-norty-vision}
-      DOMAIN: ${NORTY_BASE_DOMAIN}
-      CORS_ORIGINS: "https://${NORTY_BASE_DOMAIN}"
+      # root do esquema de slug (1 nível): empresas em <slug>.norty.com.br
+      DOMAIN: ${NORTY_ROOT_DOMAIN:-norty.com.br}
+      CORS_ORIGINS: "https://${NORTY_BASE_DOMAIN},https://${NORTY_ROOT_DOMAIN:-norty.com.br}"
       LOG_LEVEL: info
       # Norty Vision — identidade + API de licenciamento
       NORTY_SYSTEM_NAME: ${NORTY_SYSTEM_NAME:-Norty Vision}
@@ -176,7 +178,7 @@ services:
       context: ../..
       dockerfile: apps/web/Dockerfile
       args:
-        NEXT_PUBLIC_ROOT_DOMAIN: ${NORTY_BASE_DOMAIN:-vision.norty.com.br}
+        NEXT_PUBLIC_ROOT_DOMAIN: ${NORTY_ROOT_DOMAIN:-norty.com.br}
     container_name: nv-web
     <<: *default-restart
     logging: *default-logging

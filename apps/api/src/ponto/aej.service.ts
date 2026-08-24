@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { PontoSignService } from "./sign.service";
 import { JornadaService } from "./jornada.service";
 import type { RequestContext } from "../auth/session.middleware";
+import { loadEnv } from "../config";
 
 /**
  * Gerador do AEJ (Arquivo Eletrônico de Jornada) — Portaria 671.
@@ -103,8 +104,14 @@ export class AejService {
       const esp = await this.jornada.espelho(ctx, { employeeId: e.id, from: opts.from, to: opts.to });
       for (const d of esp.days as any[]) if (d.faltaMin > 0 && !d.justified) push("t07", ["07", vinc, 2, d.day]);
     }
-    // 08 — PTRP (desenvolvedor = yugochat)
-    push("t08", ["08", "yugo-ponto", "1.0.0", cfg?.devTpIdt ?? 1, this.digits(cfg?.devIdt), "yugochat", "contato@yugochat.com.br"]);
+    // 08 — PTRP: identificação do DESENVOLVEDOR do software de ponto. Vai num
+    // arquivo entregue ao Ministério do Trabalho, então nome, CNPJ e contato
+    // têm que ser os da empresa que assina o software — por isso vêm de env
+    // (PTRP_*), com o nome do sistema como último recurso.
+    const ptrpNome = process.env.PTRP_NAME ?? loadEnv().NORTY_SYSTEM_NAME;
+    const ptrpEmail = process.env.PTRP_EMAIL ?? `contato@${process.env.DOMAIN ?? "vision.norty.com.br"}`;
+    const ptrpSoftware = process.env.PTRP_SOFTWARE ?? "norty-ponto";
+    push("t08", ["08", ptrpSoftware, "1.0.0", cfg?.devTpIdt ?? 1, this.digits(cfg?.devIdt), ptrpNome, ptrpEmail]);
     // 99 — trailer
     lines.push(["99", counts.t01, counts.t02, counts.t03, counts.t04, counts.t05, counts.t06, counts.t07, counts.t08].join("|"));
 

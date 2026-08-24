@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CLT_DOCS, cltDocLabel } from "../../lib/clt-docs";
 import { goToLogin } from "../../lib/orgMemory";
+import { PRODUCT_NAME } from "../../lib/brand";
 
 function brl(c: number | null | undefined): string {
   return ((Number(c) || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -57,7 +58,7 @@ export default function EmployeePortal() {
         ) : (
           <span className="text-sm font-bold tracking-tight">{brand?.name ?? "Portal do funcionário"}</span>
         )}
-        <span className="text-[11px] text-muted">powered by <strong className="text-brand">yugo</strong></span>
+        <span className="text-[11px] text-muted">powered by <strong className="text-brand">{PRODUCT_NAME}</strong></span>
       </div>
 
       <header className="mb-6 flex items-center justify-between">

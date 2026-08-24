@@ -38,13 +38,13 @@ export class PaymentsService {
       throw new AppError(ErrorCode.Internal, "Mercado Pago da empresa nao configurado/ativo", 500);
     }
     const amount = this.amountWithAdjustments(installment);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const adapter = new MercadoPagoOrgAdapter(mp.accessToken);
     const r = await adapter.createPixPayment({
       amountCents: amount.total,
       description: `Parcela ${installment.number} — ${account.holderName}`,
       externalReference: installment.id,
-      payerEmail: customer?.email ?? "sememail@yugochat.com.br",
+      payerEmail: customer?.email ?? "sememail@vision.norty.com.br",
       payerName: account.holderName,
       payerDocument: account.document,
       notificationUrl: `https://${domain}/api/payments/webhooks/mercadopago/${orgId}`,
@@ -92,12 +92,12 @@ export class PaymentsService {
     if (!mp) throw new AppError(ErrorCode.Internal, "MP nao configurado", 500);
     const amount = this.amountWithAdjustments(installment);
     const adapter = new MercadoPagoOrgAdapter(mp.accessToken);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const r = await adapter.createCheckoutPreference({
       amountCents: amount.total,
       title: `Parcela ${installment.number} — ${account.holderName}`,
       externalReference: installment.id,
-      payerEmail: customer?.email ?? "sememail@yugochat.com.br",
+      payerEmail: customer?.email ?? "sememail@vision.norty.com.br",
       backUrl: `https://${domain}/c/parcelas`,
       notificationUrl: `https://${domain}/api/payments/webhooks/mercadopago/${orgId}`,
     });
@@ -125,7 +125,7 @@ export class PaymentsService {
     const ip = await this.orgIntegrations.resolveInfinitepay(orgId);
     if (!ip) throw new AppError(ErrorCode.Internal, "InfinitePay da empresa nao configurado/ativo", 500);
     const amount = this.amountWithAdjustments(installment);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
 
     // order_nsu = id do nosso registro de link (pra casar o webhook depois)
     const rec = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
@@ -199,7 +199,7 @@ export class PaymentsService {
       );
     }
     const amountCents = Number(sp.amountCents);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const rec = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.infinitepayLink.create({ data: { organizationId: orgId, kind: "sale", refId: sp.id, amountCents: BigInt(amountCents), status: "pending" }, select: { id: true } }),
     );
@@ -357,7 +357,7 @@ export class PaymentsService {
     const amountCents = Math.max(0, Math.round(body.amountCents ?? def));
     if (amountCents <= 0) throw new AppError(ErrorCode.ValidationFailed, "Valor a cobrar inválido", 400);
     const method = body.method;
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const cod = order.shortCode ?? "";
 
     // maquininha / dinheiro: registra pago direto (passa na máquina física)
@@ -411,7 +411,7 @@ export class PaymentsService {
         amountCents,
         description: `Pedido ${cod} — ${kind}`,
         externalReference: pp.id,
-        payerEmail: order.contactEmail ?? "sememail@yugochat.com.br",
+        payerEmail: order.contactEmail ?? "sememail@vision.norty.com.br",
         payerName: order.contactName,
         notificationUrl: `https://${domain}/api/payments/webhooks/mercadopago/${orgId}`,
       });
@@ -797,7 +797,7 @@ export class PaymentsService {
     const adapter = new MercadoPagoOrgAdapter(mp.accessToken);
 
     // e-mail do pagador (customer salvo no MP); fallback genérico
-    let email = "sememail@yugochat.com.br";
+    let email = "sememail@vision.norty.com.br";
     if (acc.primaryCustomerId) {
       const c = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
         tx.customer.findFirst({ where: { id: acc.primaryCustomerId! }, select: { email: true } }),
@@ -818,7 +818,7 @@ export class PaymentsService {
         payerEmail: email,
         customerId: acc.mpCustomerId,
         paymentMethodId: acc.cardPmId ?? undefined,
-        notificationUrl: `https://${process.env.DOMAIN ?? "yugochat.com.br"}/api/payments/webhooks/mercadopago/${orgId}`,
+        notificationUrl: `https://${process.env.DOMAIN ?? "vision.norty.com.br"}/api/payments/webhooks/mercadopago/${orgId}`,
       });
       status = r.body?.status;
       mpPaymentId = r.body?.id ? String(r.body.id) : null;

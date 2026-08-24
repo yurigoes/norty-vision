@@ -6,6 +6,7 @@ import { ContactForm } from "../components/ContactForm";
 import { getPublicSettings } from "../lib/platform";
 import { apiFetch } from "../lib/api";
 import { MODULE_GROUPS, moduleLabel, planLimitLines } from "../lib/modules";
+import { PRODUCT_NAME } from "../lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -212,7 +213,7 @@ export default async function HomePage() {
       <footer className="border-t border-line py-8">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 text-sm text-muted sm:flex-row">
           <BrandLogo size="sm" />
-          <p>© {year} {(s as any).companyTradeName ?? (s as any).productName ?? "yugochat"} — todos os direitos reservados.</p>
+          <p>© {year} {(s as any).companyTradeName ?? (s as any).productName ?? PRODUCT_NAME} — todos os direitos reservados.</p>
           <div className="flex gap-4">
             <Link href="/planos" className="hover:text-fg">Planos</Link>
             {s.supportEmail && <a href={`mailto:${s.supportEmail}`} className="hover:text-fg">Suporte</a>}

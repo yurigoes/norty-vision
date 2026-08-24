@@ -18,7 +18,7 @@ export class EmployeeAuthService {
   ) {}
 
   /**
-   * Resolve o id da org a partir do slug. Sem slug (apex yugochat.com.br),
+   * Resolve o id da org a partir do slug. Sem slug (apex vision.norty.com.br),
    * escopa pra empresa dona do SaaS (PLATFORM_ORG_SLUG) — nunca puxa empresa
    * cliente. Assim o apex só acha funcionário da yugo.
    */

@@ -177,7 +177,7 @@ const TEMPLATE_HINT = `# Contrato de Prestação de Serviços
 **CONTRATADA:** [sua empresa aqui], inscrita no CNPJ [...].
 
 ## 1. Objeto
-Licença de uso da plataforma yugochat conforme o plano contratado.
+Licença de uso da plataforma conforme o plano contratado.
 
 ## 2. Vigência
 Este contrato vigora a partir de {{data.hoje}}.

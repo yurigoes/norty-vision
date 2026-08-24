@@ -111,7 +111,7 @@ function TrunkModal({ initial, onClose, onSaved }: { initial: Trunk | null; onCl
           <Field label="Servidor SIP (host)" value={sipHost} onChange={setSipHost} placeholder="Ex.: voz.sobreip.com.br" />
           <Field label="Usuário SIP / DID" value={sipUser} onChange={setSipUser} placeholder="Ex.: 7131800845" />
           <Field label={initial ? "Senha SIP (deixe vazio pra não alterar)" : "Senha SIP"} value={sipPass} onChange={setSipPass} type="password" />
-          <Field label="Nome na bina (opcional)" value={callerIdName} onChange={setCallerIdName} placeholder="Ex.: Yugochat" />
+          <Field label="Nome na bina (opcional)" value={callerIdName} onChange={setCallerIdName} placeholder="Ex.: nome da sua empresa" />
           <label className="flex items-center gap-2"><input type="checkbox" checked={register} onChange={(e) => setRegister(e.target.checked)} className="accent-brand" /> Registrar com a operadora</label>
         </div>
         <div className="mt-5 flex justify-end gap-2">

@@ -1,62 +1,80 @@
+import { headers } from "next/headers";
 import { PageHeader } from "../../../../components/PageHeader";
+import { ROOT_DOMAIN } from "../../../../lib/brand";
 
 export const dynamic = "force-dynamic";
 
-export default function InfraestruturaPage() {
+/**
+ * Topologia REAL desta instalação (`infra/docker/docker-compose.norty.yml`).
+ *
+ * A página descrevia o stack da OUTRA instalação (containers e domínio que
+ * não existem aqui). Descrição de infraestrutura
+ * que não bate com a máquina é pior que nenhuma: manda o suporte procerar
+ * container que não existe.
+ */
+export default async function InfraestruturaPage() {
+  // o domínio real de quem está lendo, não um cravado no código
+  const host = (await headers()).get("host")?.split(":")[0] ?? ROOT_DOMAIN;
+
   return (
     <div className="max-w-4xl">
       <PageHeader
         eyebrow="Suporte · Infraestrutura"
         title="Como o sistema está montado"
-        description="Topologia, domínios, e onde cada serviço roda."
+        description="Topologia, domínios e onde cada serviço roda."
       />
 
       <section className="card mb-8">
-        <h2 className="mb-4 text-lg font-semibold">Domínios</h2>
+        <h2 className="mb-4 text-lg font-semibold">Endereços</h2>
         <div className="space-y-2 text-sm">
-          <Row label="App + API" value="yugochat.com.br" />
-          <Row label="Chatwoot (atendimento)" value="chatwoot.yugochat.com.br" />
-          <Row label="GLPI (chamados)" value="chamados.yugochat.com.br" />
-          <Row label="Evolution (WhatsApp)" value="evo.yugochat.com.br" />
+          <Row label="App + API" value={host} />
+          <Row label="API" value={`${host}/api/*`} />
+          <Row label="Arquivos (MinIO)" value={`${host}/storage/*`} />
+          <Row label="Portais" value="/e · /rh · /c · /f  (por empresa)" />
         </div>
+        <p className="mt-4 text-xs text-muted">
+          Chatwoot, GLPI e Evolution (WhatsApp) são integrações opcionais — os
+          endereços de cada uma ficam em <strong>Integrações</strong>, no menu
+          do master.
+        </p>
       </section>
 
       <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Serviços em containers</h2>
         <pre className="overflow-x-auto rounded-lg border border-line bg-bg/40 p-4 font-mono text-xs text-fg">
-{`yugo-caddy       reverse proxy + TLS 1.3 + HTTP/3
-yugo-web         Next.js 15 (landing + /app + /login)
-yugo-api         NestJS + Fastify + Prisma + Argon2id
-yugo-postgres    PostgreSQL 16 com Row-Level Security
-yugo-redis       cache + sessões + filas (BullMQ futuro)
-yugo-minio       storage S3-compatible (logos, uploads)
+{`nv-cloudflared   túnel Cloudflare — o TLS termina no edge
+nv-caddy         roteia por caminho: /api → nv-api,
+                 /storage → minio, resto → nv-web
+nv-web           Next.js 15 (App Router)
+nv-api           NestJS + Fastify + Prisma + Argon2id
 
-yugo-chatwoot          chat omnichannel (Rails 7)
-yugo-chatwoot-sidekiq  worker do Chatwoot
-yugo-glpi              helpdesk (PHP)
-yugo-glpi-db           MariaDB do GLPI
-yugo-evolution         WhatsApp Business gateway
-
-rustdesk-hbbs / hbbr   suporte remoto (coabita)`}
+postgres         PostgreSQL 16 com Row-Level Security   ┐
+redis            cache, sessões e filas                 ├ compartilhados
+minio            storage S3-compatible (logos, uploads) ┘`}
         </pre>
+        <p className="mt-4 text-xs text-muted">
+          Postgres, Redis e MinIO são compartilhados com o outro stack da mesma
+          VPS — não há uma segunda cópia de cada.
+        </p>
       </section>
 
       <section className="card mb-8">
-        <h2 className="mb-4 text-lg font-semibold">Rede interna</h2>
+        <h2 className="mb-4 text-lg font-semibold">Rede</h2>
         <p className="text-sm text-muted">
-          Containers conversam entre si via rede docker <code>yugo-internal</code>.
-          Apenas Caddy expõe portas 80/443 ao mundo. Acesso externo passa
-          obrigatoriamente por TLS 1.3 com cert Let's Encrypt auto-renovado.
+          Os containers conversam pelas redes docker <code>norty-internal</code>{" "}
+          e <code>yugo-internal</code> (esta última para alcançar o Postgres, o
+          Redis e o MinIO compartilhados). <strong>Nada é publicado nas portas
+          80/443 do host</strong>: todo o tráfego externo entra pelo túnel da
+          Cloudflare, que termina o TLS no edge.
         </p>
       </section>
 
       <section className="card">
-        <h2 className="mb-4 text-lg font-semibold">Bancos de dados</h2>
+        <h2 className="mb-4 text-lg font-semibold">Banco</h2>
         <div className="space-y-2 text-sm">
-          <Row label="yugo" value="42 tabelas + RLS" />
-          <Row label="chatwoot" value="Schema do Chatwoot (compartilha Postgres)" />
-          <Row label="evolution" value="Schema do Evolution (compartilha Postgres)" />
-          <Row label="GLPI" value="MariaDB separada (yugo-glpi-db)" />
+          <Row label="norty_vision" value="PostgreSQL 16 · RLS por empresa e loja" />
+          <Row label="Isolamento" value="organization_id + store_id em toda tabela" />
+          <Row label="Migrations" value="SQL versionado em packages/db/sql" />
         </div>
       </section>
     </div>

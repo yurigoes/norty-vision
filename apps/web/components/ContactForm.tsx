@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PRODUCT_NAME } from "../lib/brand";
 
 export function ContactForm() {
   const [f, setF] = useState({ name: "", email: "", phone: "", company: "", segment: "otica", message: "" });
@@ -48,7 +49,7 @@ export function ContactForm() {
       <textarea value={f.message} onChange={(e) => setF({ ...f, message: e.target.value })} placeholder="Conte um pouco da sua operação (opcional)" rows={3} className="rounded-lg border border-line bg-bg/60 px-3 py-2.5 text-sm outline-none focus:border-brand sm:col-span-2" />
       {err && <p className="text-sm text-red-300 sm:col-span-2">{err}</p>}
       <button disabled={busy} className="rounded-lg bg-brand py-3 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50 sm:col-span-2">
-        {busy ? "Enviando..." : "Quero conhecer o yugochat"}
+        {busy ? "Enviando..." : `Quero conhecer o ${PRODUCT_NAME}`}
       </button>
     </form>
   );

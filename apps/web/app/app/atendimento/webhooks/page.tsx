@@ -3,6 +3,7 @@ import { getSession, can } from "../../../../lib/session";
 import { WebhooksClient } from "./WebhooksClient";
 import { loginPath } from "../../../../lib/tenantServer";
 import { PageHeader } from "../../../../components/PageHeader";
+import { PRODUCT_NAME } from "../../../../lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function WebhooksPage() {
       <PageHeader
         eyebrow="Atendimento"
         title="Webhooks (out)"
-        description={<>O Yugo dispara <code>POST</code> JSON pra uma URL externa quando eventos do atendimento acontecem. Use n8n, Zapier ou qualquer endpoint próprio pra criar automações (avisar Slack, salvar em Google Sheets, abrir ticket no Jira, etc).</>}
+        description={<>O {PRODUCT_NAME} dispara <code>POST</code> JSON pra uma URL externa quando eventos do atendimento acontecem. Use n8n, Zapier ou qualquer endpoint próprio pra criar automações (avisar Slack, salvar em Google Sheets, abrir ticket no Jira, etc).</>}
       />
       <WebhooksClient />
     </div>

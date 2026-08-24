@@ -15,7 +15,7 @@ const CMDS: Array<{ label: string; cmd: string; hint: string }> = [
   { label: "Limpar tudo, inclusive volumes órfãos", cmd: "docker system prune -af --volumes", hint: "⚠ Cuidado: remove volumes não usados. Confirme antes." },
   { label: "Limpar logs antigos do journald", cmd: "journalctl --vacuum-time=7d", hint: "Mantém só 7 dias de log do sistema." },
   { label: "Containers rodando", cmd: "docker ps", hint: "O que está no ar." },
-  { label: "Atualizar e subir a plataforma", cmd: "bash infra/scripts/atualizar.sh", hint: "Puxa a dev e rebuilda (rodar em /opt/yugo-platform)." },
+  { label: "Atualizar e subir a plataforma", cmd: "bash infra/scripts/atualizar.sh", hint: "Puxa a dev e rebuilda (rodar em /opt/norty-vision)." },
 ];
 
 export function SistemaClient() {
@@ -120,7 +120,7 @@ export function SistemaClient() {
       {/* Manutenção (comandos do servidor) */}
       <section className="card">
         <h2 className="mb-1 text-sm font-semibold">Manutenção do servidor</h2>
-        <p className="mb-3 text-[11px] text-muted">Rode no terminal da VPS (SSH ou RustDesk), na pasta <code>/opt/yugo-platform</code>. Clique pra copiar.</p>
+        <p className="mb-3 text-[11px] text-muted">Rode no terminal da VPS (SSH ou RustDesk), na pasta <code>/opt/norty-vision</code>. Clique pra copiar.</p>
         <div className="space-y-2">
           {CMDS.map((c) => (
             <div key={c.cmd} className="rounded-lg border border-line/60 bg-bg/40 p-3">

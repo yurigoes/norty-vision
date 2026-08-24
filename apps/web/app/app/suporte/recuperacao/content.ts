@@ -23,7 +23,7 @@ export const RUNBOOK: Section[] = [
     title: "0. Quando usar este guia",
     blocks: [
       { t: "p", text: "Procedimento completo para reerguer a plataforma numa VPS nova — do zero ou restaurando um backup — e para deixar o backup automático no Google Drive funcionando." },
-      { t: "note", text: "O código está 100% no GitHub (yurigoes/yugo-platform, branch main). Só os DADOS (banco + arquivos) e os SEGREDOS (.env) precisam de backup. Sem backup, os dados de negócio não voltam." },
+      { t: "note", text: "O código está 100% no GitHub (yurigoes/norty-vision, branch main). Só os DADOS (banco + arquivos) e os SEGREDOS (.env) precisam de backup. Sem backup, os dados de negócio não voltam." },
     ],
   },
   {
@@ -46,7 +46,7 @@ export const RUNBOOK: Section[] = [
     id: "docker",
     title: "2. Instalar Docker e clonar o projeto",
     blocks: [
-      { t: "code", text: "curl -fsSL https://get.docker.com | sh\ngit clone https://github.com/yurigoes/yugo-platform.git /opt/yugo-platform\ncd /opt/yugo-platform" },
+      { t: "code", text: "curl -fsSL https://get.docker.com | sh\ngit clone https://github.com/yurigoes/norty-vision.git /opt/norty-vision\ncd /opt/norty-vision" },
     ],
   },
   {
@@ -57,7 +57,7 @@ export const RUNBOOK: Section[] = [
       { t: "code", text: "bash infra/scripts/generate-secrets.sh" },
       { t: "p", text: "Edite infra/docker/.env.production e preencha o que é externo:" },
       { t: "ul", items: [
-        "DOMAIN=yugochat.com.br",
+        "DOMAIN=vision.norty.com.br",
         "PLATFORM_ORG_SLUG=yugo",
         "CLOUDFLARED_TOKEN=... (gere um novo no painel Cloudflare → Zero Trust → Tunnels)",
         "RUNBOOK_PASSWORD=... (senha desta página de ajuda)",
@@ -122,7 +122,7 @@ export const RUNBOOK: Section[] = [
       { t: "p", text: "8.2 — Configurar na VPS:" },
       { t: "code", text: "cp infra/docker/.gdrive.env.example infra/docker/.gdrive.env\nnano infra/docker/.gdrive.env   # cole CLIENT_ID, CLIENT_SECRET, REFRESH_TOKEN, FOLDER_ID, GDRIVE_KEEP=4\nchmod 600 infra/docker/.gdrive.env" },
       { t: "p", text: "8.3 — Testar e agendar (diário às 3h):" },
-      { t: "code", text: "bash infra/scripts/backup-hot.sh   # deve aparecer 'upload OK'\necho '0 3 * * * root /opt/yugo-platform/infra/scripts/backup-hot.sh >> /var/log/yugo-backup.log 2>&1' | sudo tee /etc/cron.d/yugo-backup" },
+      { t: "code", text: "bash infra/scripts/backup-hot.sh   # deve aparecer 'upload OK'\necho '0 3 * * * root /opt/norty-vision/infra/scripts/backup-hot.sh >> /var/log/norty-backup.log 2>&1' | sudo tee /etc/cron.d/norty-backup" },
       { t: "note", text: "Retenção: GDRIVE_KEEP=4 mantém 4 backups na nuvem. Ao subir o 5º, o mais antigo é apagado automaticamente. Localmente, KEEP mantém os últimos 7." },
     ],
   },

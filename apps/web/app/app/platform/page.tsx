@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { PageHeader } from "../../../components/PageHeader";
+import { PRODUCT_NAME } from "../../../lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function PlatformDashboard() {
       <PageHeader
         eyebrow="Master"
         title="Painel da plataforma"
-        description="Você está logado como dono do yugo-platform. Aqui ficam controles que afetam todas as organizações."
+        description={`Você está logado como dono do ${PRODUCT_NAME}. Aqui ficam controles que afetam todas as organizações.`}
       />
 
       {/* métricas rápidas */}

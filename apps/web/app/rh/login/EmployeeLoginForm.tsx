@@ -12,7 +12,7 @@ export function EmployeeLoginForm() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   // o funcionário pertence a uma empresa: o slug vem do subdomínio (ex.:
-  // zito.yugochat.com.br). No domínio genérico não há empresa → login não acha.
+  // zito.vision.norty.com.br). No domínio genérico não há empresa → login não acha.
   const [orgSlug, setOrgSlug] = useState<string | null>(null);
   useEffect(() => { setOrgSlug(orgSlugFromHost()); }, []);
 
@@ -27,7 +27,7 @@ export function EmployeeLoginForm() {
       const data = await res.json();
       if (!res.ok) {
         if (!orgSlug) {
-          throw new Error("Acesse pelo endereço da sua empresa (ex.: suaempresa.yugochat.com.br) para entrar.");
+          throw new Error("Acesse pelo endereço da sua empresa (ex.: /rh/suaempresa/login) para entrar.");
         }
         throw new Error(data?.error?.message ?? "Falha no login");
       }

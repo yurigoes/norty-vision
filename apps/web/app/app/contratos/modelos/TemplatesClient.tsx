@@ -2,6 +2,7 @@
 
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { PRODUCT_NAME } from "../../../../lib/brand";
 
 // variáveis do sistema preenchidas na assinatura do contrato
 const SYSTEM_VARS: Array<{ group: string; items: Array<{ key: string; label: string }> }> = [
@@ -461,7 +462,7 @@ export function TemplatesClient({
                     {t.slug}
                   </td>
                   <td className="px-4 py-3 text-xs">
-                    {t.organizationId ? "Empresa" : "yugochat"}
+                    {t.organizationId ? "Empresa" : PRODUCT_NAME}
                   </td>
                   <td className="px-4 py-3 text-xs">
                     {t.signatureMode === "draw" ? "Rubrica" : "Clique"}

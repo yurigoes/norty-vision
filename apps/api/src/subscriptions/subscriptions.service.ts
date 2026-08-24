@@ -157,7 +157,7 @@ export class SubscriptionsService {
     // cria preapproval no MP
     const adapter = new MercadoPagoAdapter({ accessToken: mp.apiToken });
     const backUrl =
-      input.backUrl ?? `https://${process.env.DOMAIN ?? "yugochat.com.br"}/app/billing?status=back`;
+      input.backUrl ?? `https://${process.env.DOMAIN ?? "vision.norty.com.br"}/app/billing?status=back`;
 
     const r = await adapter.createPreapproval({
       reason: `${plan.name} — ${org.name}`,
@@ -221,7 +221,7 @@ export class SubscriptionsService {
 
     const sub = await this.assignPlan({ organizationId: ctx.orgId, planSlug: plan.slug });
     const adapter = new MercadoPagoOrgAdapter(mp.apiToken);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const notificationUrl = `https://${domain}/api/subscriptions/webhooks/mercadopago`;
 
     if (input.method === "pix") {
@@ -261,7 +261,7 @@ export class SubscriptionsService {
     return { method: "card" as const, amountCents: plan.priceCents, initPoint: r.body?.init_point ?? null, subscriptionId: sub.id };
   }
 
-  // ===== COMPRA DE MÓDULO À LA CARTE (empresa paga a Yugochat) =====
+  // ===== COMPRA DE MÓDULO À LA CARTE (empresa paga a plataforma) =====
   /** Módulos à la carte que o master precificou pra esta empresa e ainda não
    *  foram pagos — a empresa pode comprar pra desbloquear. */
   async listMyModuleOffers(ctx: RequestContext) {
@@ -303,7 +303,7 @@ export class SubscriptionsService {
     if (!payerEmail) throw new AppError(ErrorCode.ValidationFailed, "Cadastre um email de contato na organizacao antes", 400);
 
     const adapter = new MercadoPagoOrgAdapter(mp.apiToken);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const notificationUrl = `https://${domain}/api/subscriptions/webhooks/mercadopago`;
     const extRef = `mod:${grant.id}`;
     const label = `Módulo ${input.moduleKey} — ${org.name}`;

@@ -1,3 +1,4 @@
+import { loadEnv } from "../config";
 import { Injectable, Logger } from "@nestjs/common";
 import PDFDocument from "pdfkit";
 import { z } from "zod";
@@ -120,7 +121,7 @@ export class SubscriptionInvoicesService {
     if (!org.contactEmail) throw new AppError(ErrorCode.ValidationFailed, "Cadastre um e-mail de contato na empresa antes", 400);
 
     const adapter = new MercadoPagoOrgAdapter(mp.apiToken);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const notificationUrl = `https://${domain}/api/subscriptions/webhooks/mercadopago`;
     const extRef = `inv:${inv.id}`;
     const amountCents = Number(inv.amountCents);
@@ -276,7 +277,7 @@ export class SubscriptionInvoicesService {
         if (r.ok && (ct.includes("png") || ct.includes("jpeg") || ct.includes("jpg"))) logoBuf = Buffer.from(await r.arrayBuffer());
       } catch { /* ignora */ }
     }
-    const provider = ps?.companyLegalName || ps?.productName || "yugochat";
+    const provider = ps?.companyLegalName || ps?.productName || loadEnv().NORTY_SYSTEM_NAME;
     return await new Promise<Buffer>((resolve, reject) => {
       const doc = new PDFDocument({ size: "A4", margin: 48 });
       const chunks: Buffer[] = [];
@@ -318,7 +319,7 @@ export class SubscriptionInvoicesService {
       if (inv.notes) { doc.moveDown(0.5); doc.fillColor("#666").fontSize(9).text(inv.notes, M, undefined as any, { width: right - M }); }
 
       doc.fillColor("#999").fontSize(8).font("Helvetica").text(
-        `Documento gerado eletronicamente por ${ps?.productName ?? "yugochat"}.`,
+        `Documento gerado eletronicamente por ${ps?.productName ?? loadEnv().NORTY_SYSTEM_NAME}.`,
         M, doc.page.height - 70, { width: right - M, align: "center" },
       );
       doc.end();

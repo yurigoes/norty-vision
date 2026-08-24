@@ -6,6 +6,7 @@ import { VitrineSettings, type VitrineData } from "./VitrineSettings";
 import { loginPath } from "../../../lib/tenantServer";
 import { getOrganization } from "../../../lib/bootstrap";
 import { PageHeader } from "../../../components/PageHeader";
+import { ROOT_DOMAIN } from "../../../lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export default async function CatalogoPage() {
   ]);
 
   const orgSlug = org?.slug ?? null;
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "yugochat.com.br";
+  const rootDomain = ROOT_DOMAIN;
 
   return (
     <div className="max-w-5xl">

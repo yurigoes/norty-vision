@@ -44,8 +44,13 @@ ENV NODE_OPTIONS=--max-old-space-size=${NODE_BUILD_MEM}
 # empresa. Default = yugochat.com.br (yugo, sem mudanca). A Central de Leads
 # builda com NEXT_PUBLIC_ROOT_DOMAIN=centraldeleads.yugochat.com.br pra que o
 # proprio subdominio seja o apex (login master + orgs de clientes da CL).
-ARG NEXT_PUBLIC_ROOT_DOMAIN=yugochat.com.br
+ARG NEXT_PUBLIC_ROOT_DOMAIN=vision.norty.com.br
 ENV NEXT_PUBLIC_ROOT_DOMAIN=${NEXT_PUBLIC_ROOT_DOMAIN}
+
+# Nome do produto. O Next inlina NEXT_PUBLIC_* no BUILD, então precisa chegar
+# aqui como build arg — não adianta só no environment do container.
+ARG NEXT_PUBLIC_PRODUCT_NAME="Norty Vision"
+ENV NEXT_PUBLIC_PRODUCT_NAME=${NEXT_PUBLIC_PRODUCT_NAME}
 # tema padrao por build (yugo=light; Central de Leads builda com dark).
 ARG NEXT_PUBLIC_DEFAULT_THEME=light
 ENV NEXT_PUBLIC_DEFAULT_THEME=${NEXT_PUBLIC_DEFAULT_THEME}

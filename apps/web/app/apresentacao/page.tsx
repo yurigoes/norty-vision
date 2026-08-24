@@ -3,9 +3,10 @@ import { ThemeToggle } from "../../components/ThemeToggle";
 import { BrandLogo } from "../../components/BrandLogo";
 import { EntrarMenu } from "../../components/EntrarMenu";
 import { ApresentacaoClient } from "./ApresentacaoClient";
+import { PRODUCT_NAME } from "../../lib/brand";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Demonstração — yugochat" };
+export const metadata = { title: `Demonstração — ${PRODUCT_NAME}` };
 
 export default function ApresentacaoPage() {
   return (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent, type ReactNode } from "react";
+import { PRODUCT_NAME, ROOT_DOMAIN } from "../../../../lib/brand";
 
 type Integration = Record<string, unknown> & {
   id: string;
@@ -62,7 +63,7 @@ const PROVIDER_SCHEMA: Record<
       <>
         Plataforma de chat omnichannel auto-hospedada. Vamos criar Accounts
         (empresas) e Users automaticamente quando você criar uma org no
-        yugo. Use <strong>Platform Access Token</strong> — não User Token.
+        {PRODUCT_NAME}. Use <strong>Platform Access Token</strong> — não User Token.
       </>
     ),
     docsUrl: "https://www.chatwoot.com/developers/api/",
@@ -72,7 +73,7 @@ const PROVIDER_SCHEMA: Record<
         name: "baseUrl",
         label: "URL do Chatwoot",
         type: "url",
-        placeholder: "https://chatwoot.yugochat.com.br",
+        placeholder: "https://chatwoot.suaempresa.com.br",
         help: "URL pública onde o Chatwoot está rodando.",
       },
       {
@@ -83,7 +84,7 @@ const PROVIDER_SCHEMA: Record<
           <>
             <strong>NÃO use User Access Token.</strong> Vá em{" "}
             <code className="font-mono text-[11px]">
-              https://chatwoot.yugochat.com.br/super_admin
+              https://chatwoot.suaempresa.com.br/super_admin
             </code>{" "}
             → sidebar "Access Tokens" → <strong>Add new</strong>. Copia o
             token gerado (só aparece uma vez).
@@ -94,7 +95,7 @@ const PROVIDER_SCHEMA: Record<
         name: "consoleUrl",
         label: "URL do console (opcional)",
         type: "url",
-        placeholder: "https://chatwoot.yugochat.com.br",
+        placeholder: "https://chatwoot.suaempresa.com.br",
         help: "Link que aparece no menu pra abrir o painel do Chatwoot.",
       },
     ],
@@ -115,7 +116,7 @@ const PROVIDER_SCHEMA: Record<
         name: "baseUrl",
         label: "URL do GLPI",
         type: "url",
-        placeholder: "https://chamados.yugochat.com.br",
+        placeholder: "https://chamados.suaempresa.com.br",
       },
       {
         name: "apiKey",
@@ -125,7 +126,7 @@ const PROVIDER_SCHEMA: Record<
           <>
             Ative API REST em{" "}
             <strong>Configurar → Geral → API</strong>. Depois em "Clientes
-            API" crie um novo cliente <em>yugo-platform</em> e copia o
+            API" crie um novo cliente <em>{PRODUCT_NAME}</em> e copia o
             App-Token.
           </>
         ),
@@ -157,7 +158,7 @@ const PROVIDER_SCHEMA: Record<
         name: "consoleUrl",
         label: "URL do console",
         type: "url",
-        placeholder: "https://chamados.yugochat.com.br",
+        placeholder: "https://chamados.suaempresa.com.br",
       },
     ],
   },
@@ -212,7 +213,7 @@ const PROVIDER_SCHEMA: Record<
         name: "webhookUrl",
         label: "URL do webhook (gravar no painel MP)",
         type: "url",
-        placeholder: "https://yugochat.com.br/api/subscriptions/webhooks/mercadopago",
+        placeholder: `https://${ROOT_DOMAIN}/api/subscriptions/webhooks/mercadopago`,
         help: (
           <>
             Cole essa URL no painel do MP em{" "}
@@ -252,7 +253,7 @@ const PROVIDER_SCHEMA: Record<
         name: "baseUrl",
         label: "URL do Evolution",
         type: "url",
-        placeholder: "https://evo.yugochat.com.br",
+        placeholder: "https://evo.suaempresa.com.br",
       },
       {
         name: "apiKey",
@@ -263,7 +264,7 @@ const PROVIDER_SCHEMA: Record<
             Variável de ambiente <code>AUTHENTICATION_API_KEY</code> do
             Evolution. No nosso setup está em{" "}
             <code className="font-mono text-[11px]">
-              /opt/yugo-platform/infra/docker/.env.production
+              /opt/norty-vision/infra/docker/.env.norty
             </code>{" "}
             como <code>EVOLUTION_API_KEY</code>.
           </>
@@ -273,7 +274,7 @@ const PROVIDER_SCHEMA: Record<
         name: "webhookUrl",
         label: "URL do webhook (callbacks)",
         type: "url",
-        placeholder: "https://yugochat.com.br/api/webhooks/evolution",
+        placeholder: `https://${ROOT_DOMAIN}/api/webhooks/evolution`,
         help:
           "Onde o Evolution manda mensagens recebidas. Será usado quando o webhook estiver implementado.",
       },
@@ -281,7 +282,7 @@ const PROVIDER_SCHEMA: Record<
         name: "consoleUrl",
         label: "URL do manager",
         type: "url",
-        placeholder: "https://evo.yugochat.com.br/manager",
+        placeholder: "https://evo.suaempresa.com.br/manager",
       },
     ],
   },

@@ -279,7 +279,7 @@ export class SalesService {
       // cartão crédito/débito, pix maquininha (provider null) ou pix MP (provider 'mp')).
       const payments: any[] = [];
       if (input.payments && input.payments.length > 0) {
-        const domain = process.env.DOMAIN ?? "yugochat.com.br";
+        const domain = process.env.DOMAIN ?? "vision.norty.com.br";
         let mpAdapter: MercadoPagoOrgAdapter | null = null;
         for (const p of input.payments) {
           const isPixMp = p.method === "pix" && p.provider === "mp";
@@ -308,7 +308,7 @@ export class SalesService {
                   amountCents: p.amountCents,
                   description: `Venda ${sale.shortCode ?? sale.id}`,
                   externalReference: sp.id,
-                  payerEmail: "sememail@yugochat.com.br",
+                  payerEmail: "sememail@vision.norty.com.br",
                   payerName: "Cliente",
                   payerDocument: "",
                   notificationUrl: `https://${domain}/api/payments/webhooks/mercadopago/${ctx.orgId}`,

@@ -28,7 +28,9 @@ export class MfaService {
     if (!user) throw new AppError(ErrorCode.NotFound, "Usuario nao encontrado", 404);
 
     const env = loadEnv();
-    const issuer = "yugochat";
+    // rótulo mostrado no app autenticador (Google Authenticator, Authy...).
+    // Trocar não invalida quem já cadastrou: o que vale é o segredo.
+    const issuer = loadEnv().NORTY_SYSTEM_NAME;
     const accountName = user.email;
     const secret = authenticator.generateSecret(32);
     const otpauthUrl = authenticator.keyuri(accountName, issuer, secret);

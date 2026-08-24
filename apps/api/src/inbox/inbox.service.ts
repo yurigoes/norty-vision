@@ -1399,12 +1399,12 @@ export class InboxService {
       }),
     );
 
-    let email = "sememail@yugochat.com.br";
+    let email = "sememail@vision.norty.com.br";
     if (conv.customerId) {
       const c = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) => tx.customer.findFirst({ where: { id: conv.customerId! }, select: { email: true } }));
       if (c?.email) email = c.email;
     }
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const notifUrl = `https://${domain}/api/payments/webhooks/mercadopago/${orgId}`;
     const itemsTxt = items.map((i) => `• ${i.qty}x ${i.name} — ${brl(i.qty * i.unitCents)}`).join("\n");
     const header = `🛒 *Pedido ${orderNumber}*\n${itemsTxt}\n*Total: ${brl(total)}*`;

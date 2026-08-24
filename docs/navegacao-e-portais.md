@@ -177,3 +177,9 @@ pro lado, sem perder a primeira coluna de vista. Ver
 A navegação dentro de um módulo (Agenda → Calendário, Pendências, Pacientes…)
 virou uma faixa de abas só, que marca a tela atual e funciona no celular. Ver
 [`abas-de-modulo.md`](./abas-de-modulo.md).
+
+## Uma marca só
+
+O nome do produto deixou de estar cravado em 45 lugares: o web parte de
+`lib/brand.ts`, a API usa `NORTY_SYSTEM_NAME`, e `platform_settings` continua
+mandando. Ver [`marca-unica.md`](./marca-unica.md).

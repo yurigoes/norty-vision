@@ -16,7 +16,8 @@ export function CustomerLoginForm() {
   const [masked, setMasked] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // empresa pelo subdomínio (zito.yugochat.com.br); no apex o backend escopa na yugo
+  // empresa pelo subdomínio (zito.vision.norty.com.br); no apex o backend escopa
+  // na empresa dona do SaaS
   const [orgSlug, setOrgSlug] = useState<string | null>(null);
   useEffect(() => { setOrgSlug(orgSlugFromHost()); }, []);
   const withSlug = (b: Record<string, unknown>) => (orgSlug ? { ...b, orgSlug } : b);

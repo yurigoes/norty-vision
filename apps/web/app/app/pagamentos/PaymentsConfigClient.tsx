@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { ROOT_DOMAIN } from "../../../lib/brand";
 
 interface MpIntegration {
   id: string;
@@ -26,7 +27,10 @@ export function PaymentsConfigClient({
   const [saved, setSaved] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
 
-  const webhookUrl = `https://yugochat.com.br/api/payments/webhooks/mercadopago/${orgId}`;
+  // o endereço tem que ser o DESTA instalação: cravado no domínio de outro
+  // sistema, o lojista copiava uma URL que nunca ia receber o webhook
+  const origin = typeof window !== "undefined" ? window.location.origin : `https://${ROOT_DOMAIN}`;
+  const webhookUrl = `${origin}/api/payments/webhooks/mercadopago/${orgId}`;
 
   async function save(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();

@@ -74,9 +74,9 @@ export class ContractsService {
   // ============================== TEMPLATES ==============================
 
   async listTemplates(ctx: RequestContext) {
-    // master ve todos (de todas as empresas + os globais yugochat).
+    // master ve todos (de todas as empresas + os globais da plataforma).
     // usuario de empresa ve SO os modelos da propria empresa — o contrato
-    // yugochat (global, organization_id null) e exclusivo do master.
+    // global (organization_id null) e exclusivo do master.
     return this.prisma.runWithContext(
       ctx.isPlatformAdmin
         ? { isPlatformAdmin: true }
@@ -99,7 +99,7 @@ export class ContractsService {
       (tx) => tx.contractTemplate.findUnique({ where: { id } }),
     );
     if (!t) throw new AppError(ErrorCode.NotFound, "Template nao encontrado", 404);
-    // empresa nao acessa modelo global (yugochat) nem de outra empresa
+    // empresa nao acessa modelo global da plataforma nem de outra empresa
     if (!ctx.isPlatformAdmin && t.organizationId !== ctx.orgId) {
       throw new AppError(ErrorCode.NotFound, "Template nao encontrado", 404);
     }
@@ -142,7 +142,7 @@ export class ContractsService {
     if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
       throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode editar template", 403);
     }
-    // o contrato yugochat (template global, organizationId = null) so o master
+    // o contrato global da plataforma (template global, organizationId = null) so o master
     // edita; empresa so mexe nos proprios modelos.
     const existing = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.contractTemplate.findUnique({ where: { id }, select: { organizationId: true } }),

@@ -376,9 +376,9 @@ function Config({ dialog }: { dialog: any }) {
         <Inp label="CPF do responsável (inclusões/alterações)" v={c.responsavelCpf} on={(v) => set("responsavelCpf", v)} />
         <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo ident. desenvolvedor (PTRP)</span>
           <select value={c.devTpIdt ?? 1} onChange={(e) => set("devTpIdt", Number(e.target.value))} className="input-base"><option value={1}>CNPJ</option><option value={2}>CPF</option></select></label>
-        <Inp label="CNPJ/CPF do desenvolvedor (yugochat)" v={c.devIdt} on={(v) => set("devIdt", v)} />
+        <Inp label="CNPJ/CPF do desenvolvedor do sistema (PTRP)" v={c.devIdt} on={(v) => set("devIdt", v)} />
       </div>
-      <p className="mt-2 text-[11px] text-muted">Se não houver convenção/acordo depositado, deixe em branco — o AFD/AEJ usa "9"×17 automaticamente. O CNPJ do desenvolvedor (PTRP) é o da yugochat e vai no cabeçalho do AFD.</p>
+      <p className="mt-2 text-[11px] text-muted">Se não houver convenção/acordo depositado, deixe em branco — o AFD/AEJ usa "9"×17 automaticamente. O CNPJ do desenvolvedor (PTRP) é o da empresa que desenvolve o sistema e vai no cabeçalho do AFD.</p>
 
       <p className="mb-3 mt-6 text-sm font-semibold">Reconhecimento facial e prova de vida (Fase 3)</p>
       <div className="grid gap-3 sm:grid-cols-2">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ROOT_DOMAIN } from "../../lib/brand";
 
 // ===================== dados da apresentação (mock — não dispara nada) =====================
 type Role = "vendedor" | "gerente" | "dono";
@@ -92,7 +93,7 @@ const MODS: Mod[] = [
     access: { vendedor: "limited", gerente: "full", dono: "full" },
     accessNote: { vendedor: "Solicita a venda no crediário.", gerente: "Aprova limite e gerencia contas.", dono: "Tudo + regras." },
     sim: { channel: "whatsapp", contact: "Carlos · Crediário", messages: [
-      { dir: "out", text: "Olá, Carlos! Sua *parcela 3/10* do crediário vence em 15/06.\n\n💰 R$ 77,00\n\nPague pelo Pix copia-e-cola ou no portal:\nyugochat.com.br/c\n\n_Mensagem automática — já pagou? desconsidere._" },
+      { dir: "out", text: `Olá, Carlos! Sua *parcela 3/10* do crediário vence em 15/06.\n\n💰 R$ 77,00\n\nPague pelo Pix copia-e-cola ou no portal:\n${ROOT_DOMAIN}/c\n\n_Mensagem automática — já pagou? desconsidere._` },
     ] },
   },
   {

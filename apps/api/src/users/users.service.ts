@@ -727,7 +727,7 @@ export class UsersService {
     if (!ctx.isPlatformAdmin && (!m || m.organizationId !== ctx.orgId)) {
       throw new AppError(ErrorCode.Forbidden, "Usuário fora da sua org", 403);
     }
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const loginUrl = `https://${domain}/login`;
     const first = (user.name ?? "").split(" ")[0];
     const pwLine = opts.password ? `🔑 Senha: ${opts.password}\n` : "";

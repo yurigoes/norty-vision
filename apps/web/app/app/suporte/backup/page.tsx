@@ -1,4 +1,5 @@
 import { apiFetch } from "../../../../lib/api";
+import { getPublicSettings } from "../../../../lib/platform";
 import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,9 @@ interface BackupStatus {
 }
 
 export default async function BackupPage() {
+  // e-mail de suporte vem de platform_settings (o master edita em Identidade
+  // & Branding) — antes era o endereço de outro produto, cravado no código
+  const { supportEmail } = await getPublicSettings();
   const { data } = await apiFetch<BackupStatus>("/api/support/backup");
   const jobs = data?.jobs ?? [];
 
@@ -92,9 +96,15 @@ export default async function BackupPage() {
         <h2 className="mb-4 text-lg font-semibold">Restauração</h2>
         <p className="text-sm text-muted">
           Para restaurar um dump, abra um chamado em{" "}
-          <span className="font-semibold text-fg">/app/suporte/ajuda</span> ou
-          contate o time pelo e-mail{" "}
-          <span className="font-mono text-xs">suporte@yugochat.com.br</span>.
+          <span className="font-semibold text-fg">/app/suporte/ajuda</span>
+          {supportEmail ? (
+            <>
+              {" "}ou pelo e-mail{" "}
+              <span className="font-mono text-xs">{supportEmail}</span>.
+            </>
+          ) : (
+            "."
+          )}
           Restaurações em produção são executadas manualmente após validação do
           motivo e da janela de manutenção.
         </p>

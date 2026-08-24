@@ -211,7 +211,7 @@ export class CustomerPortalService {
       tx.creditAccount.findFirst({ where: { id: ctx.creditAccountId! }, select: { id: true, organizationId: true, holderName: true, document: true, primaryCustomerId: true } }),
     );
     if (!acc) throw new AppError(ErrorCode.NotFound, "Conta não encontrada", 404);
-    let email = "sememail@yugochat.com.br";
+    let email = "sememail@vision.norty.com.br";
     if (acc.primaryCustomerId) {
       const c = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
         tx.customer.findFirst({ where: { id: acc.primaryCustomerId! }, select: { email: true } }),

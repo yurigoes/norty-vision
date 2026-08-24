@@ -164,7 +164,7 @@ export class AuthService {
 
     // isolamento por slug: o login SEMPRE é escopado a uma empresa.
     //  - pelo endereço de uma empresa (subdomínio/rota): escopa àquele slug.
-    //  - no apex (yugochat.com.br, sem slug): escopa à empresa dona do SaaS
+    //  - no apex (sem slug): escopa à empresa dona do SaaS
     //    (PLATFORM_ORG_SLUG = "yugo"). Assim só a equipe da yugo loga no apex;
     //    cada empresa cliente entra pelo endereço do seu próprio slug.
     // Quem não tem membership ativo na empresa escopada recebe "Credenciais

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { PRODUCT_NAME } from "../../../../lib/brand";
 
 type VaultStatus = {
   configured: boolean;
@@ -638,7 +639,7 @@ function FormField({
 }
 
 // ============================================================================
-// MasterSyncCard — troca senha/email do master em yugo + Chatwoot + GLPI
+// MasterSyncCard — troca senha/email do master no sistema + Chatwoot + GLPI
 // ============================================================================
 function MasterSyncCard({ onSynced }: { onSynced: () => void }) {
   const [open, setOpen] = useState(false);
@@ -705,7 +706,7 @@ function MasterSyncCard({ onSynced }: { onSynced: () => void }) {
               🔁 Sincronizar senha em todos os sistemas
             </p>
             <p className="mt-1 text-sm text-muted">
-              Troca de uma vez a senha (e/ou e-mail) do master no yugo, no
+              Troca de uma vez a senha (e/ou e-mail) do master no sistema, no
               Chatwoot e no GLPI. Exige <code>External admin user ID</code>{" "}
               preenchido em cada provider abaixo.
             </p>
@@ -728,7 +729,7 @@ function MasterSyncCard({ onSynced }: { onSynced: () => void }) {
           </h3>
           <p className="mt-1 text-sm text-muted">
             Vai atualizar:{" "}
-            <strong>yugo</strong> · <strong>Chatwoot</strong> ·{" "}
+            <strong>{PRODUCT_NAME}</strong> · <strong>Chatwoot</strong> ·{" "}
             <strong>GLPI</strong>. Evolution não tem usuário (só API key).
           </p>
         </div>
@@ -743,7 +744,7 @@ function MasterSyncCard({ onSynced }: { onSynced: () => void }) {
 
       <FormField
         name="currentPlatformPassword"
-        label="Sua senha atual no yugo"
+        label="Sua senha atual no sistema"
         type="password"
         required
         help="Pra confirmar que é você."
@@ -774,7 +775,7 @@ function MasterSyncCard({ onSynced }: { onSynced: () => void }) {
         <div className="space-y-2 rounded-lg border border-line bg-bg/40 p-4">
           <p className="text-sm font-semibold">Resultado:</p>
           <p className="text-sm">
-            <span className="inline-block w-24">yugo:</span>
+            <span className="inline-block w-24">sistema:</span>
             <span className="text-green-300">✓ atualizado</span>
           </p>
           {result.providers.map((p) => (

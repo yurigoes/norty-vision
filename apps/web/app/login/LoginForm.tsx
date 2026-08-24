@@ -221,7 +221,7 @@ export function LoginForm() {
             </Link>
           </div>
 
-          {/* acesso master só no apex (yugochat.com.br); nunca no slug de empresa */}
+          {/* acesso master só no apex; nunca no slug de empresa */}
           {!companySlug && (
             <div className="mt-8 border-t border-line pt-6 text-center">
               <button

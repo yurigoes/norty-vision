@@ -32,7 +32,7 @@ export class CustomerAuthService {
    * A conta de crediario, se existir, e anexada como enriquecimento opcional.
    */
   /**
-   * Resolve o id da org a partir do slug. Sem slug (apex yugochat.com.br),
+   * Resolve o id da org a partir do slug. Sem slug (apex, sem slug),
    * escopa pra empresa dona do SaaS (PLATFORM_ORG_SLUG) — o apex nunca puxa
    * cliente de empresa cliente. Cada empresa entra pelo seu /c/[slug]/login.
    */

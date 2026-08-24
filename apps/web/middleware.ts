@@ -1,10 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { ROOT_DOMAIN as BRAND_ROOT_DOMAIN } from "./lib/brand";
 
 /**
  * Middleware do Vision — duas responsabilidades:
  *
  * 1) ROTEAMENTO POR SUBDOMÍNIO DE EMPRESA (só na raiz "/")
- *    `zitooticas.yugochat.com.br/` → vitrine da empresa (/empresa/zitooticas),
+ *    `zitooticas.vision.norty.com.br/` → vitrine da empresa (/empresa/zitooticas),
  *    com branding forte e botão "Entrar" expondo todos os módulos (cliente, RH,
  *    fornecedor, equipe). O apex continua sendo a landing da marca.
  *    Requer DNS wildcard apontando para o app (infra do usuário).
@@ -15,7 +16,7 @@ import { NextResponse, type NextRequest } from "next/server";
  *    login DA EMPRESA já com `?next=/app/agenda` — o usuário volta exatamente
  *    pra onde estava, em vez de cair no `/login` genérico e se perder.
  */
-const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "yugochat.com.br").toLowerCase();
+const ROOT_DOMAIN = BRAND_ROOT_DOMAIN.toLowerCase();
 const RESERVED = new Set([
   "www", "app", "api", "admin", "painel", "mail", "static", "cdn", "assets", "n8n",
   "chat", "chatwoot", "glpi", "evolution", "minio", "s3",

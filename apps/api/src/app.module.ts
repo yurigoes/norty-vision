@@ -74,6 +74,7 @@ import { CrmModule } from "./crm/crm.module";
 import { ProspectorModule } from "./prospector/prospector.module";
 import { VoipModule } from "./voip/voip.module";
 import { NortyLicenseModule } from "./norty-license/norty-license.module";
+import { BootstrapModule } from "./bootstrap/bootstrap.module";
 import { AuthGuard } from "./auth/auth.guard";
 
 @Module({
@@ -83,6 +84,7 @@ import { AuthGuard } from "./auth/auth.guard";
     StorageModule,
     HealthModule,
     AuthModule,
+    BootstrapModule,
     PlatformAuthModule,
     PlatformModule,
     UploadsModule,

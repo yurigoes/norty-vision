@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession, can } from "../../lib/session";
-import { apiFetch } from "../../lib/api";
-import { getChatwootEmbedConfig } from "../../lib/integrations";
+import { can } from "../../lib/session";
+import { getBootstrap } from "../../lib/bootstrap";
 import { hexToRgbTriplet } from "../../lib/color";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { LogoutButton } from "../../components/LogoutButton";
@@ -117,7 +116,10 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
+  // UMA chamada à API traz sessão, empresa, loja, assinatura, atalhos e widget.
+  // Antes eram seis, em série, a cada navegação (o layout é force-dynamic).
+  const boot = await getBootstrap();
+  const session = boot.session;
   if (!session.authenticated) {
     redirect(await loginPath());
   }
@@ -133,7 +135,7 @@ export default async function AppLayout({
   const isPlatformOwner = session.master?.platformRole !== "support";
   const isOrgAdmin = session.user?.isOrgAdmin ?? false;
   // widget Chatwoot - master config define se aparece e com qual token
-  const chatwootCfg = isMaster ? await getChatwootEmbedConfig() : null;
+  const chatwootCfg = boot.chatwoot;
 
   // branding da empresa (contratante) — logo + cor principal no nivel da org
   let orgBrand: { primary: string | null; logoUrl: string | null } | null = null;
@@ -154,9 +156,8 @@ export default async function AppLayout({
   // Sub-módulos por empresa (Fase 2 + extensão): overrides default-on do master.
   // Mapa genérico { "<modulo>.<sub>": false }.
   let submoduleFeatures: Record<string, boolean> = {};
-  if (session.user?.orgId) {
-    const ores = await apiFetch<{ organization: any }>(`/api/organizations/me`);
-    const org = ores.data?.organization;
+  {
+    const org = boot.organization;
     if (org) {
       orgStatus = org.status ?? null;
       orgSlug = typeof org.slug === "string" ? org.slug : null;
@@ -235,18 +236,13 @@ export default async function AppLayout({
   const availItems = (items: NavItem[]) => items.filter((it) => !it.key || !locked(it.key));
 
   // atalhos SSO/acesso rápido (Chatwoot/GLPI) provisionados pra empresa
-  let shortcuts: Array<{ provider: string; label: string; url: string }> = [];
-  if (isOrgAdmin) {
-    const sc = await apiFetch<{ items: any[] }>(`/api/company-integrations/shortcuts`);
-    shortcuts = sc.data?.items ?? [];
-  }
+  const shortcuts = boot.shortcuts;
 
   // branding da loja ativa — tem precedencia sobre o da org (loja > empresa)
   let storeBrand: { primary: string | null; logoUrl: string | null } | null = null;
   let companyTheme: "light" | "dark" | null = null;
-  if (session.user?.storeId) {
-    const sres = await apiFetch<{ store: any }>(`/api/stores/${session.user.storeId}`);
-    const st = sres.data?.store;
+  {
+    const st = boot.store;
     if (st) {
       storeBrand = {
         primary: st.themePrimaryColor ? hexToRgbTriplet(st.themePrimaryColor) : null,
@@ -261,9 +257,8 @@ export default async function AppLayout({
   // ciclo de cancelamento: 30d carência (acesso normal) → 180d só leitura → encerrado
   let cancelPhase: "active" | "grace" | "readonly" | "ended" = "active";
   let cancelUntil: string | null = null;
-  if (session.user?.orgId && !isMaster) {
-    const subRes = await apiFetch<{ subscription: any }>(`/api/subscriptions/current`);
-    const sub = subRes.data?.subscription;
+  {
+    const sub = boot.subscription;
     if (sub?.status === "canceled" && sub.canceledAt) {
       const days = (Date.now() - new Date(sub.canceledAt).getTime()) / 86400_000;
       const fmt = (d: number) => new Date(new Date(sub.canceledAt).getTime() + d * 86400_000).toLocaleDateString("pt-BR");

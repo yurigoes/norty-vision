@@ -3,6 +3,7 @@ import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { ProductsClient } from "./ProductsClient";
 import { loginPath } from "../../../lib/tenantServer";
+import { getOrganization } from "../../../lib/bootstrap";
 
 export const dynamic = "force-dynamic";
 
@@ -37,15 +38,15 @@ export default async function ProdutosPage() {
     );
   }
 
-  const [{ data }, supRes, storesRes, orgRes] = await Promise.all([
+  const [{ data }, supRes, storesRes, org] = await Promise.all([
     apiFetch<{ items: Product[] }>("/api/products"),
     apiFetch<{ items: any[] }>("/api/suppliers?activeOnly=true"),
     apiFetch<{ items: any[] }>("/api/stores"),
-    apiFetch<{ organization: any }>("/api/organizations/me"),
+    getOrganization(),
   ]);
   const labs = (supRes.data?.items ?? []).filter((s) => s.type === "laboratorio").map((s) => ({ id: s.id, name: s.name }));
   const stores = (storesRes.data?.items ?? []).map((s: any) => ({ id: s.id, name: s.name }));
-  const niche = orgRes.data?.organization?.niche ?? null;
+  const niche = org?.niche ?? null;
 
   return (
     <div className="max-w-5xl">

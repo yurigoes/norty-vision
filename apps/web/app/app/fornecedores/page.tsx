@@ -3,6 +3,7 @@ import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { SuppliersClient } from "./SuppliersClient";
 import { loginPath } from "../../../lib/tenantServer";
+import { getOrganization } from "../../../lib/bootstrap";
 
 export const dynamic = "force-dynamic";
 
@@ -19,11 +20,11 @@ export default async function FornecedoresPage() {
     );
   }
 
-  const [suppliersRes, orgRes] = await Promise.all([
+  const [suppliersRes, org] = await Promise.all([
     apiFetch<{ items: any[] }>("/api/suppliers"),
-    apiFetch<{ organization: { niche: string | null } }>("/api/organizations/me"),
+    getOrganization<{ niche: string | null }>(),
   ]);
-  const niche = orgRes.data?.organization?.niche ?? null;
+  const niche = org?.niche ?? null;
   // Conteúdo do header adapta ao nicho. Ótica fala em médicos/laboratórios;
   // gráfica e demais ficam em "Fornecedores" genérico (inclui costureira).
   const isOtica = niche === "otica" || niche === "óptica" || niche === "optica";

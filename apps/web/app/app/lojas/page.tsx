@@ -5,6 +5,7 @@ import { StoresClient } from "./StoresClient";
 import { OrgBrandingCard } from "./OrgBrandingCard";
 import { KioskPanelsCard } from "./KioskPanelsCard";
 import { loginPath } from "../../../lib/tenantServer";
+import { getOrganization } from "../../../lib/bootstrap";
 
 export const dynamic = "force-dynamic";
 
@@ -40,8 +41,8 @@ export default async function LojasPage() {
   const { data } = await apiFetch<{ items: Store[] }>("/api/stores");
   const stores = data?.items ?? [];
 
-  const orgRes = await apiFetch<{ organization: any }>("/api/organizations/me");
-  const orgBrand = orgRes.data?.organization ?? null;
+  // já veio no bootstrap da casca — sem nova ida à API
+  const orgBrand = await getOrganization();
 
   return (
     <div className="max-w-5xl">

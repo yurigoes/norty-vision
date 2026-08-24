@@ -3,6 +3,7 @@ import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
 import { PrintButton } from "./PrintButton";
 import { loginPath } from "../../../../lib/tenantServer";
+import { getOrganization } from "../../../../lib/bootstrap";
 
 export const dynamic = "force-dynamic";
 
@@ -35,15 +36,14 @@ export default async function RelatorioAgendaPage({
   const sp = await searchParams;
   const date = sp.date ?? new Date().toISOString().slice(0, 10);
 
-  const [appsRes, orgRes] = await Promise.all([
+  const [appsRes, org] = await Promise.all([
     apiFetch<{ items: Appointment[] }>(
       `/api/appointments?startDate=${date}&endDate=${date}${sp.professionalId ? `&professionalId=${sp.professionalId}` : ""}`,
     ),
-    apiFetch<{ organization: { name: string; logoUrl: string | null } }>("/api/organizations/me"),
+    getOrganization<{ name: string; logoUrl: string | null }>(),
   ]);
 
   const appts = (appsRes.data?.items ?? []).filter((a) => a.status !== "canceled" && a.status !== "rescheduled");
-  const org = orgRes.data?.organization;
   const dateLabel = new Date(date + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
 
   return (

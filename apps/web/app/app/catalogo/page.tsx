@@ -4,6 +4,7 @@ import { apiFetch } from "../../../lib/api";
 import { CatalogClient } from "./CatalogClient";
 import { VitrineSettings, type VitrineData } from "./VitrineSettings";
 import { loginPath } from "../../../lib/tenantServer";
+import { getOrganization } from "../../../lib/bootstrap";
 
 export const dynamic = "force-dynamic";
 
@@ -31,13 +32,12 @@ export default async function CatalogoPage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
 
-  const [storesRes, leadsRes, orgRes] = await Promise.all([
+  const [storesRes, leadsRes, org] = await Promise.all([
     apiFetch<{ items: Store[] }>("/api/stores"),
     apiFetch<{ items: Lead[] }>("/api/marketplace/leads"),
-    apiFetch<{ organization: { slug: string; name: string } & VitrineData }>("/api/organizations/me"),
+    getOrganization<{ slug: string; name: string } & VitrineData>(),
   ]);
 
-  const org = orgRes.data?.organization ?? null;
   const orgSlug = org?.slug ?? null;
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "yugochat.com.br";
 

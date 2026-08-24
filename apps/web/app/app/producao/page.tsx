@@ -1,15 +1,16 @@
 import Link from "next/link";
 import { apiFetch } from "../../../lib/api";
 import { ProducaoClient } from "./ProducaoClient";
+import { getOrganization } from "../../../lib/bootstrap";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProducaoPage() {
-  const [res, meRes] = await Promise.all([
+  const [res, org] = await Promise.all([
     apiFetch<{ items: any[] }>("/api/production"),
-    apiFetch<{ organization: { productionFeatures?: Record<string, boolean> } | null }>("/api/organizations/me"),
+    getOrganization<{ productionFeatures?: Record<string, boolean> }>(),
   ]);
-  const features = meRes.data?.organization?.productionFeatures ?? {};
+  const features = org?.productionFeatures ?? {};
   // sub-módulo `financeiro` controla o botão do painel financeiro
   const showFinanceiro = features["financeiro"] !== false;
   return (

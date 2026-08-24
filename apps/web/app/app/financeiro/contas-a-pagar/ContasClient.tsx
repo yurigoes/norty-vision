@@ -74,7 +74,7 @@ export function ContasClient() {
       </div>
 
       <div className="card overflow-x-auto p-0">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-cards">
           <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted">
             <th className="px-4 py-3">Fornecedor / descrição</th><th className="px-4 py-3">Parcela</th><th className="px-4 py-3">Vencimento</th><th className="px-4 py-3">Valor</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"></th>
           </tr></thead>

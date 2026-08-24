@@ -110,7 +110,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
           </div>
           {loading ? <p className="text-sm text-muted">Carregando...</p> : (
             <div className="card overflow-x-auto p-0">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-cards">
                 <thead>
                   <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
                     <th className="px-4 py-3">Cliente</th>
@@ -173,7 +173,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
             {(byStore ?? []).length > 1 && (
               <section className="card p-5">
                 <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Estoque por loja</h2>
-                <table className="w-full text-sm">
+                <table className="w-full text-sm table-cards">
                   <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted"><th className="py-2">Loja</th><th className="py-2 text-right">Produtos (SKUs)</th><th className="py-2 text-right">Unidades</th></tr></thead>
                   <tbody>
                     {byStore!.map((s: any) => (
@@ -188,7 +188,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
             <section className="card p-5">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Produtos com estoque baixo</h2>
               {(lowStock?.products ?? []).length === 0 ? <p className="text-sm text-muted">Tudo certo — nenhum produto abaixo do mínimo. 👍</p> : (
-                <table className="w-full text-sm">
+                <table className="w-full text-sm table-cards">
                   <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted"><th className="py-2">Produto</th><th className="py-2">Categoria</th><th className="py-2 text-right">Estoque</th><th className="py-2 text-right">Mínimo</th></tr></thead>
                   <tbody>
                     {lowStock.products.map((p: any) => (
@@ -207,7 +207,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
             {/* baixo estoque por grupo */}
             <section className="card p-5">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Estoque por grupo (categoria)</h2>
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-cards">
                 <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted"><th className="py-2">Grupo</th><th className="py-2 text-right">Produtos</th><th className="py-2 text-right">Em estoque</th><th className="py-2 text-right">Abaixo do mín.</th></tr></thead>
                 <tbody>
                   {(lowStock?.byGroup ?? []).map((g: any) => (
@@ -228,7 +228,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
                 <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-muted">Mais vendidos — produto</h2>
                 <p className="mb-3 text-[11px] text-muted">{sellers?.from} a {sellers?.to}</p>
                 {(sellers?.products ?? []).length === 0 ? <p className="text-sm text-muted">Sem vendas no período.</p> : (
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm table-cards">
                     <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted"><th className="py-1">Produto</th><th className="py-1 text-right">Qtd</th><th className="py-1 text-right">Faturado</th></tr></thead>
                     <tbody>
                       {sellers.products.slice(0, 15).map((p: any, i: number) => (
@@ -242,7 +242,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
                 <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-muted">Mais vendidos — grupo</h2>
                 <p className="mb-3 text-[11px] text-muted">qual categoria sai mais</p>
                 {(sellers?.byGroup ?? []).length === 0 ? <p className="text-sm text-muted">Sem vendas no período.</p> : (
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm table-cards">
                     <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted"><th className="py-1">Grupo</th><th className="py-1 text-right">Qtd</th><th className="py-1 text-right">Faturado</th></tr></thead>
                     <tbody>
                       {sellers.byGroup.map((g: any, i: number) => (
@@ -264,7 +264,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
                   <div><p className="text-[10px] uppercase tracking-wider text-muted">Margem prevista</p><p className="mt-1 text-xl font-semibold text-green-300">{brl(analytics.value.marginCents)}</p></div>
                 </div>
                 {(analytics.value.byGroup ?? []).length > 0 && (
-                  <table className="mt-4 w-full text-sm">
+                  <table className="mt-4 w-full text-sm table-cards">
                     <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted"><th className="py-1">Grupo</th><th className="py-1 text-right">Unid.</th><th className="py-1 text-right">Custo</th><th className="py-1 text-right">Venda</th><th className="py-1 text-right">Margem</th></tr></thead>
                     <tbody>
                       {analytics.value.byGroup.map((g: any, i: number) => (
@@ -282,7 +282,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
                 <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-muted">Reposição sugerida</h2>
                 <p className="mb-3 text-[11px] text-muted">cruza o giro dos últimos {analytics.periodDays} dias com o estoque mínimo</p>
                 {(analytics.reorder ?? []).length === 0 ? <p className="text-sm text-muted">Nada a repor agora. 👍</p> : (
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm table-cards">
                     <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted"><th className="py-1">Produto</th><th className="py-1 text-right">Estoque</th><th className="py-1 text-right">Vendas 90d</th><th className="py-1 text-right">Cobertura</th><th className="py-1 text-right">Comprar</th></tr></thead>
                     <tbody>
                       {analytics.reorder.map((r: any) => (
@@ -311,7 +311,7 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
                   <span className="rounded-lg bg-line px-3 py-1 text-muted">C: {analytics.abc.counts.C}</span>
                 </div>
                 {(analytics.abc.items ?? []).length > 0 && (
-                  <table className="w-full text-sm">
+                  <table className="w-full text-sm table-cards">
                     <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted"><th className="py-1">Classe</th><th className="py-1">Produto</th><th className="py-1 text-right">Faturado 90d</th><th className="py-1 text-right">% do total</th></tr></thead>
                     <tbody>
                       {analytics.abc.items.map((p: any) => (

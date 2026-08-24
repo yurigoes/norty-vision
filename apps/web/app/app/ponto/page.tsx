@@ -222,7 +222,7 @@ function Marcacoes({ emps, dialog }: { emps: Emp[]; dialog: any }) {
       </div>
       {items.length === 0 ? <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Sem marcações.</p> : (
         <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">NSR</th><th className="px-4 py-3 font-medium">Funcionário</th><th className="px-4 py-3 font-medium">Data/hora</th><th className="px-4 py-3 font-medium">Origem</th><th className="px-4 py-3 font-medium">Verificação</th></tr></thead>
             <tbody>
               {items.map((p) => (
@@ -525,7 +525,7 @@ function printEspelho(data: any, range: { from: string; to: string }) {
   <h1>Espelho de ponto</h1>
   <p class="sub">${esc(data.employer)} · ${esc(data.employee.name)}${data.employee.cargo ? " — " + esc(data.employee.cargo) : ""}${data.schedule ? " · escala " + esc(data.schedule.name) : " · sem escala"}</p>
   <p class="sub">Período ${esc(range.from)} a ${esc(range.to)}${data.employee.cpf ? " · CPF " + esc(data.employee.cpf) : ""}</p>
-  <table>
+  <table className="table-cards">
     <thead><tr><th>Dia</th><th>Marcações</th><th>Prev.</th><th>Trab.</th><th>Extra</th><th>Atraso</th><th>Falta</th><th>Not.</th><th>Saldo</th></tr></thead>
     <tbody>${rows}</tbody>
     <tfoot><tr><td colspan="2">Totais</td><td>${t.expectedMin}</td><td>${t.workedMin}</td><td>${t.extraMin}</td><td>${t.lateMin}</td><td>${t.faltaMin}</td><td>${t.nightReducedMin}</td><td>${t.balanceMin}</td></tr></tfoot>
@@ -861,7 +861,7 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
             <p className="text-xs text-muted print:text-black">Período {range.from} a {range.to}</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-cards">
               <thead className="text-left text-[10px] uppercase tracking-wider text-muted print:text-black"><tr>
                 <th className="px-2 py-1">Dia</th><th className="px-2 py-1">Marcações</th><th className="px-2 py-1">Prev.</th><th className="px-2 py-1">Trab.</th><th className="px-2 py-1">Extra</th><th className="px-2 py-1">Atraso</th><th className="px-2 py-1">Falta</th><th className="px-2 py-1">Not.</th><th className="px-2 py-1">Saldo</th><th className="px-2 py-1 print:hidden"></th>
               </tr></thead>
@@ -1521,7 +1521,7 @@ function Banco({ emps, dialog }: { emps: Emp[]; dialog: any }) {
       )}
       {data?.items?.length > 0 && (
         <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">Data</th><th className="px-4 py-3 font-medium">Horas</th><th className="px-4 py-3 font-medium">Tipo</th><th className="px-4 py-3 font-medium">Motivo</th><th className="px-4 py-3 font-medium"></th></tr></thead>
             <tbody>
               {data.items.map((m: any) => (
@@ -1594,7 +1594,7 @@ function Ferias({ emps, dialog }: { emps: Emp[]; dialog: any }) {
       )}
       {items.length > 0 && (
         <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">Período</th><th className="px-4 py-3 font-medium">Dias</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium"></th></tr></thead>
             <tbody>
               {items.map((v) => (
@@ -1669,7 +1669,7 @@ function Fechamento({ dialog }: { dialog: any }) {
       </div>
       {sum?.rows?.length > 0 ? (
         <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">Funcionário</th><th className="px-4 py-3 font-medium">Prev.</th><th className="px-4 py-3 font-medium">Trab.</th><th className="px-4 py-3 font-medium">Extras</th><th className="px-4 py-3 font-medium">Not.</th><th className="px-4 py-3 font-medium">Atraso</th><th className="px-4 py-3 font-medium">Faltas</th><th className="px-4 py-3 font-medium">Saldo</th><th className="px-4 py-3 font-medium">Banco</th></tr></thead>
             <tbody>
               {sum.rows.map((r: any) => (
@@ -1794,7 +1794,7 @@ function Eventos({ dialog }: { dialog: any }) {
       <p className="mb-2 text-sm font-semibold">Feed de eventos (atualiza sozinho)</p>
       {items.length === 0 ? <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhum evento ainda. Bata um ponto e ele aparece aqui.</p> : (
         <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">Quando</th><th className="px-4 py-3 font-medium">Evento</th><th className="px-4 py-3 font-medium">Dados</th><th className="px-4 py-3 font-medium">Externo</th></tr></thead>
             <tbody>
               {items.map((e) => (

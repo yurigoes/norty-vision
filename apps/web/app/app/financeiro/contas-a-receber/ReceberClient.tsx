@@ -64,7 +64,7 @@ export function ReceberClient() {
       </div>
 
       <div className="card overflow-x-auto p-0">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-cards">
           <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted">
             <th className="px-4 py-3">Pagador / descrição</th><th className="px-4 py-3">Parcela</th><th className="px-4 py-3">Vencimento</th><th className="px-4 py-3">Valor</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"></th>
           </tr></thead>
@@ -121,7 +121,7 @@ function Cashflow({ onClose }: { onClose: () => void }) {
         {loading ? <p className="mt-4 text-sm text-muted">Carregando…</p> : !data ? <p className="mt-4 text-sm text-muted">Sem dados.</p> : (
           <>
             <div className="mt-4 overflow-x-auto rounded-xl border border-line">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-cards">
                 <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted">
                   <th className="px-3 py-2">Mês</th><th className="px-3 py-2 text-right">Entradas</th><th className="px-3 py-2 text-right">Saídas</th><th className="px-3 py-2 text-right">Saldo</th><th className="px-3 py-2 text-right">Previsto</th>
                 </tr></thead>

@@ -58,7 +58,7 @@ function TrunksTab() {
       {items === null ? <p className="text-sm text-muted">Carregando…</p> :
         items.length === 0 ? <p className="rounded-xl border border-line bg-surface p-8 text-center text-muted">Nenhuma linha cadastrada ainda.</p> :
         <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead className="border-b border-line bg-surface-2 text-[10px] uppercase tracking-wider text-muted"><tr className="text-left"><th className="px-3 py-2">Nome</th><th className="px-3 py-2">Servidor SIP</th><th className="px-3 py-2">Usuário</th><th className="px-3 py-2">Reg.</th><th className="px-3 py-2"></th></tr></thead>
             <tbody>
               {items.map((t) => (
@@ -159,7 +159,7 @@ function DidsTab() {
       {items === null ? <p className="text-sm text-muted">Carregando…</p> :
         items.length === 0 ? <p className="rounded-xl border border-line bg-surface p-8 text-center text-muted">Nenhum número cadastrado ainda. Cadastre primeiro uma linha (aba "Linhas SIP").</p> :
         <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead className="border-b border-line bg-surface-2 text-[10px] uppercase tracking-wider text-muted"><tr className="text-left"><th className="px-3 py-2">Número</th><th className="px-3 py-2">Apelido</th><th className="px-3 py-2">Linha</th><th className="px-3 py-2">Destino</th><th className="px-3 py-2"></th></tr></thead>
             <tbody>
               {items.map((d) => (
@@ -263,7 +263,7 @@ function GroupsTab() {
       {items === null ? <p className="text-sm text-muted">Carregando…</p> :
         items.length === 0 ? <p className="rounded-xl border border-line bg-surface p-8 text-center text-muted">Nenhum grupo ainda.</p> :
         <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead className="border-b border-line bg-surface-2 text-[10px] uppercase tracking-wider text-muted"><tr className="text-left"><th className="px-3 py-2">Nome</th><th className="px-3 py-2">Estratégia</th><th className="px-3 py-2">Timeout</th><th className="px-3 py-2">Membros</th><th className="px-3 py-2"></th></tr></thead>
             <tbody>
               {items.map((g) => (

@@ -39,7 +39,7 @@ export default async function AuditPage() {
       />
 
       <div className="card overflow-x-auto p-0">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-cards">
           <thead>
             <tr className="border-b border-line text-left text-[10px] uppercase tracking-wider text-muted">
               <th className="px-4 py-3">Quando</th>

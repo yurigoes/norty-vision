@@ -71,7 +71,7 @@ function Contratos({ contracts, templates, orgs, onChanged }: { contracts: Contr
 
       {contracts.length === 0 ? <p className="card text-sm text-muted">Nenhum contrato enviado.</p> : (
         <div className="card overflow-x-auto p-0">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead><tr className="border-b border-line text-left text-[10px] uppercase tracking-wider text-muted">
               <th className="px-4 py-3">Empresa</th><th className="px-4 py-3">Contrato</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Aceite</th><th className="px-4 py-3"></th>
             </tr></thead>

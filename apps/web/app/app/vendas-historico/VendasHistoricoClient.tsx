@@ -81,7 +81,7 @@ function Importar() {
             <button disabled={busy} onClick={importar} className="btn-grad disabled:opacity-50">{busy ? "Importando…" : `Importar ${parsed.rows.length} vendas`}</button>
           </div>
           <div className="mt-2 max-h-80 overflow-auto rounded-xl border border-line">
-            <table className="w-full text-xs">
+            <table className="w-full text-xs table-cards">
               <thead className="sticky top-0 bg-surface-2"><tr className="text-left text-xs uppercase tracking-wider text-muted"><th className="px-2 py-2">Cód.</th><th className="px-2 py-2">Data</th><th className="px-2 py-2">Produto</th><th className="px-2 py-2 text-right">Qtd</th><th className="px-2 py-2 text-right">Unit.</th><th className="px-2 py-2 text-right">Desc.</th><th className="px-2 py-2 text-right">Total</th></tr></thead>
               <tbody>
                 {parsed.rows.slice(0, 100).map((r, i) => (

@@ -151,7 +151,7 @@ export default async function PrivacidadePage() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-cards">
               <thead>
                 <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
                   <th className="pb-2 pr-3">Quando</th>

@@ -198,7 +198,7 @@ export function CreditClient({
           )}
 
           <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-cards">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
                   <th className="px-4 py-3 font-medium">Titular</th>

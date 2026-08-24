@@ -165,3 +165,9 @@ leem. Ver [`cabecalho-de-pagina.md`](./cabecalho-de-pagina.md).
 Cada tela ganhou um esqueleto na forma do que vem, e o overlay "Processando…"
 voltou a ser só para quem salva algo. Ver
 [`carregamento.md`](./carregamento.md).
+
+## Tabelas no celular
+
+Abaixo de 768px cada linha de tabela vira um cartão empilhado — sem arrastar
+pro lado, sem perder a primeira coluna de vista. Ver
+[`tabelas-no-celular.md`](./tabelas-no-celular.md).

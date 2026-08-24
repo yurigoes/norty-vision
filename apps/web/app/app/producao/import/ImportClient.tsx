@@ -99,7 +99,7 @@ export function ImportClient() {
         <section className="card">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Pré-visualização ({preview.totalRows} linhas detectadas)</h2>
           <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-            <table className="w-full text-xs">
+            <table className="w-full text-xs table-cards">
               <thead className="text-[10px] uppercase text-muted">
                 <tr>
                   <th className="px-2 py-1 text-left">Aba/Linha</th>

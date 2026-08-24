@@ -139,7 +139,7 @@ export default async function CreditAccountDetail({
                   <span className="rounded-full bg-line px-2 py-0.5 text-[10px] uppercase text-muted">{p.status}</span>
                 </div>
                 <div className="mt-4 overflow-x-auto">
-                  <table className="w-full text-xs">
+                  <table className="w-full text-xs table-cards">
                     <thead>
                       <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
                         <th className="pb-2 pr-3">#</th>

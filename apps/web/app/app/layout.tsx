@@ -36,6 +36,7 @@ import { CommandPalette, type PaletteItem } from "../../components/CommandPalett
 import { CommandPaletteButton } from "../../components/CommandPaletteButton";
 import { SidebarFavorites } from "../../components/SidebarFavorites";
 import { RememberOrg } from "../../components/RememberOrg";
+import { TableCards } from "../../components/TableCards";
 import { CentralLeadsBoot } from "../../components/CentralLeadsBoot";
 import type { Metadata } from "next";
 import { loginPath } from "../../lib/tenantServer";
@@ -300,6 +301,7 @@ export default async function AppLayout({
     <SoftphoneProvider enabled={softphoneEnabled}>
     {isCentralLeads && <CentralLeadsBoot />}
     <RememberOrg slug={orgSlug} />
+    <TableCards />
     <CommandPalette items={paletteItems} />
       {brandPrimary && (
         <style

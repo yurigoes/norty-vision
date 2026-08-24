@@ -42,7 +42,7 @@ export default async function RecallExamesPage() {
         <p className="card p-6 text-sm text-muted">Nenhum exame atendido ainda.</p>
       ) : (
         <div className="card overflow-x-auto p-0">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted">
               <th className="px-4 py-3">Paciente</th><th className="px-4 py-3">Último exame</th><th className="px-4 py-3">Dias p/ notificar</th><th className="px-4 py-3">Status</th>
             </tr></thead>

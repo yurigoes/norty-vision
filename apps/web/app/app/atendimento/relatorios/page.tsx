@@ -104,14 +104,14 @@ export default function AtendimentoRelatorios() {
           <div className="grid grid-cols-2 gap-6">
             <div>
               <h2 className="mb-2 text-sm font-bold">Por motivo (tabulação)</h2>
-              <table className="w-full text-sm"><tbody>
+              <table className="w-full text-sm table-cards"><tbody>
                 {(rep?.byTabulation ?? []).map((r) => (<tr key={r.id} className="border-b border-gray-200"><td className="py-1">{r.name}</td><td className="py-1 text-right font-medium">{r.count}</td></tr>))}
                 {(rep?.byTabulation.length ?? 0) === 0 && <tr><td className="py-2 text-gray-500">Sem dados.</td></tr>}
               </tbody></table>
             </div>
             <div>
               <h2 className="mb-2 text-sm font-bold">Por atendente</h2>
-              <table className="w-full text-sm"><tbody>
+              <table className="w-full text-sm table-cards"><tbody>
                 {(rep?.byAgent ?? []).map((r) => (<tr key={r.id} className="border-b border-gray-200"><td className="py-1">{r.name}</td><td className="py-1 text-right font-medium">{r.count}</td></tr>))}
                 {(rep?.byAgent.length ?? 0) === 0 && <tr><td className="py-2 text-gray-500">Sem dados.</td></tr>}
               </tbody></table>
@@ -145,7 +145,7 @@ export default function AtendimentoRelatorios() {
       <section className="no-print card mb-6">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Ranking por operador</h2>
         {agents.length === 0 ? <p className="text-xs text-muted">Sem dados no período.</p> : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead className="text-[10px] uppercase text-muted">
               <tr><th className="py-1 text-left">Operador</th><th className="text-right">Atend.</th><th className="text-right">1ª resp</th><th className="text-right">Resolver</th><th className="text-right">CSAT</th></tr>
             </thead>

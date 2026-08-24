@@ -202,7 +202,7 @@ export function CustomersClient({
       )}
 
       <div className="card overflow-x-auto p-0">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-cards">
           <thead>
             <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
               <th className="px-4 py-3">Nome</th>

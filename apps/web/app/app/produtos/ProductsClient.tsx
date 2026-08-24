@@ -402,7 +402,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
       <p className="text-[11px] text-muted">{total} produto(s){q ? " (filtrados)" : ""}{pageSize !== 0 ? ` · página ${curPage}/${totalPages}` : ""}</p>
 
       <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-cards">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
               <th className="px-4 py-3 font-medium">Produto</th>
@@ -756,7 +756,7 @@ function ImportEstoque({ onClose, onDone }: { onClose: () => void; onDone: () =>
             <div className="mt-2 text-xs text-muted">Reconhecidos: <b className="text-fg">{parsed.rows.length}</b> item(ns){parsed.ignored ? ` · ${parsed.ignored} linha(s) ignorada(s) (cabeçalho/sem padrão)` : ""}.</div>
             {parsed.rows.length > 0 && (
               <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-line">
-                <table className="w-full text-xs">
+                <table className="w-full text-xs table-cards">
                   <thead className="bg-surface-2 text-left text-[10px] uppercase text-muted"><tr><th className="px-2 py-1">SKU</th><th className="px-2 py-1">Produto</th><th className="px-2 py-1">Estoque</th><th className="px-2 py-1">Preço</th></tr></thead>
                   <tbody>
                     {parsed.rows.slice(0, 12).map((r, i) => (

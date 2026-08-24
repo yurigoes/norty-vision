@@ -87,7 +87,7 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
             </div>
             {org?.logoUrl && <img src={org.logoUrl} alt="" className="h-14 w-auto max-w-[160px] object-contain" />}
           </header>
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead>
               <tr className="border-b border-gray-300 text-left text-gray-600">
                 <th className="py-2 pr-2">Quando</th><th className="py-2 pr-2">Origem</th><th className="py-2 pr-2">Ref./Cliente</th><th className="py-2 pr-2">Meio</th><th className="py-2 pr-2 text-right">Valor</th><th className="py-2">Status</th>
@@ -117,7 +117,7 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
         <p className="no-print rounded-2xl border border-line bg-surface p-8 text-center text-sm text-muted">Nenhuma transação.</p>
       ) : (
         <div className="no-print overflow-x-auto rounded-2xl border border-line bg-surface">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
               <tr>
                 <th className="px-4 py-3">Quando</th>

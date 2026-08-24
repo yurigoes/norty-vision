@@ -159,3 +159,9 @@ de um `<a>` é HTML inválido e quebra o clique no meio.
 O topo de cada tela virou um componente só (`PageHeader`), e o mapa do menu
 saiu do layout para `lib/nav.ts`, de onde sidebar, busca, favoritos e cabeçalho
 leem. Ver [`cabecalho-de-pagina.md`](./cabecalho-de-pagina.md).
+
+## Estado de carregamento
+
+Cada tela ganhou um esqueleto na forma do que vem, e o overlay "Processando…"
+voltou a ser só para quem salva algo. Ver
+[`carregamento.md`](./carregamento.md).

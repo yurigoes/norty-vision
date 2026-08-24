@@ -1,9 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useRef, useTransition } from "react";
-import { useLoading } from "./Loading";
+import { usePathname } from "next/navigation";
 import { useSidebarCount } from "./SidebarCounts";
 import { useFavorite } from "../lib/favorites";
 import { iconForHref } from "../lib/navIcons";
@@ -72,18 +70,8 @@ export function SidebarLink({
   favoritable?: boolean;
 }) {
   const pathname = usePathname() ?? "";
-  const router = useRouter();
-  const [pending, startTransition] = useTransition();
-  const { begin, end } = useLoading();
-  const wasPending = useRef(false);
   const count = useSidebarCount(href);
   const Icon = iconForHref(href);
-
-  // navegação pendente → liga/desliga o loading global (some quando a rota carrega)
-  useEffect(() => {
-    if (pending && !wasPending.current) { wasPending.current = true; begin(); }
-    else if (!pending && wasPending.current) { wasPending.current = false; end(); }
-  }, [pending, begin, end]);
 
   // ativo = match exato, ou prefixo (mas "/app" so casa exato pra nao pegar tudo)
   const active =
@@ -105,16 +93,14 @@ export function SidebarLink({
           className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-brand"
         />
       )}
+      {/* Link puro: quem dá o retorno da navegação agora é o `loading.tsx` da
+          rota (esqueleto no lugar do conteúdo). Antes daqui saía um
+          startTransition que acendia o overlay "Processando…" — que bloqueia a
+          tela inteira e é a linguagem de quem está SALVANDO algo, não de quem
+          está abrindo uma página. O overlay continua, só que para mutações. */}
       <Link
         href={href}
         aria-current={active ? "page" : undefined}
-        onClick={(e) => {
-          // preserva ctrl/cmd/shift/middle-click (abrir em nova aba)
-          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
-          if (active) return; // já está na rota
-          e.preventDefault();
-          startTransition(() => router.push(href as never));
-        }}
         className={`flex min-w-0 flex-1 items-center gap-2.5 px-3 py-2 ${
           active ? "font-semibold text-brand" : "text-muted group-hover:text-fg"
         }`}

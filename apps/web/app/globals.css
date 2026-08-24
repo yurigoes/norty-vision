@@ -96,6 +96,17 @@
     visibility: hidden;
   }
 
+  /* iPhone/iPad com notch: com viewport-fit=cover a tela vai até a borda —
+     estas margens evitam que texto e botões sumam embaixo do recorte quando
+     o aparelho está deitado. As margens de cima/baixo ficam por conta de
+     quem tem barra fixa (AppShell, telas de entrada). */
+  @supports (padding: env(safe-area-inset-left)) {
+    body {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+  }
+
   /* scroll suave em ancoras + foco visivel respeitando a brand */
   html {
     scroll-behavior: smooth;

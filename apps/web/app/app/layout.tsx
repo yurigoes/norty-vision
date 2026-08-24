@@ -25,6 +25,7 @@ import { SoftphoneProvider } from "../../components/SoftphoneProvider";
 import { AppShell } from "../../components/AppShell";
 import { CommandPalette, type PaletteItem } from "../../components/CommandPalette";
 import { CommandPaletteButton } from "../../components/CommandPaletteButton";
+import { SidebarFavorites } from "../../components/SidebarFavorites";
 import { RememberOrg } from "../../components/RememberOrg";
 import { CentralLeadsBoot } from "../../components/CentralLeadsBoot";
 import type { Metadata } from "next";
@@ -362,7 +363,7 @@ export default async function AppLayout({
     ),
     ...lockedList.map((m) => ({
       label: m.label,
-      href: "/app/billing",
+      href: `/app/modulos/${m.key}`,
       group: "Não liberado",
       locked: true,
       keywords: "plano assinatura liberar contratar",
@@ -444,6 +445,8 @@ export default async function AppLayout({
         <CommandPaletteButton />
         <SidebarCountsProvider>
         <nav className="space-y-1 text-sm">
+          {/* o que ESTA pessoa fixou vem antes de tudo */}
+          <SidebarFavorites items={paletteItems} />
           <SidebarLink href="/app">Painel</SidebarLink>
 
           {/* categorias recolhíveis: só itens liberados; bloqueados vão pra

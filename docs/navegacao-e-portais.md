@@ -113,3 +113,43 @@ node --experimental-strip-types apps/web/lib/__checks__/paletteSearch.check.mts
 O menu do master virou dado (`NAV_MASTER_TOP` / `NAV_MASTER_OWNER` /
 `NAV_MASTER_BOTTOM` em `app/app/layout.tsx`) porque a mesma lista alimenta a
 sidebar e a busca — em duas cópias elas divergiriam na primeira tela nova.
+
+## Ícones e favoritos no menu
+
+Com a busca no lugar, o que ainda pesava era o reconhecimento: 69 linhas de
+texto puro, todas com o mesmo peso e a mesma forma. Achar "Cobrança" no meio de
+"Comissões", "Contratos" e "Contas a pagar" era leitura, não reconhecimento.
+
+**Ícones** — `lib/navIcons.ts` mapeia cada ROTA (não a chave de módulo, que é
+opcional) para um ícone do `lucide-react`, que já era dependência e é
+tree-shakeable. Rota desconhecida cai no genérico: nunca fica sem ícone, nunca
+quebra ao entrar uma tela nova. Uma conferência garante que o mapa não fique
+para trás:
+
+```bash
+node --experimental-strip-types apps/web/lib/__checks__/navIcons.check.mts
+```
+
+**Favoritos** — cada pessoa vive em quatro ou cinco módulos dos quase 70. A
+estrela ao lado de cada item fixa o módulo numa seção **Favoritos** no topo do
+menu, e os fixados também aparecem primeiro na busca (Ctrl+K).
+
+- Guardado no `localStorage` deste aparelho (`lib/favorites.ts`), como os
+  "recentes" da busca. É preferência de navegação, não configuração de conta:
+  não vale uma tabela, uma rota e uma migration. Quem troca de computador
+  refixa em dois cliques.
+- Sem provider: quem precisa lê pelo `useFavorites()` (via
+  `useSyncExternalStore`) e `toggleFavorite()` avisa todo mundo por evento —
+  inclusive **outras abas**, pelo evento `storage`.
+- Máximo de 8. Acima disso deixa de ser atalho e vira um segundo menu.
+- A lista de referência é a mesma do menu e da busca, já filtrada por nicho,
+  permissão, sub-módulo e plano: favorito de módulo cujo acesso a pessoa
+  perdeu simplesmente some, sem virar link quebrado.
+
+A estrela some no repouso para não poluir uma lista de 70 itens; aparece no
+hover e no foco por teclado, e fica sempre visível no item já fixado. Em
+aparelho **sem mouse** o hover nunca acontece, então ela fica esmaecida em vez
+de invisível para sempre (regra `.fav-star` em `globals.css`).
+
+O botão da estrela fica **fora** do `<Link>` de propósito: um `<button>` dentro
+de um `<a>` é HTML inválido e quebra o clique no meio.

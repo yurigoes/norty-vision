@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { searchPalette, terms, type PaletteItem } from "../lib/paletteSearch";
+import { useFavorites } from "../lib/favorites";
 
 export type { PaletteItem };
 
@@ -32,6 +33,7 @@ const RECENTS_MAX = 5;
 
 export function CommandPalette({ items }: { items: PaletteItem[] }) {
   const router = useRouter();
+  const favorites = useFavorites();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
@@ -100,14 +102,26 @@ export function CommandPalette({ items }: { items: PaletteItem[] }) {
 
   /* --------------------------------------------------------- resultados -- */
   const results = useMemo(() => {
-    // sem busca: os últimos usados na frente, depois o menu na ordem normal
+    // sem busca: primeiro os fixados, depois os últimos usados, depois o menu
     if (terms(query).length === 0) {
-      const recent = recents.map((href) => byHref.get(href)).filter(Boolean) as PaletteItem[];
-      const rest = items.filter((i) => !recents.includes(i.href));
-      return { recentCount: recent.length, list: [...recent, ...rest].slice(0, 40) };
+      const pick = (hrefs: string[], skip: Set<string>) =>
+        hrefs
+          .filter((h) => !skip.has(h))
+          .map((h) => byHref.get(h))
+          .filter(Boolean) as PaletteItem[];
+
+      const fav = pick(favorites, new Set());
+      const favSet = new Set(fav.map((i) => i.href));
+      const recent = pick(recents, favSet);
+      const shown = new Set([...favSet, ...recent.map((i) => i.href)]);
+      const rest = items.filter((i) => !shown.has(i.href));
+      return {
+        tags: [...fav.map(() => "fixado"), ...recent.map(() => "recente")],
+        list: [...fav, ...recent, ...rest].slice(0, 40),
+      };
     }
-    return { recentCount: 0, list: searchPalette(items, query) };
-  }, [query, items, recents, byHref]);
+    return { tags: [] as string[], list: searchPalette(items, query) };
+  }, [query, items, recents, favorites, byHref]);
 
   const list = results.list;
 
@@ -139,8 +153,10 @@ export function CommandPalette({ items }: { items: PaletteItem[] }) {
       window.open(item.href, "_blank", "noopener,noreferrer");
       return;
     }
+    // bloqueado vai pra página do módulo, que explica pra que serve e oferece
+    // liberar — mesmo destino do cadeado no menu.
     // `as never` porque typedRoutes só aceita literal, e aqui a rota vem de dados
-    router.push(item.locked ? ("/app/billing" as never) : (item.href as never));
+    router.push(item.href as never);
   }
 
   function onInputKey(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -229,7 +245,7 @@ export function CommandPalette({ items }: { items: PaletteItem[] }) {
           ) : (
             list.map((item, index) => {
               const active = index === cursor;
-              const isRecent = index < results.recentCount;
+              const tag = results.tags[index];
               return (
                 <button
                   key={`${item.href}-${index}`}
@@ -250,7 +266,7 @@ export function CommandPalette({ items }: { items: PaletteItem[] }) {
                     {item.label}
                   </span>
                   <span className="shrink-0 text-[11px] text-muted">
-                    {isRecent ? "recente" : item.group}
+                    {tag ?? item.group}
                     {item.external && <span aria-hidden> ↗</span>}
                   </span>
                 </button>

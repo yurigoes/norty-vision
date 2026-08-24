@@ -165,6 +165,19 @@
     @apply rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:opacity-95 active:scale-[.98] disabled:opacity-50;
     background: var(--grad-brand);
   }
+  /* ========== ESTRELA DE FAVORITO (menu) ========== */
+  /* Some no repouso pra não poluir uma lista de 70 itens; aparece no hover e
+     no foco por teclado. Item já fixado mantém a estrela sempre visível — é o
+     que mostra o estado. Em aparelho SEM MOUSE o hover nunca acontece, então
+     ela fica esmaecida em vez de invisível pra sempre. */
+  .fav-star { opacity: 0; }
+  .group:hover .fav-star,
+  .fav-star:focus-visible,
+  .fav-star[data-on="true"] { opacity: 1; }
+  @media (hover: none) {
+    .fav-star { opacity: 0.4; }
+  }
+
   .input-base {
     @apply w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-fg outline-none transition placeholder:text-muted focus:border-brand focus:ring-2;
     --tw-ring-color: rgb(var(--ring) / 0.35);

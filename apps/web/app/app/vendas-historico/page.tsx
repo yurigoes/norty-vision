@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { VendasHistoricoClient } from "./VendasHistoricoClient";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function VendasHistoricoPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return <div className="max-w-3xl"><p className="card p-6 text-muted">Apenas administradores podem importar vendas históricas.</p></div>;
   }

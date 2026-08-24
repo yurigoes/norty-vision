@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { BrandLogoClient } from "../../components/BrandLogoClient";
 import { LensOrders } from "./LensOrders";
+import { goToLogin } from "../../lib/orgMemory";
 
 function brl(cents: number | string): string {
   return (Number(cents) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -17,7 +18,7 @@ export default function PortalDashboard() {
 
   const reload = useCallback(() => {
     fetch("/api/portal/me", { credentials: "include" })
-      .then((r) => { if (r.status === 401) { router.push("/c/login"); return null; } return r.json(); })
+      .then((r) => { if (r.status === 401) { goToLogin("cliente"); return null; } return r.json(); })
       .then((d) => {
         if (d) {
           // troca obrigatoria no 1o acesso: força quando ainda não há senha
@@ -50,7 +51,7 @@ export default function PortalDashboard() {
 
   async function logout() {
     await fetch("/api/portal/auth/logout", { method: "POST", credentials: "include" });
-    router.push("/c/login");
+    goToLogin("cliente", { keepNext: false });
   }
 
   if (loading) return <Centered>Carregando...</Centered>;

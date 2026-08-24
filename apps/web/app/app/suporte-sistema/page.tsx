@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { SuporteSistemaClient } from "./SuporteSistemaClient";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function SuporteSistemaPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   return (
     <div className="max-w-5xl">
       <header className="mb-6">

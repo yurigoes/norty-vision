@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { UsersClient } from "./UsersClient";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ interface RoleBrief {
 
 export default async function UsuariosPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">

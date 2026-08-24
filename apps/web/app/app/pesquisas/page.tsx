@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { PesquisasClient } from "./PesquisasClient";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function PesquisasPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
 
   return (
     <div className="max-w-5xl">

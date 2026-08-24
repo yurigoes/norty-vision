@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { goToLogin } from "../../lib/orgMemory";
 
 function brl(c: number | string): string {
   return (Number(c) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -25,7 +26,7 @@ export default function SupplierDashboard() {
   useEffect(() => {
     (async () => {
       const meRes = await fetch("/api/supplier-portal/me", { credentials: "include" });
-      if (meRes.status === 401) { router.push("/f/login"); return; }
+      if (meRes.status === 401) { goToLogin("fornecedor"); return; }
       const meData = await meRes.json();
       if (meData?.supplier?.mustReset) { router.push("/f/redefinir"); return; }
       setMe(meData.supplier);
@@ -49,7 +50,7 @@ export default function SupplierDashboard() {
 
   async function logout() {
     await fetch("/api/supplier-portal/auth/logout", { method: "POST", credentials: "include" });
-    router.push("/f/login");
+    goToLogin("fornecedor", { keepNext: false });
   }
 
   if (loading) return <Centered>Carregando...</Centered>;

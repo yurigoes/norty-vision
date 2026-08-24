@@ -2,12 +2,13 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
 import { TeamClient } from "./TeamClient";
+import { loginPath } from "../../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlatformTeamPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.master || session.master.platformRole === "support") {
     return (
       <div className="max-w-3xl">

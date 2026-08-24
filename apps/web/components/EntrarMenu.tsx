@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { loginPathFor, orgHubPath, readOrgSlug, type Portal } from "../lib/orgMemory";
 
 /**
  * Botão "Entrar" do header da landing com submenu de portais:
@@ -9,8 +9,9 @@ import Link from "next/link";
  *  - Cliente    → /c/login  (portal do crediário)
  *  - Fornecedor → /f/login  (médicos e laboratórios)
  */
-const PORTALS = [
+const PORTALS: Array<{ portal: Portal; href: string; title: string; desc: string; icon: React.ReactNode }> = [
   {
+    portal: "equipe",
     href: "/login",
     title: "Empresa",
     desc: "Equipe e administração",
@@ -23,6 +24,7 @@ const PORTALS = [
     ),
   },
   {
+    portal: "cliente",
     href: "/c/login",
     title: "Cliente",
     desc: "Portal do crediário",
@@ -34,6 +36,7 @@ const PORTALS = [
     ),
   },
   {
+    portal: "fornecedor",
     href: "/f/login",
     title: "Fornecedor",
     desc: "Médicos e laboratórios",
@@ -46,6 +49,7 @@ const PORTALS = [
     ),
   },
   {
+    portal: "funcionario",
     href: "/rh/login",
     title: "Funcionário",
     desc: "Ponto, holerite e RH",
@@ -61,6 +65,9 @@ const PORTALS = [
 
 export function EntrarMenu() {
   const [open, setOpen] = useState(false);
+  // empresa deste aparelho: os acessos passam a apontar direto pra ela
+  const [slug, setSlug] = useState<string | null>(null);
+  useEffect(() => { setSlug(readOrgSlug()); }, []);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -96,12 +103,12 @@ export function EntrarMenu() {
           className="animate-fade-in absolute right-0 z-30 mt-2 w-72 overflow-hidden rounded-2xl border border-line bg-bg/95 shadow-2xl backdrop-blur-md"
         >
           <p className="px-4 pb-1 pt-3 text-[10px] font-semibold uppercase tracking-wider text-muted">
-            Escolha seu acesso
+            {slug ? `Acessos da ${slug}` : "Escolha seu acesso"}
           </p>
           {PORTALS.map((p) => (
-            <Link
+            <a
               key={p.href}
-              href={p.href}
+              href={loginPathFor(p.portal, slug)}
               role="menuitem"
               onClick={() => setOpen(false)}
               className="group flex items-center gap-3 px-4 py-3 transition hover:bg-brand/10"
@@ -116,8 +123,18 @@ export function EntrarMenu() {
                 <span className="block text-xs text-muted">{p.desc}</span>
               </span>
               <span className="ml-auto text-muted opacity-0 transition group-hover:translate-x-0.5 group-hover:opacity-100">→</span>
-            </Link>
+            </a>
           ))}
+          {slug && (
+            <a
+              href={orgHubPath(slug) ?? "/login"}
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="block border-t border-line px-4 py-2.5 text-center text-xs text-muted transition hover:text-fg"
+            >
+              Ver todos os acessos da empresa
+            </a>
+          )}
         </div>
       )}
     </div>

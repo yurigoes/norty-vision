@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
 import { PrintButton } from "./PrintButton";
+import { loginPath } from "../../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function RelatorioAgendaPage({
   searchParams: Promise<{ date?: string; professionalId?: string }>;
 }) {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   const sp = await searchParams;
   const date = sp.date ?? new Date().toISOString().slice(0, 10);
 

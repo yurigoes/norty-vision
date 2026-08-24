@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
 import { PrintButton } from "../../agenda/relatorio/PrintButton";
+import { loginPath } from "../../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function CaixaRelatorioPage({
   searchParams: Promise<{ id?: string }>;
 }) {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   const { id } = await searchParams;
   if (!id) redirect("/app/caixa");
 

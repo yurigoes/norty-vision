@@ -4,6 +4,7 @@ import { apiFetch } from "../../../lib/api";
 import { StoresClient } from "./StoresClient";
 import { OrgBrandingCard } from "./OrgBrandingCard";
 import { KioskPanelsCard } from "./KioskPanelsCard";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ interface Store {
 
 export default async function LojasPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">

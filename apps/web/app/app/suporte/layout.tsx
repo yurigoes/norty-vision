@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getSession } from "../../../lib/session";
 import { redirect } from "next/navigation";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export default async function SuporteLayout({
   children: React.ReactNode;
 }) {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
 
   const isMaster = session.master !== null;
 

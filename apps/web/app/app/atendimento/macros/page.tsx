@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSession, can } from "../../../../lib/session";
 import { MacrosClient } from "./MacrosClient";
+import { loginPath } from "../../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function MacrosAdminPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!can(session, "templates.manage")) {
     return (
       <div className="max-w-3xl">

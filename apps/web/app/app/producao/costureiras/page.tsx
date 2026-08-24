@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSession, can } from "../../../../lib/session";
 import { CostureirasClient } from "./CostureirasClient";
+import { loginPath } from "../../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function CostureirasPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!can(session, "payouts.manage") && !can(session, "production.assign")) {
     return (
       <div className="max-w-3xl">

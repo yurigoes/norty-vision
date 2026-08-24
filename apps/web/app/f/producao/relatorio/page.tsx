@@ -4,8 +4,8 @@
 // 7d, 30d, custom) e totais (OSs, peças, valor pago/pendente).
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { goToLogin } from "../../../../lib/orgMemory";
 
 function brl(c: number | string): string {
   return (Number(c) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -13,7 +13,6 @@ function brl(c: number | string): string {
 function isoDate(d: Date): string { return d.toISOString().slice(0, 10); }
 
 export default function CostureiraRelatorio() {
-  const router = useRouter();
   const today = new Date();
   const monthAgo = new Date(today.getTime() - 30 * 86400_000);
   const [from, setFrom] = useState(isoDate(monthAgo));
@@ -25,12 +24,12 @@ export default function CostureiraRelatorio() {
     (async () => {
       setLoading(true);
       const r = await fetch(`/api/supplier-portal/production/report/period?from=${from}&to=${to}`, { credentials: "include" });
-      if (r.status === 401) { router.push("/f/login"); return; }
+      if (r.status === 401) { goToLogin("fornecedor"); return; }
       const d = await r.json();
       setData(d);
       setLoading(false);
     })();
-  }, [from, to, router]);
+  }, [from, to]);
 
   function setRange(days: number) {
     const t = new Date();

@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { VoipAdminClient } from "./VoipAdminClient";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function VoipAdminPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) redirect("/app");
   return (
     <div className="max-w-5xl">

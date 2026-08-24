@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export default async function AgendaLayout({
   children: React.ReactNode;
 }) {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
 
   return (
     <div className="flex gap-8">

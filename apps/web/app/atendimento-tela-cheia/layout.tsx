@@ -5,6 +5,7 @@ import { hexToRgbTriplet } from "../../lib/color";
 import { DialogProvider } from "../../components/SystemDialog";
 import { LoadingProvider } from "../../components/Loading";
 import type { Metadata } from "next";
+import { loginPath } from "../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export const metadata: Metadata = {
  */
 export default async function KioskLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (session.user?.mustResetPassword && !session.impersonating) redirect("/trocar-senha");
 
   // Cor primária da empresa (mesma lógica do /app/layout)

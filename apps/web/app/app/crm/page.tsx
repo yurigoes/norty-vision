@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { CrmClient } from "./CrmClient";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function CentralPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   return (
     <div className="max-w-6xl">
       <header className="mb-4">

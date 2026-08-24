@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { goToLogin } from "../../../lib/orgMemory";
 
 interface Contract {
   id: string;
@@ -13,18 +13,17 @@ interface Contract {
 }
 
 export default function PortalContratos() {
-  const router = useRouter();
   const [items, setItems] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [signing, setSigning] = useState<Contract | null>(null);
 
   function load() {
     fetch("/api/portal/contracts", { credentials: "include" })
-      .then((r) => { if (r.status === 401) { router.push("/c/login"); return null; } return r.json(); })
+      .then((r) => { if (r.status === 401) { goToLogin("cliente"); return null; } return r.json(); })
       .then((d) => { if (d) setItems(d.items ?? []); })
       .finally(() => setLoading(false));
   }
-  useEffect(load, [router]);
+  useEffect(load, []);
 
   if (loading) return <div className="flex min-h-screen items-center justify-center text-muted">Carregando...</div>;
 

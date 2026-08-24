@@ -3,6 +3,7 @@ import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { PaymentsConfigClient } from "./PaymentsConfigClient";
 import { InfinitepayConfigClient } from "./InfinitepayConfigClient";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,7 @@ interface MpIntegration {
 
 export default async function PagamentosPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">

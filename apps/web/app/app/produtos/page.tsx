@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { ProductsClient } from "./ProductsClient";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ interface Product {
 
 export default async function ProdutosPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">

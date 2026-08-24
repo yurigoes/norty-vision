@@ -7,6 +7,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { goToLogin } from "../../../../lib/orgMemory";
 
 function brl(c: number | string): string {
   return (Number(c) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -26,7 +27,7 @@ export default function CostureiraOrderDetail() {
     if (!id) return;
     (async () => {
       const r = await fetch(`/api/supplier-portal/production/${id}`, { credentials: "include" });
-      if (r.status === 401) { router.push("/f/login"); return; }
+      if (r.status === 401) { goToLogin("fornecedor"); return; }
       const d = await r.json();
       if (!r.ok) { setError(d?.error?.message ?? "Não foi possível abrir a OS"); setLoading(false); return; }
       setOrder(d.order);

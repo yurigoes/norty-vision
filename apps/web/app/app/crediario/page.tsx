@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { CreditClient } from "./CreditClient";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ interface LimitRequest {
 
 export default async function CrediarioPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">

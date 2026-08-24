@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSession, can } from "../../../../lib/session";
 import { ImportClient } from "./ImportClient";
+import { loginPath } from "../../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function ProducaoImportPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!can(session, "production.create")) {
     return (
       <div className="max-w-3xl">

@@ -27,8 +27,10 @@ export default async function DashboardPage() {
     { title: "Agenda", body: "Marcar, confirmar, ver fila do dia.", href: "/app/agenda", icon: CalendarDays, tone: "text-brand bg-brand/10" },
     { title: "Leads", body: "Kanban de oportunidades comerciais.", href: "/app/leads", icon: Users, tone: "text-brand-2 bg-brand-2/10" },
     { title: "Disparador", body: "Campanhas WhatsApp/SMS/email.", href: "/app/disparador", icon: Send, tone: "text-success bg-success/10" },
-    { title: "Ajuda", body: "Passo a passo de cada ação.", href: "/app/ajuda", icon: LifeBuoy, tone: "text-warn bg-warn/10" },
-    { title: "Guia do sistema", body: "O que cada módulo faz, em detalhes.", href: "/app/guia", icon: BookOpen, tone: "text-brand bg-brand/10" },
+    // /app/ajuda e /app/guia não existem (davam 404 no painel). Os destinos
+    // reais são a central de chamados e o suporte ao sistema.
+    { title: "Ajuda", body: "Passo a passo de cada ação.", href: "/app/suporte/ajuda", icon: LifeBuoy, tone: "text-warn bg-warn/10" },
+    { title: "Guia do sistema", body: "O que cada módulo faz, em detalhes.", href: "/app/suporte/guia", icon: BookOpen, tone: "text-brand bg-brand/10" },
   ];
 
   return (
@@ -41,7 +43,7 @@ export default async function DashboardPage() {
         <p className="mt-2 max-w-2xl text-muted">
           {session.master
             ? "Você está logado como dono da plataforma. Use o menu lateral para configurar a marca, gerenciar acessos às specs técnicas e ver métricas globais."
-            : "Selecione um módulo no menu lateral para começar."}
+            : "Escolha um módulo no menu para começar — no celular, toque no botão de menu no topo."}
         </p>
       </header>
 

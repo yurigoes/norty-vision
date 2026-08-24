@@ -1,22 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { goToLogin } from "../../../lib/orgMemory";
 
 type Kb = { id: string; topic: string | null; question: string; answer: string };
 
 export default function PortalAjuda() {
-  const router = useRouter();
   const [list, setList] = useState<Kb[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     fetch("/api/portal/help", { credentials: "include" })
-      .then((r) => { if (r.status === 401) { router.push("/c/login"); return null; } return r.json(); })
+      .then((r) => { if (r.status === 401) { goToLogin("cliente"); return null; } return r.json(); })
       .then((d) => d && setList(d.items ?? []))
       .catch(() => {});
-  }, [router]);
+  }, []);
   useEffect(() => { reload(); }, [reload]);
 
   return (

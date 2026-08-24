@@ -3,6 +3,7 @@ import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { CatalogClient } from "./CatalogClient";
 import { VitrineSettings, type VitrineData } from "./VitrineSettings";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ interface Lead {
 
 export default async function CatalogoPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
 
   const [storesRes, leadsRes, orgRes] = await Promise.all([
     apiFetch<{ items: Store[] }>("/api/stores"),

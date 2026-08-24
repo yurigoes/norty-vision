@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
 import { FollowupsClient } from "./FollowupsClient";
+import { loginPath } from "../../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ interface Followup {
 
 export default async function PendenciasPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
 
   const res = await apiFetch<{ items: Followup[] }>("/api/schedule/followups?status=open");
 

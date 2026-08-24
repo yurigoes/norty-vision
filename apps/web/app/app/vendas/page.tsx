@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { SalesClient } from "./SalesClient";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ interface Account { id: string; document: string; holderName: string; limitCents
 
 export default async function VendasPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
 
   const [prodRes, storesRes, custRes, accRes, salesRes, cfgRes, sellersRes] = await Promise.all([
     apiFetch<{ items: Product[] }>("/api/products?activeOnly=true"),

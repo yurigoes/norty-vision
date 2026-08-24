@@ -2,12 +2,13 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { TransacoesClient, type Tx } from "./TransacoesClient";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function TransacoesPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   const res = await apiFetch<{ items: Tx[] }>("/api/payments/transactions");
   return (
     <div className="max-w-5xl">

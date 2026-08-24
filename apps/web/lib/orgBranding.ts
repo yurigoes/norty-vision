@@ -74,3 +74,34 @@ export const getOrgBrandingFromHost = cache(async (): Promise<OrgBranding> => {
     return { slug, name: slug, logoUrl: null, faviconUrl: null, primaryColor: null };
   }
 });
+
+/**
+ * Identidade pública de uma empresa pelo SLUG (server-side), sem depender do
+ * host. É o que o hub `/e/<slug>` e as páginas de entrada usam pra já
+ * renderizar com a marca da empresa — sem piscar o branding genérico.
+ */
+export const getPublicOrgBySlug = cache(
+  async (slug: string): Promise<OrgBranding | null> => {
+    if (!/^[a-z0-9][a-z0-9-]{1,49}$/.test(slug)) return null;
+    const apiBase = process.env.API_INTERNAL_URL ?? "http://api:3001";
+    try {
+      const res = await fetch(`${apiBase}/api/organizations/public/by-slug/${slug}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) return null;
+      const d = (await res.json()) as any;
+      const o = d?.organization;
+      if (!o) return null;
+      return {
+        slug,
+        name: o.name ?? slug,
+        logoUrl: o.logoUrl ?? null,
+        faviconUrl: o.faviconUrl ?? o.logoUrl ?? null,
+        primaryColor: o.primaryColor ?? null,
+      };
+    } catch {
+      return null;
+    }
+  },
+);

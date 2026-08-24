@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { goToLogin } from "../../../lib/orgMemory";
 
 type Ticket = {
   id: string; code: string; subject: string; status: string; priority: string;
@@ -20,17 +20,16 @@ const STATUS_CLS: Record<string, string> = {
 };
 
 export default function PortalChamados() {
-  const router = useRouter();
   const [list, setList] = useState<Ticket[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
   const reload = useCallback(() => {
     fetch("/api/portal/tickets", { credentials: "include" })
-      .then((r) => { if (r.status === 401) { router.push("/c/login"); return null; } return r.json(); })
+      .then((r) => { if (r.status === 401) { goToLogin("cliente"); return null; } return r.json(); })
       .then((d) => d && setList(d.items ?? []))
       .catch(() => {});
-  }, [router]);
+  }, []);
   useEffect(() => { reload(); }, [reload]);
 
   return (

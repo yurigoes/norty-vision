@@ -23,8 +23,11 @@ import { LoadingProvider } from "../../components/Loading";
 import { Mensalidades } from "./billing/Mensalidades";
 import { AppPwa } from "./AppPwa";
 import { SoftphoneProvider } from "../../components/SoftphoneProvider";
+import { AppShell } from "../../components/AppShell";
+import { RememberOrg } from "../../components/RememberOrg";
 import { CentralLeadsBoot } from "../../components/CentralLeadsBoot";
 import type { Metadata } from "next";
+import { loginPath } from "../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +48,9 @@ const NAV_OPERACAO: NavItem[] = [
   { key: "insights", href: "/app/insights", label: "Insights (IA)" },
   { key: "agenda", href: "/app/agenda", label: "Agenda" },
   { key: "leads", href: "/app/leads", label: "Leads" },
+  // o Disparador existia como rota e como módulo de plano, mas não tinha item
+  // no menu — só dava pra chegar por um atalho do painel ou digitando a URL.
+  { key: "disparador", href: "/app/disparador", label: "Disparador" },
   { key: "vendas", href: "/app/vendas", label: "Vendas (PDV)" },
   { key: "caixa", href: "/app/caixa", label: "Caixa" },
   { key: "producao", href: "/app/producao", label: "Produção / Pedidos" },
@@ -113,7 +119,7 @@ export default async function AppLayout({
 }) {
   const session = await getSession();
   if (!session.authenticated) {
-    redirect("/login");
+    redirect(await loginPath());
   }
   // staff da empresa: troca de senha obrigatória no 1º acesso
   // (não vale quando o master está impersonando — ele não troca a senha do dono)
@@ -136,6 +142,9 @@ export default async function AppLayout({
   // módulos habilitados pelo plano: null = tudo liberado; array = só os listados
   let enabledModules: string[] | null = null;
   let orgStatus: string | null = null;
+  // slug da empresa: vira a "empresa deste aparelho" (cookie nv_org), pra que
+  // sair e sessão expirada devolvam o usuário pro login DELA, não pro genérico.
+  let orgSlug: string | null = null;
   let orgNiche: string | null = null;
   // "product skin": marca a org como produto Central de Leads (casca enxuta).
   let productSkin: string | null = null;
@@ -150,6 +159,7 @@ export default async function AppLayout({
     const org = ores.data?.organization;
     if (org) {
       orgStatus = org.status ?? null;
+      orgSlug = typeof org.slug === "string" ? org.slug : null;
       orgNiche = org.niche ?? null;
       nicheHidden = Array.isArray(org.nicheHiddenModules) ? org.nicheHiddenModules : null;
       if (org.submoduleFeatures && typeof org.submoduleFeatures === "object") submoduleFeatures = org.submoduleFeatures;
@@ -324,7 +334,7 @@ export default async function AppLayout({
     <AppPwa />
     <SoftphoneProvider enabled={softphoneEnabled}>
     {isCentralLeads && <CentralLeadsBoot />}
-    <div className="flex min-h-screen">
+    <RememberOrg slug={orgSlug} />
       {brandPrimary && (
         <style
           dangerouslySetInnerHTML={{
@@ -342,7 +352,19 @@ export default async function AppLayout({
           }}
         />
       )}
-      <aside className="scroll-themed sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto border-r border-line bg-surface/80 px-4 py-6 backdrop-blur-xl md:block">
+    <AppShell
+      logo={
+        <Link href="/app" className="block min-w-0 transition-opacity hover:opacity-80" aria-label="Voltar ao painel">
+          {companyLogo ? (
+            <img src={companyLogo} alt="logo" className="h-8 w-auto max-w-[160px] object-contain" />
+          ) : (
+            <BrandLogo size="md" />
+          )}
+        </Link>
+      }
+      actions={<ThemeToggle />}
+      sidebar={
+        <>
         <Link
           href="/app"
           className="mb-8 block px-1 transition-opacity hover:opacity-80"
@@ -488,9 +510,9 @@ export default async function AppLayout({
           )}
           <LogoutButton isMaster={isMaster} className="mt-2" />
         </div>
-      </aside>
-
-      <main className="mx-auto w-full max-w-[1320px] flex-1 px-6 py-8 md:px-10">
+        </>
+      }
+    >
         <DialogProvider>
           {session.impersonating && <ImpersonationBanner orgName={session.impersonating.orgName} />}
           {cancelPhase === "grace" && (
@@ -506,7 +528,8 @@ export default async function AppLayout({
           <InternalAlerts />
           <RouteFade>{children}</RouteFade>
         </DialogProvider>
-      </main>
+    </AppShell>
+
 
       {/* marca d'agua do dono do SaaS (canto inferior direito, dark/white) */}
       <SaasWatermark />
@@ -522,7 +545,6 @@ export default async function AppLayout({
           }}
         />
       )}
-    </div>
     </SoftphoneProvider>
     </LoadingProvider>
   );

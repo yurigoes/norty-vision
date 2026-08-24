@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSession, can } from "../../../../lib/session";
 import { WebhooksClient } from "./WebhooksClient";
+import { loginPath } from "../../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function WebhooksPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!can(session, "integrations.manage")) {
     return (
       <div className="max-w-3xl">

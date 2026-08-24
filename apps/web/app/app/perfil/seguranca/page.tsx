@@ -1,12 +1,13 @@
 import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { MfaSetupCard } from "./MfaSetupCard";
+import { loginPath } from "../../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
 export default async function SegurancaPage() {
   const session = await getSession();
-  if (!session.user) redirect("/login");
+  if (!session.user) redirect(await loginPath());
 
   return (
     <div className="max-w-2xl">

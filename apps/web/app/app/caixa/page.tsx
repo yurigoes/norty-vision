@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { CaixaClient } from "./CaixaClient";
+import { loginPath } from "../../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,7 @@ interface Store { id: string; name: string }
 
 export default async function CaixaPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
 
   const storesRes = await apiFetch<{ items: Store[] }>("/api/stores");
 

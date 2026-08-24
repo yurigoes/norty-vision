@@ -74,3 +74,42 @@ fora da org do slug, mesmo para admin de outra empresa.
 
 Antes, o menu era `hidden md:block`: no celular ele simplesmente não existia —
 quem abrisse o sistema no telefone ficava preso na primeira tela.
+
+## Busca de módulos (Ctrl+K)
+
+O menu do painel tem quase 70 itens em sete categorias recolhíveis, só texto.
+Quem não lembra o nome exato do módulo — ou em qual categoria ele mora — abria
+seção por seção até achar. Agora **Ctrl+K** (⌘K no Mac) abre uma busca: a
+pessoa digita `cred`, `nota fiscal`, `lente` e chega.
+
+- A lista sai do **mesmo menu** que aquele usuário vê, já filtrada por nicho,
+  permissão, sub-módulo e plano. Nada aparece na busca que não apareceria na
+  lateral. Módulos fora do plano aparecem com cadeado e levam para a
+  Assinatura.
+- Sem nada digitado, mostra os **últimos usados** (localStorage, 5 itens).
+- Teclado: `↑` `↓` navegam, `enter` abre, `esc` fecha. O mouse também funciona.
+- Além do atalho, há o campo "Buscar..." no topo do menu (que mostra o atalho,
+  para quem não conhece) e o botão de lupa na barra do celular.
+
+| Arquivo | Papel |
+| --- | --- |
+| `apps/web/lib/paletteSearch.ts` | A busca em si — pura, sem React |
+| `apps/web/components/CommandPalette.tsx` | Diálogo, teclado, recentes |
+| `apps/web/components/CommandPaletteButton.tsx` | Os dois gatilhos (campo e lupa) |
+| `apps/web/lib/__checks__/paletteSearch.check.mts` | Conferência com os rótulos reais |
+
+A pontuação é deliberadamente simples, não fuzzy: prefixo do rótulo ganha de
+início de palavra, que ganha de "aparece no meio", que ganha de categoria /
+endereço / sinônimo. Com vários termos, **todos** precisam casar — `nota
+fiscal` não traz "Notas de crédito". Fuzzy casaria quase tudo e a primeira
+linha deixaria de ser confiável.
+
+Para rodar a conferência (sem instalar nada):
+
+```bash
+node --experimental-strip-types apps/web/lib/__checks__/paletteSearch.check.mts
+```
+
+O menu do master virou dado (`NAV_MASTER_TOP` / `NAV_MASTER_OWNER` /
+`NAV_MASTER_BOTTOM` em `app/app/layout.tsx`) porque a mesma lista alimenta a
+sidebar e a busca — em duas cópias elas divergiriam na primeira tela nova.

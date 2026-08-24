@@ -23,6 +23,8 @@ import { Mensalidades } from "./billing/Mensalidades";
 import { AppPwa } from "./AppPwa";
 import { SoftphoneProvider } from "../../components/SoftphoneProvider";
 import { AppShell } from "../../components/AppShell";
+import { CommandPalette, type PaletteItem } from "../../components/CommandPalette";
+import { CommandPaletteButton } from "../../components/CommandPaletteButton";
 import { RememberOrg } from "../../components/RememberOrg";
 import { CentralLeadsBoot } from "../../components/CentralLeadsBoot";
 import type { Metadata } from "next";
@@ -62,6 +64,34 @@ const NAV_OPERACAO: NavItem[] = [
   { key: "voip", href: "/app/voip", label: "Telefone (ramal)" },
   { href: "/app/suporte-sistema", label: "Suporte ao sistema" },
 ];
+// Menu do MASTER. Vira dado (e não JSX solto) porque a mesma lista alimenta a
+// sidebar e a busca Ctrl+K — em duas cópias elas iam divergir na primeira
+// tela nova.
+const NAV_MASTER_TOP: NavItem[] = [
+  { href: "/app/platform", label: "Visão geral" },
+  { href: "/app/platform/organizations", label: "Organizações" },
+  { href: "/app/platform/contatos", label: "Leads do site" },
+  { href: "/app/platform/suporte", label: "Suporte (chamados)" },
+];
+// só o DONO do SaaS (platformRole !== "support") enxerga estes
+const NAV_MASTER_OWNER: NavItem[] = [
+  { href: "/app/platform/settings", label: "Identidade & Branding" },
+  { href: "/app/platform/plans", label: "Planos" },
+  { href: "/app/platform/niches", label: "Nichos de mercado" },
+  { href: "/app/platform/modulos", label: "Preços de módulos" },
+  { href: "/app/platform/financeiro", label: "Financeiro (assinaturas)" },
+  { href: "/app/platform/ia", label: "Aprendizado de IA" },
+  { href: "/app/platform/contratos", label: "Contratos (empresas)" },
+  { href: "/app/platform/integrations", label: "Integrações" },
+  { href: "/app/platform/fiscal-ref", label: "Tabelas fiscais (NCM/CEST)" },
+  { href: "/app/platform/credentials", label: "🔒 Credenciais" },
+  { href: "/app/platform/team", label: "Equipe master" },
+  { href: "/app/platform/audit", label: "Auditoria" },
+];
+const NAV_MASTER_BOTTOM: NavItem[] = [
+  { href: "/app/platform/grants", label: "Acessos às Specs" },
+];
+
 // Categorias visíveis pro admin da empresa.
 const NAV_ADMIN: Array<{ title: string; items: NavItem[] }> = [
   { title: "Comercial", items: [
@@ -320,6 +350,40 @@ export default async function AppLayout({
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // BUSCA Ctrl+K — a lista sai do MESMO menu que este usuário vê (já filtrado
+  // por nicho, permissão, sub-módulo e plano). Nada aparece na busca que não
+  // apareceria na lateral.
+  // ---------------------------------------------------------------------------
+  const paletteItems: PaletteItem[] = [
+    { label: "Painel", href: "/app", group: "Geral", keywords: "inicio home visao geral dashboard" },
+    ...visibleCats.flatMap((cat) =>
+      availItems(cat.items).map((it) => ({ label: it.label, href: it.href, group: cat.title })),
+    ),
+    ...lockedList.map((m) => ({
+      label: m.label,
+      href: "/app/billing",
+      group: "Não liberado",
+      locked: true,
+      keywords: "plano assinatura liberar contratar",
+    })),
+    ...shortcuts.map((sc) => ({ label: sc.label, href: sc.url, group: "Atalhos", external: true })),
+    { label: "Suporte", href: "/app/suporte", group: "Ajuda", keywords: "chamado duvida problema" },
+    ...(session.user
+      ? [
+          { label: "Minha conta (trocar senha)", href: "/app/conta", group: "Conta", keywords: "senha perfil" },
+          { label: "Minha segurança (2FA)", href: "/app/perfil/seguranca", group: "Conta", keywords: "2fa mfa autenticacao codigo" },
+        ]
+      : []),
+    ...(isMaster
+      ? [
+          ...NAV_MASTER_TOP.map((it) => ({ label: it.label, href: it.href, group: "Master" })),
+          ...(isPlatformOwner ? NAV_MASTER_OWNER.map((it) => ({ label: it.label, href: it.href, group: "Master" })) : []),
+          ...NAV_MASTER_BOTTOM.map((it) => ({ label: it.label, href: it.href, group: "Master" })),
+        ]
+      : []),
+  ];
+
   // softphone app-wide: ativa quando o módulo voip não está bloqueado pelo plano
   // e o usuário é da empresa (master/impersonando não toca como operador).
   const softphoneEnabled = !isMaster && !locked("voip");
@@ -330,6 +394,7 @@ export default async function AppLayout({
     <SoftphoneProvider enabled={softphoneEnabled}>
     {isCentralLeads && <CentralLeadsBoot />}
     <RememberOrg slug={orgSlug} />
+    <CommandPalette items={paletteItems} />
       {brandPrimary && (
         <style
           dangerouslySetInnerHTML={{
@@ -357,7 +422,12 @@ export default async function AppLayout({
           )}
         </Link>
       }
-      actions={<ThemeToggle />}
+      actions={
+        <>
+          <CommandPaletteButton variant="icon" />
+          <ThemeToggle />
+        </>
+      }
       sidebar={
         <>
         <Link
@@ -371,6 +441,7 @@ export default async function AppLayout({
             <BrandLogo size="md" />
           )}
         </Link>
+        <CommandPaletteButton />
         <SidebarCountsProvider>
         <nav className="space-y-1 text-sm">
           <SidebarLink href="/app">Painel</SidebarLink>
@@ -429,60 +500,17 @@ export default async function AppLayout({
               <p className="px-3 text-[10px] uppercase tracking-wider text-muted">
                 Master
               </p>
-              <SidebarLink href="/app/platform">Visão geral</SidebarLink>
-              <SidebarLink href="/app/platform/organizations">
-                Organizações
-              </SidebarLink>
-              <SidebarLink href="/app/platform/contatos">
-                Leads do site
-              </SidebarLink>
-              <SidebarLink href="/app/platform/suporte">
-                Suporte (chamados)
-              </SidebarLink>
+              {NAV_MASTER_TOP.map((it) => (
+                <SidebarLink key={it.href} href={it.href}>{it.label}</SidebarLink>
+              ))}
               <MasterViewCompany />
-              {isPlatformOwner && (
-                <>
-                  <SidebarLink href="/app/platform/settings">
-                    Identidade & Branding
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/plans">
-                    Planos
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/niches">
-                    Nichos de mercado
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/modulos">
-                    Preços de módulos
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/financeiro">
-                    Financeiro (assinaturas)
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/ia">
-                    Aprendizado de IA
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/contratos">
-                    Contratos (empresas)
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/integrations">
-                    Integrações
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/fiscal-ref">
-                    Tabelas fiscais (NCM/CEST)
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/credentials">
-                    🔒 Credenciais
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/team">
-                    Equipe master
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/audit">
-                    Auditoria
-                  </SidebarLink>
-                </>
-              )}
-              <SidebarLink href="/app/platform/grants">
-                Acessos às Specs
-              </SidebarLink>
+              {isPlatformOwner &&
+                NAV_MASTER_OWNER.map((it) => (
+                  <SidebarLink key={it.href} href={it.href}>{it.label}</SidebarLink>
+                ))}
+              {NAV_MASTER_BOTTOM.map((it) => (
+                <SidebarLink key={it.href} href={it.href}>{it.label}</SidebarLink>
+              ))}
             </>
           )}
         </nav>

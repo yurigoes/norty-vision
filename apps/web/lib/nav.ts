@@ -174,3 +174,108 @@ export function routeMeta(pathname: string): RouteMeta | null {
   }
   return null;
 }
+
+// ---------------------------------------------------------------------------
+// ABAS DE MÓDULO — a navegação DENTRO de um módulo.
+//
+// Agenda, Contratos e Suporte tinham cada um seu próprio trilho lateral (três
+// componentes `SubLink` diferentes, nenhum marcando a aba atual, e todos
+// `hidden lg:block` — ou seja, sumiam no celular). Atendimento e Produção
+// improvisavam a mesma coisa com botões no cabeçalho.
+//
+// Aqui a lista é dado; quem desenha é o `components/ModuleTabs.tsx`, que o
+// `PageHeader` renderiza sozinho a partir da rota. Módulo sem entrada aqui
+// simplesmente não tem abas.
+// ---------------------------------------------------------------------------
+
+export interface ModuleTab {
+  href: string;
+  label: string;
+  /** só o master da plataforma vê */
+  master?: boolean;
+  /** some quando o master desliga este sub-módulo pra empresa ("producao.import") */
+  subMod?: string;
+  /** some quando o recurso do módulo de produção está desligado ("financeiro") */
+  prodFeature?: string;
+}
+
+/** `root` é o prefixo da rota; vence o mais específico. */
+export const MODULE_TABS: Array<{ root: string; tabs: ModuleTab[] }> = [
+  {
+    root: "/app/agenda",
+    tabs: [
+      { href: "/app/agenda", label: "Calendário" },
+      { href: "/app/agenda/pendencias", label: "Pendências" },
+      { href: "/app/agenda/pacientes", label: "Pacientes" },
+      { href: "/app/agenda/profissionais", label: "Profissionais" },
+      { href: "/app/agenda/recall-exames", label: "Recall de exame" },
+      { href: "/app/agenda/nlu", label: "NLU · Revisão" },
+    ],
+  },
+  {
+    root: "/app/atendimento",
+    tabs: [
+      { href: "/app/atendimento", label: "Conversas" },
+      { href: "/app/atendimento/duvidas", label: "Maiores dúvidas" },
+      { href: "/app/atendimento/ajuda", label: "Central de ajuda" },
+      { href: "/app/atendimento/macros", label: "Macros", subMod: "atendimento.macros" },
+      { href: "/app/atendimento/botoes", label: "Botões" },
+      { href: "/app/atendimento/webhooks", label: "Webhooks", subMod: "atendimento.webhooks" },
+      { href: "/app/atendimento/ia-aprendizado", label: "IA" },
+      { href: "/app/atendimento/supervisor", label: "Supervisão" },
+      { href: "/app/atendimento/relatorios", label: "Relatórios" },
+      { href: "/app/atendimento/config", label: "Configurações" },
+    ],
+  },
+  {
+    root: "/app/producao",
+    tabs: [
+      { href: "/app/producao", label: "Pedidos" },
+      { href: "/app/producao/costureiras", label: "Costureiras", subMod: "producao.costureiras" },
+      { href: "/app/producao/import", label: "Importar planilha", subMod: "producao.import" },
+      { href: "/app/producao/financeiro", label: "Financeiro", prodFeature: "financeiro" },
+    ],
+  },
+  {
+    root: "/app/financeiro",
+    tabs: [
+      { href: "/app/financeiro/contas-a-pagar", label: "Contas a pagar", subMod: "financeiro.contas_pagar" },
+      { href: "/app/financeiro/contas-a-receber", label: "Contas a receber", subMod: "financeiro.contas_receber" },
+    ],
+  },
+  {
+    root: "/app/contratos",
+    tabs: [
+      { href: "/app/contratos", label: "Enviados" },
+      { href: "/app/contratos/modelos", label: "Modelos" },
+    ],
+  },
+  {
+    root: "/app/suporte",
+    tabs: [
+      { href: "/app/suporte", label: "Visão geral" },
+      { href: "/app/suporte/ajuda", label: "Ajuda" },
+      { href: "/app/suporte/guia", label: "Guia do sistema" },
+      { href: "/app/suporte/guia-grafica", label: "Guia da gráfica" },
+      { href: "/app/suporte/infraestrutura", label: "Infraestrutura" },
+      { href: "/app/suporte/saude", label: "Saúde do sistema" },
+      { href: "/app/suporte/backup", label: "Backup" },
+      { href: "/app/suporte/privacidade", label: "Privacidade · LGPD" },
+      { href: "/app/suporte/specs", label: "Specs técnicas", master: true },
+      { href: "/app/suporte/sistema", label: "Servidor / VPS", master: true },
+      { href: "/app/suporte/recuperacao", label: "Recuperação & Backup", master: true },
+    ],
+  },
+];
+
+/** Abas do módulo que contém esta rota. `null` = módulo sem abas. */
+export function tabsFor(pathname: string): ModuleTab[] | null {
+  const clean = pathname.split("?")[0].replace(/\/+$/, "") || "/app";
+  let melhor: { root: string; tabs: ModuleTab[] } | null = null;
+  for (const grupo of MODULE_TABS) {
+    if (clean === grupo.root || clean.startsWith(grupo.root + "/")) {
+      if (!melhor || grupo.root.length > melhor.root.length) melhor = grupo;
+    }
+  }
+  return melhor ? melhor.tabs : null;
+}

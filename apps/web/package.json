@@ -9,7 +9,7 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .next",
-    "check": "node --experimental-strip-types lib/__checks__/paletteSearch.check.mts && node --experimental-strip-types lib/__checks__/navIcons.check.mts && node --experimental-strip-types lib/__checks__/pageHeader.check.mts && node --experimental-strip-types lib/__checks__/loading.check.mts && node --experimental-strip-types lib/__checks__/tableCards.check.mts"
+    "check": "node --experimental-strip-types lib/__checks__/paletteSearch.check.mts && node --experimental-strip-types lib/__checks__/navIcons.check.mts && node --experimental-strip-types lib/__checks__/pageHeader.check.mts && node --experimental-strip-types lib/__checks__/loading.check.mts && node --experimental-strip-types lib/__checks__/tableCards.check.mts && node --experimental-strip-types lib/__checks__/moduleTabs.check.mts"
   },
   "dependencies": {
     "@yugo/shared": "workspace:*",

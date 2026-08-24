@@ -4,27 +4,26 @@
 //
 // Rodar:  node --experimental-strip-types apps/web/lib/__checks__/navIcons.check.mts
 //
-// Lê os dois arquivos como TEXTO de propósito — assim a conferência não depende
-// de resolver `lucide-react` nem de bundler, e roda em qualquer lugar. Sem isso,
-// uma tela nova entraria no menu com o ícone genérico sem ninguém perceber.
+// O mapa de ícones é lido como TEXTO de propósito — assim a conferência não
+// depende de resolver `lucide-react` nem de bundler, e roda em qualquer lugar.
+// Sem isso, uma tela nova entraria no menu com o ícone genérico sem ninguém
+// perceber.
 // ============================================================================
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { ROUTE_META } from "../nav.ts";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const web = join(here, "..", "..");
 
-// o mapa do menu vive em lib/nav.ts; o layout só o renderiza
-const nav = readFileSync(join(web, "lib", "nav.ts"), "utf8");
-const layout = readFileSync(join(web, "app", "app", "layout.tsx"), "utf8");
 const icons = readFileSync(join(web, "lib", "navIcons.ts"), "utf8");
 
-// rotas do menu: `href: "/app/..."` (arrays de nav) e `href="/app/..."` (JSX)
-const menuHrefs = new Set(
-  [...(nav + layout).matchAll(/href[:=]\s*"(\/app[^"${]*)"/g)].map((m) => m[1]),
-);
+// As rotas que precisam de ícone são as do MENU — que é exatamente o que o
+// `ROUTE_META` indexa. As abas de módulo (MODULE_TABS) ficam de fora de
+// propósito: a faixa de abas é só texto, como no resto do mercado.
+const menuHrefs = new Set(Object.keys(ROUTE_META));
 // chaves do mapa de ícones
 const mapped = new Set([...icons.matchAll(/^\s*"(\/app[^"]*)":/gm)].map((m) => m[1]));
 

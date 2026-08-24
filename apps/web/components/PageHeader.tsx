@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AutoEyebrow } from "./AutoEyebrow";
+import { ModuleTabs } from "./ModuleTabs";
 
 /**
  * CABEÇALHO PADRÃO DAS TELAS DO PAINEL
@@ -14,6 +15,9 @@ import { AutoEyebrow } from "./AutoEyebrow";
  * Sem `eyebrow`, a categoria vem do mapa do menu (`lib/nav.ts`) pela rota
  * atual — então tela nova já nasce dizendo onde está, sem ninguém lembrar de
  * escrever. Passe `eyebrow={null}` para não mostrar nenhuma.
+ *
+ * As abas do módulo (Agenda → Calendário, Pendências…) entram sozinhas, pela
+ * rota — nenhuma tela precisa lembrar de incluir. Ver `ModuleTabs`.
  *
  * Não tem hook: serve tanto em Server Component quanto em tela `"use client"`.
  */
@@ -63,10 +67,17 @@ export function PageHeader({
           {description && <p className="mt-2 max-w-2xl text-muted">{description}</p>}
         </div>
 
-        {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+        {/* no celular as ações descem pra própria linha: espremidas ao lado de
+            uma descrição de duas linhas, ficavam de lado com o texto */}
+        {actions && (
+          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">{actions}</div>
+        )}
       </div>
 
       {children}
+
+      {/* navegação dentro do módulo, quando houver */}
+      <ModuleTabs />
     </header>
   );
 }

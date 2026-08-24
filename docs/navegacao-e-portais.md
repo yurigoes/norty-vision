@@ -171,3 +171,9 @@ voltou a ser só para quem salva algo. Ver
 Abaixo de 768px cada linha de tabela vira um cartão empilhado — sem arrastar
 pro lado, sem perder a primeira coluna de vista. Ver
 [`tabelas-no-celular.md`](./tabelas-no-celular.md).
+
+## Abas de módulo
+
+A navegação dentro de um módulo (Agenda → Calendário, Pendências, Pacientes…)
+virou uma faixa de abas só, que marca a tela atual e funciona no celular. Ver
+[`abas-de-modulo.md`](./abas-de-modulo.md).

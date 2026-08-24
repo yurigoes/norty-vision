@@ -37,6 +37,7 @@ import { CommandPaletteButton } from "../../components/CommandPaletteButton";
 import { SidebarFavorites } from "../../components/SidebarFavorites";
 import { RememberOrg } from "../../components/RememberOrg";
 import { TableCards } from "../../components/TableCards";
+import { ViewerProvider } from "../../components/Viewer";
 import { CentralLeadsBoot } from "../../components/CentralLeadsBoot";
 import type { Metadata } from "next";
 import { loginPath } from "../../lib/tenantServer";
@@ -94,6 +95,8 @@ export default async function AppLayout({
   // Sub-módulos por empresa (Fase 2 + extensão): overrides default-on do master.
   // Mapa genérico { "<modulo>.<sub>": false }.
   let submoduleFeatures: Record<string, boolean> = {};
+  // recursos do módulo de produção (mapa próprio, separado dos sub-módulos)
+  let productionFeatures: Record<string, boolean> = {};
   {
     const org = boot.organization;
     if (org) {
@@ -102,6 +105,7 @@ export default async function AppLayout({
       orgNiche = org.niche ?? null;
       nicheHidden = Array.isArray(org.nicheHiddenModules) ? org.nicheHiddenModules : null;
       if (org.submoduleFeatures && typeof org.submoduleFeatures === "object") submoduleFeatures = org.submoduleFeatures;
+      if (org.productionFeatures && typeof org.productionFeatures === "object") productionFeatures = org.productionFeatures;
       orgBrand = {
         primary: org.primaryColor ? hexToRgbTriplet(org.primaryColor) : null,
         logoUrl: org.logoUrl ?? null,
@@ -320,6 +324,7 @@ export default async function AppLayout({
           }}
         />
       )}
+    <ViewerProvider value={{ isMaster, isOrgAdmin, submoduleFeatures, productionFeatures }}>
     <AppShell
       logo={
         <Link href="/app" className="block min-w-0 transition-opacity hover:opacity-80" aria-label="Voltar ao painel">
@@ -456,6 +461,7 @@ export default async function AppLayout({
           <RouteFade>{children}</RouteFade>
         </DialogProvider>
     </AppShell>
+    </ViewerProvider>
 
 
       {/* marca d'agua do dono do SaaS (canto inferior direito, dark/white) */}

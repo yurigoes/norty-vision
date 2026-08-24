@@ -1,4 +1,5 @@
 import { apiFetch } from "../../../../lib/api";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -27,15 +28,11 @@ export default async function BackupPage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Suporte · Backup
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Política de backup</h1>
-        <p className="mt-2 text-muted">
-          Jobs agendados, retenção e criptografia em repouso.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Suporte · Backup"
+        title="Política de backup"
+        description="Jobs agendados, retenção e criptografia em repouso."
+      />
 
       <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Jobs agendados</h2>

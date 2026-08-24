@@ -1,4 +1,5 @@
 import { apiFetch } from "../../../../lib/api";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -34,18 +35,11 @@ export default async function SaudePage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Suporte · Saúde do sistema
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Status em tempo real</h1>
-        <p className="mt-2 text-muted">
-          Snapshot capturado em{" "}
-          {health?.timestamp
-            ? new Date(health.timestamp).toLocaleString("pt-BR")
-            : "—"}.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Suporte · Saúde do sistema"
+        title="Status em tempo real"
+        description={<>Snapshot capturado em{" "} {health?.timestamp ? new Date(health.timestamp).toLocaleString("pt-BR") : "—"}.</>}
+      />
 
       <section className="mb-8 grid gap-4 sm:grid-cols-3">
         <DependencyCard

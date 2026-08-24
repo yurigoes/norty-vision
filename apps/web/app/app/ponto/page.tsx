@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useDialog } from "../../../components/SystemDialog";
 import { PUNCH_FIELDS, type PunchForm, emptyPunchForm, punchesToForm, formToTimes } from "../../../lib/punch";
+import { PageHeader } from "../../../components/PageHeader";
 
 type Emp = { id: string; name: string; cpf: string | null; pis: string | null; matricula: string | null; matEsocial: string | null; cargo: string | null; scheduleCode: string | null; active: boolean; faceEnrolled?: boolean; barcode?: string | null; hrEmployeeId?: string | null };
 type Punch = { id: string; nsr: string; employeeId: string; punchedAt: string; origin: string; source: string; offline: boolean; hash: string; photoUrl?: string | null; faceScore?: number | null; faceMatch?: boolean | null; livenessOk?: boolean | null; fraudFlags?: string[] | null };
@@ -44,11 +45,12 @@ export default function PontoPage() {
 
   return (
     <main className="max-w-5xl">
-      <header className="mb-6 print:hidden">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Pessoas · Ponto</p>
-        <h1 className="mt-1 text-2xl font-semibold">Ponto eletrônico</h1>
-        <p className="mt-1 text-muted">Marcação imutável (horário do servidor + NSR + hash) e jornada derivada — Portaria 671 (Fases 0–1).</p>
-      </header>
+      <PageHeader
+        className="print:hidden"
+        eyebrow="Pessoas · Ponto"
+        title="Ponto eletrônico"
+        description="Marcação imutável (horário do servidor + NSR + hash) e jornada derivada — Portaria 671 (Fases 0–1)."
+      />
       <nav className="mb-6 flex flex-wrap gap-1 rounded-xl border border-line bg-surface-2 p-1 text-sm print:hidden">
         {([["bater", "Bater ponto"], ["marcacoes", "Marcações"], ["tempo", "Tempo real"], ["espelho", "Espelho"], ["solicitacoes", "Solicitações"], ["escalas", "Escalas"], ["banco", "Banco de horas"], ["ferias", "Férias"], ["fechamento", "Fechamento"], ["eventos", "Eventos / Webhook"], ["funcionarios", "Funcionários (marcação)"], ["dispositivos", "Dispositivos"], ["avisos", "Avisos"], ["config", "Empregador"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className={`rounded-md px-3 py-1 ${tab === k ? "bg-brand text-white" : "text-muted hover:text-fg"}`}>{l}</button>

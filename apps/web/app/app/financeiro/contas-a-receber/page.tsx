@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { ReceberClient } from "./ReceberClient";
 import { loginPath } from "../../../../lib/tenantServer";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -17,11 +18,11 @@ export default async function ContasAReceberPage() {
   }
   return (
     <div className="max-w-5xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Financeiro · Administrativo</p>
-        <h1 className="mt-1 text-3xl font-semibold">Contas a receber</h1>
-        <p className="mt-2 text-muted">Lance títulos a receber (únicos, parcelados ou recorrentes), anexe comprovante e dê baixa no recebimento. Status a receber / a vencer / atrasado / recebido.</p>
-      </header>
+      <PageHeader
+        eyebrow="Financeiro · Administrativo"
+        title="Contas a receber"
+        description="Lance títulos a receber (únicos, parcelados ou recorrentes), anexe comprovante e dê baixa no recebimento. Status a receber / a vencer / atrasado / recebido."
+      />
       <ReceberClient />
     </div>
   );

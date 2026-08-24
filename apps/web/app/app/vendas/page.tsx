@@ -3,6 +3,7 @@ import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { SalesClient } from "./SalesClient";
 import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -36,16 +37,11 @@ export default async function VendasPage() {
 
   return (
     <div className="max-w-6xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Vendas
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">PDV — registrar venda</h1>
-        <p className="mt-2 text-muted">
-          Escolha cliente, adicione produtos e a forma de pagamento. No
-          crediário, o sistema valida o limite automaticamente.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Vendas"
+        title="PDV — registrar venda"
+        description="Escolha cliente, adicione produtos e a forma de pagamento. No crediário, o sistema valida o limite automaticamente."
+      />
 
       <SalesClient
         products={prodRes.data?.items ?? []}

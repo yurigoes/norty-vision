@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { MalaDiretaClient } from "./MalaDiretaClient";
 import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +21,11 @@ export default async function MalaDiretaPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Marketing</p>
-        <h1 className="mt-1 text-3xl font-semibold">Mala direta</h1>
-        <p className="mt-2 text-muted">
-          Dispare promoções e novidades por e-mail (HTML com sua marca) e
-          WhatsApp (texto ou imagem). Só recebe quem não optou por sair.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Marketing"
+        title="Mala direta"
+        description="Dispare promoções e novidades por e-mail (HTML com sua marca) e WhatsApp (texto ou imagem). Só recebe quem não optou por sair."
+      />
 
       <MalaDiretaClient />
     </div>

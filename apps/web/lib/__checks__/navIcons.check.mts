@@ -16,12 +16,14 @@ import { dirname, join } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const web = join(here, "..", "..");
 
+// o mapa do menu vive em lib/nav.ts; o layout só o renderiza
+const nav = readFileSync(join(web, "lib", "nav.ts"), "utf8");
 const layout = readFileSync(join(web, "app", "app", "layout.tsx"), "utf8");
 const icons = readFileSync(join(web, "lib", "navIcons.ts"), "utf8");
 
 // rotas do menu: `href: "/app/..."` (arrays de nav) e `href="/app/..."` (JSX)
 const menuHrefs = new Set(
-  [...layout.matchAll(/href[:=]\s*"(\/app[^"${]*)"/g)].map((m) => m[1]),
+  [...(nav + layout).matchAll(/href[:=]\s*"(\/app[^"${]*)"/g)].map((m) => m[1]),
 );
 // chaves do mapa de ícones
 const mapped = new Set([...icons.matchAll(/^\s*"(\/app[^"]*)":/gm)].map((m) => m[1]));

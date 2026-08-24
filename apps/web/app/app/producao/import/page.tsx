@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession, can } from "../../../../lib/session";
 import { ImportClient } from "./ImportClient";
 import { loginPath } from "../../../../lib/tenantServer";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -19,16 +20,11 @@ export default async function ProducaoImportPage() {
   }
   return (
     <div className="max-w-4xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Produção</p>
-        <h1 className="mt-1 text-3xl font-semibold">Importar planilha</h1>
-        <p className="mt-2 text-muted">
-          Suba o .xlsx legado (VR Sports, por exemplo). O sistema detecta o
-          cabeçalho, monta os pedidos com clientes + costureiras e pula linhas
-          já importadas. Recomendado: <strong>visualizar antes</strong> pra ver
-          como vai ficar.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Produção"
+        title="Importar planilha"
+        description={<>Suba o .xlsx legado (VR Sports, por exemplo). O sistema detecta o cabeçalho, monta os pedidos com clientes + costureiras e pula linhas já importadas. Recomendado: <strong>visualizar antes</strong> pra ver como vai ficar.</>}
+      />
       <ImportClient />
     </div>
   );

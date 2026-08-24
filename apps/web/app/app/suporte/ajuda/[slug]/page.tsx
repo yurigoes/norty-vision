@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { apiFetch } from "../../../../../lib/api";
+import { PageHeader } from "../../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -32,15 +33,12 @@ export default async function AjudaArtigo({ params }: PageProps) {
       <Link href="/app/suporte/ajuda" className="text-sm text-brand hover:underline">
         ← Ajuda
       </Link>
-      <header className="mt-4 mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted">
-          {article.category}
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">{article.title}</h1>
-        {article.summary && (
-          <p className="mt-2 text-muted">{article.summary}</p>
-        )}
-      </header>
+      <PageHeader
+        className="mt-4"
+        eyebrow={article.category}
+        title={article.title}
+        description={article.summary || undefined}
+      />
       <MarkdownBody body={article.body_markdown ?? ""} />
     </article>
   );

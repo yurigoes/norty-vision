@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "../../../../components/PageHeader";
 
 const NICHE_LABEL: Record<string, string> = { otica: "Ótica", grafica: "Gráfica/Uniformes", generico: "Genérico" };
 
@@ -48,11 +49,11 @@ export default function MasterIaPanel() {
 
   return (
     <main className="max-w-4xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Master · IA</p>
-        <h1 className="mt-1 text-3xl font-semibold">Aprendizado da IA</h1>
-        <p className="mt-2 text-muted">Como a IA do call center está performando entre as empresas. Gargalos, assertividade e ranking.</p>
-      </header>
+      <PageHeader
+        eyebrow="Master · IA"
+        title="Aprendizado da IA"
+        description="Como a IA do call center está performando entre as empresas. Gargalos, assertividade e ranking."
+      />
 
       {/* ===== Inteligência do ecossistema ===== */}
       <section className="mb-8 rounded-2xl border border-brand/30 bg-brand/5 p-5 shadow-sm">

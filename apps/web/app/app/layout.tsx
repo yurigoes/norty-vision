@@ -13,6 +13,15 @@ import { SidebarSection } from "../../components/SidebarSection";
 import { SidebarCountsProvider } from "../../components/SidebarCounts";
 import { LockedModules } from "../../components/LockedModules";
 import { moduleLabel, moduleAllowedForNiche } from "../../lib/modules";
+import {
+  NAV_OPERACAO,
+  NAV_ADMIN,
+  NAV_MASTER_TOP,
+  NAV_MASTER_OWNER,
+  NAV_MASTER_BOTTOM,
+  NAV_CONTA,
+  type NavItem,
+} from "../../lib/nav";
 import { InternalAlerts } from "../../components/InternalAlerts";
 import { RouteFade } from "../../components/RouteFade";
 import { DialogProvider } from "../../components/SystemDialog";
@@ -38,109 +47,6 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, statusBarStyle: "black-translucent", title: "Norty Vision" },
   icons: { apple: "/yugo-app-icon.svg" },
 };
-
-// `perm` = permissão fina (catálogo) exigida pra ver o item. Quando presente,
-// o item só aparece se o usuário tem a permissão (org admin e master sempre têm,
-// via can()). Sem `perm`: item de operação aparece pra todos; item admin só pro
-// admin. Isso conserta "libero permissão e não aparece" e "BI aparece a todos".
-type NavItem = { key?: string; href: string; label: string; perm?: string; subMod?: string };
-// Operação só aparece com contexto de empresa (não pro master puro).
-const NAV_OPERACAO: NavItem[] = [
-  { key: "bi", href: "/app/painel/otica", label: "Painel (BI)", perm: "reports.bi_panel" },
-  { key: "insights", href: "/app/insights", label: "Insights (IA)" },
-  { key: "agenda", href: "/app/agenda", label: "Agenda" },
-  { key: "leads", href: "/app/leads", label: "Leads" },
-  // o Disparador existia como rota e como módulo de plano, mas não tinha item
-  // no menu — só dava pra chegar por um atalho do painel ou digitando a URL.
-  { key: "disparador", href: "/app/disparador", label: "Disparador" },
-  { key: "vendas", href: "/app/vendas", label: "Vendas (PDV)" },
-  { key: "caixa", href: "/app/caixa", label: "Caixa" },
-  { key: "producao", href: "/app/producao", label: "Produção / Pedidos" },
-  { key: "producao", href: "/app/producao/costureiras", label: "Costureiras (atribuir / pagar)", subMod: "producao.costureiras" },
-  { key: "producao", href: "/app/producao/import", label: "Importar planilha (.xlsx)", subMod: "producao.import" },
-  { key: "atendimento_admin", href: "/app/atendimento/macros", label: "Macros do atendimento", subMod: "atendimento.macros" },
-  { key: "atendimento_admin", href: "/app/atendimento/webhooks", label: "Webhooks (n8n/Zapier)", subMod: "atendimento.webhooks" },
-  { key: "crm", href: "/app/crm", label: "Central de Atendimento" },
-  { key: "crm", href: "/app/prospector", label: "Prospecção (leads)", subMod: "crm.prospector" },
-  { key: "voip", href: "/app/voip", label: "Telefone (ramal)" },
-  { href: "/app/suporte-sistema", label: "Suporte ao sistema" },
-];
-// Menu do MASTER. Vira dado (e não JSX solto) porque a mesma lista alimenta a
-// sidebar e a busca Ctrl+K — em duas cópias elas iam divergir na primeira
-// tela nova.
-const NAV_MASTER_TOP: NavItem[] = [
-  { href: "/app/platform", label: "Visão geral" },
-  { href: "/app/platform/organizations", label: "Organizações" },
-  { href: "/app/platform/contatos", label: "Leads do site" },
-  { href: "/app/platform/suporte", label: "Suporte (chamados)" },
-];
-// só o DONO do SaaS (platformRole !== "support") enxerga estes
-const NAV_MASTER_OWNER: NavItem[] = [
-  { href: "/app/platform/settings", label: "Identidade & Branding" },
-  { href: "/app/platform/plans", label: "Planos" },
-  { href: "/app/platform/niches", label: "Nichos de mercado" },
-  { href: "/app/platform/modulos", label: "Preços de módulos" },
-  { href: "/app/platform/financeiro", label: "Financeiro (assinaturas)" },
-  { href: "/app/platform/ia", label: "Aprendizado de IA" },
-  { href: "/app/platform/contratos", label: "Contratos (empresas)" },
-  { href: "/app/platform/integrations", label: "Integrações" },
-  { href: "/app/platform/fiscal-ref", label: "Tabelas fiscais (NCM/CEST)" },
-  { href: "/app/platform/credentials", label: "🔒 Credenciais" },
-  { href: "/app/platform/team", label: "Equipe master" },
-  { href: "/app/platform/audit", label: "Auditoria" },
-];
-const NAV_MASTER_BOTTOM: NavItem[] = [
-  { href: "/app/platform/grants", label: "Acessos às Specs" },
-];
-
-// Categorias visíveis pro admin da empresa.
-const NAV_ADMIN: Array<{ title: string; items: NavItem[] }> = [
-  { title: "Comercial", items: [
-    { key: "orcamentos", href: "/app/orcamentos", label: "Orçamentos" },
-    { key: "clientes", href: "/app/clientes", label: "Clientes" },
-    { key: "atendimento", href: "/app/atendimento", label: "Atendimento" },
-    { key: "chamados", href: "/app/chamados", label: "Chamados" },
-    { key: "mala_direta", href: "/app/mala-direta", label: "Mala direta" },
-    { key: "produtos", href: "/app/produtos", label: "Produtos" },
-    { key: "catalogo", href: "/app/catalogo", label: "Catálogo online" },
-    { key: "comissoes", href: "/app/comissoes", label: "Comissões" },
-    { key: "pesquisas", href: "/app/pesquisas", label: "Pesquisas (NPS)" },
-  ] },
-  { title: "Ótica", items: [
-    { key: "fornecedores", href: "/app/fornecedores", label: "Fornecedores" },
-    { key: "pedidos_lente", href: "/app/pedidos-lente", label: "Pedidos de lente" },
-    { key: "repasses", href: "/app/repasses", label: "Repasses" },
-  ] },
-  { title: "Financeiro", items: [
-    { key: "crediario", href: "/app/crediario", label: "Crediário" },
-    { key: "pagamentos", href: "/app/pagamentos", label: "Pagamentos" },
-    { key: "pagamentos", href: "/app/transacoes", label: "Transações" },
-    { key: "cobranca", href: "/app/cobranca", label: "Cobrança" },
-    { key: "relatorios", href: "/app/relatorios", label: "Relatórios" },
-    { key: "vendas_historico", href: "/app/vendas-historico", label: "Vendas (histórico)" },
-    { key: "financeiro", href: "/app/financeiro/contas-a-pagar", label: "Contas a pagar", subMod: "financeiro.contas_pagar" },
-    { key: "financeiro", href: "/app/financeiro/contas-a-receber", label: "Contas a receber", subMod: "financeiro.contas_receber" },
-    { key: "fiscal", href: "/app/fiscal", label: "Nota fiscal (config)", perm: "fiscal.config" },
-  ] },
-  { title: "Documentos", items: [
-    { key: "contratos", href: "/app/contratos", label: "Contratos" },
-    { key: "modelos", href: "/app/modelos", label: "Mensagens" },
-    { href: "/app/empresa-contrato", label: "Contrato da plataforma" },
-  ] },
-  { title: "Pessoas", items: [
-    { key: "rh", href: "/app/rh", label: "RH & Funcionários" },
-    { href: "/app/ponto", label: "Ponto eletrônico" },
-  ] },
-  { title: "Configuração", items: [
-    { href: "/app/lojas", label: "Lojas", perm: "stores.manage" },
-    { href: "/app/usuarios", label: "Usuários", perm: "users.manage" },
-    { href: "/app/permissoes", label: "Permissões", perm: "roles.manage" },
-    { key: "voip", href: "/app/voip-admin", label: "Telefonia (call center)", perm: "voip.admin" },
-    { href: "/app/portal-cliente", label: "Portal do cliente" },
-    { href: "/app/integracoes", label: "Integrações", perm: "integrations.manage" },
-    { href: "/app/billing", label: "Assinatura" },
-  ] },
-];
 
 export default async function AppLayout({
   children,
@@ -369,13 +275,12 @@ export default async function AppLayout({
       keywords: "plano assinatura liberar contratar",
     })),
     ...shortcuts.map((sc) => ({ label: sc.label, href: sc.url, group: "Atalhos", external: true })),
-    { label: "Suporte", href: "/app/suporte", group: "Ajuda", keywords: "chamado duvida problema" },
-    ...(session.user
-      ? [
-          { label: "Minha conta (trocar senha)", href: "/app/conta", group: "Conta", keywords: "senha perfil" },
-          { label: "Minha segurança (2FA)", href: "/app/perfil/seguranca", group: "Conta", keywords: "2fa mfa autenticacao codigo" },
-        ]
-      : []),
+    ...NAV_CONTA.filter((it) => !it.soUsuario || session.user).map((it) => ({
+      label: it.label,
+      href: it.href,
+      group: "Conta",
+      keywords: "senha perfil 2fa mfa chamado suporte duvida",
+    })),
     ...(isMaster
       ? [
           ...NAV_MASTER_TOP.map((it) => ({ label: it.label, href: it.href, group: "Master" })),
@@ -485,18 +390,12 @@ export default async function AppLayout({
           )}
 
           <div className="my-4 border-t border-line" />
-          <SidebarLink href="/app/suporte">Suporte</SidebarLink>
-          {/* 2FA é um recurso de usuário da empresa; o master tem seu próprio
-              fluxo (não usar a página de perfil do usuário, que exige session.user
-              e jogava o master pro login). */}
-          {session.user && (
-            <>
-              <div className="my-4 border-t border-line" />
-              <SidebarLink href="/app/perfil/seguranca">
-                Minha segurança (2FA)
-              </SidebarLink>
-            </>
-          )}
+          {/* Conta e 2FA são recursos de usuário da empresa; o master tem seu
+              próprio fluxo (a página de perfil exige session.user e jogava o
+              master pro login). */}
+          {NAV_CONTA.filter((it) => !it.soUsuario || session.user).map((it) => (
+            <SidebarLink key={it.href} href={it.href}>{it.label}</SidebarLink>
+          ))}
           {isMaster && (
             <>
               <div className="my-4 border-t border-line" />

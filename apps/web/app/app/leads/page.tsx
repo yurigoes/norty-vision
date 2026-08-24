@@ -1,12 +1,14 @@
+import { PageHeader } from "../../../components/PageHeader";
+
 export const dynamic = "force-dynamic";
 
 export default function LeadsPage() {
   return (
     <div className="max-w-3xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Leads</p>
-        <h1 className="mt-1 text-3xl font-semibold">Pipeline de leads</h1>
-      </header>
+      <PageHeader
+        eyebrow="Leads"
+        title="Pipeline de leads"
+      />
       <div className="card p-10 text-center">
         <p className="text-lg font-semibold">Em breve</p>
         <p className="mt-2 text-sm text-muted">

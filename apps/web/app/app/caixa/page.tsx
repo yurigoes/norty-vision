@@ -3,6 +3,7 @@ import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { CaixaClient } from "./CaixaClient";
 import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +17,11 @@ export default async function CaixaPage() {
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">PDV</p>
-        <h1 className="mt-1 text-3xl font-semibold">Caixa diário</h1>
-        <p className="mt-2 text-muted">Abra o caixa no início do dia e feche conferindo os totais por meio de pagamento.</p>
-      </header>
+      <PageHeader
+        eyebrow="PDV"
+        title="Caixa diário"
+        description="Abra o caixa no início do dia e feche conferindo os totais por meio de pagamento."
+      />
       <CaixaClient stores={storesRes.data?.items ?? []} />
     </div>
   );

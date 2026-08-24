@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { MfaSetupCard } from "./MfaSetupCard";
 import { loginPath } from "../../../../lib/tenantServer";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -11,17 +12,11 @@ export default async function SegurancaPage() {
 
   return (
     <div className="max-w-2xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Perfil · Segurança
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Proteja sua conta</h1>
-        <p className="mt-2 text-muted">
-          Ative o 2FA (autenticação em dois fatores) com um app como Google
-          Authenticator, Authy ou 1Password. Depois de ativo, o login passa a
-          exigir o código de 6 dígitos.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Perfil · Segurança"
+        title="Proteja sua conta"
+        description="Ative o 2FA (autenticação em dois fatores) com um app como Google Authenticator, Authy ou 1Password. Depois de ativo, o login passa a exigir o código de 6 dígitos."
+      />
 
       <MfaSetupCard />
     </div>

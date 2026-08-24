@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession, can } from "../../../../lib/session";
 import { CostureirasClient } from "./CostureirasClient";
 import { loginPath } from "../../../../lib/tenantServer";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -19,13 +20,11 @@ export default async function CostureirasPage() {
   }
   return (
     <div className="max-w-6xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Produção</p>
-        <h1 className="mt-1 text-3xl font-semibold">Costureiras</h1>
-        <p className="mt-2 text-muted">
-          Atribua pedidos para uma costureira, acompanhe o que ela produziu no período e pague — com upload de comprovante.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Produção"
+        title="Costureiras"
+        description="Atribua pedidos para uma costureira, acompanhe o que ela produziu no período e pague — com upload de comprovante."
+      />
       <CostureirasClient />
     </div>
   );

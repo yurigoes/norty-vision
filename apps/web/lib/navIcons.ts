@@ -88,6 +88,7 @@ const ICONS: Record<string, LucideIcon> = {
   "/app/portal-cliente": Globe,
   "/app/integracoes": Puzzle,
   "/app/billing": CreditCard,
+  "/app/modulos": Lock, // tela do módulo bloqueado (chega-se pelo cadeado)
 
   // -------------------------------------------------------------------- conta
   "/app/suporte": LifeBuoy,

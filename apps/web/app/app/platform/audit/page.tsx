@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -31,11 +32,11 @@ export default async function AuditPage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Master</p>
-        <h1 className="mt-1 text-3xl font-semibold">Auditoria</h1>
-        <p className="mt-2 text-muted">Ações sensíveis (impersonação e operações de plataforma).</p>
-      </header>
+      <PageHeader
+        eyebrow="Master"
+        title="Auditoria"
+        description="Ações sensíveis (impersonação e operações de plataforma)."
+      />
 
       <div className="card overflow-x-auto p-0">
         <table className="w-full text-sm">

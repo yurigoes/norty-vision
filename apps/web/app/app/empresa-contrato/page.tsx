@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { EmpresaContratoClient } from "./EmpresaContratoClient";
 import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -20,14 +21,11 @@ export default async function EmpresaContratoPage() {
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Empresa</p>
-        <h1 className="mt-1 text-3xl font-semibold">Contrato com a plataforma</h1>
-        <p className="mt-2 text-muted">
-          Contrato de uso e aditivos enviados pela administração. O aceite é
-          registrado eletronicamente (data, IP e hash do documento).
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Empresa"
+        title="Contrato com a plataforma"
+        description="Contrato de uso e aditivos enviados pela administração. O aceite é registrado eletronicamente (data, IP e hash do documento)."
+      />
       <EmpresaContratoClient />
     </div>
   );

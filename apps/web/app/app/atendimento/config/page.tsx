@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useDialog } from "../../../../components/SystemDialog";
+import { PageHeader } from "../../../../components/PageHeader";
 
 type Agent = { membershipId: string; name: string };
 type Inbox = { id: string; name: string; channel: string; channelRef: string | null };
@@ -42,12 +42,12 @@ export default function CallCenterConfig() {
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8">
-        <Link href="/app/atendimento" className="text-sm text-brand hover:underline">← Atendimento</Link>
-        <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-brand">Atendimento</p>
-        <h1 className="mt-1 text-3xl font-semibold">Configurações do Call Center</h1>
-        <p className="mt-2 text-muted">Nome de exibição, SLA, equipes e agentes por caixa de entrada.</p>
-      </header>
+      <PageHeader
+        eyebrow="Atendimento"
+        title="Configurações do Call Center"
+        description="Nome de exibição, SLA, equipes e agentes por caixa de entrada."
+        back={{ href: "/app/atendimento", label: "Atendimento" }}
+      />
 
       {/* nome de exibição (cada operador) */}
       <section className="card mb-6">

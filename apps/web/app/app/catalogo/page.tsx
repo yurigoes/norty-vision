@@ -5,6 +5,7 @@ import { CatalogClient } from "./CatalogClient";
 import { VitrineSettings, type VitrineData } from "./VitrineSettings";
 import { loginPath } from "../../../lib/tenantServer";
 import { getOrganization } from "../../../lib/bootstrap";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -43,14 +44,11 @@ export default async function CatalogoPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Vitrine</p>
-        <h1 className="mt-1 text-3xl font-semibold">Catálogo online</h1>
-        <p className="mt-2 text-muted">
-          Publique seus produtos numa vitrine pública. Os clientes montam o pedido
-          e ele chega como lead no seu WhatsApp.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Vitrine"
+        title="Catálogo online"
+        description="Publique seus produtos numa vitrine pública. Os clientes montam o pedido e ele chega como lead no seu WhatsApp."
+      />
 
       {orgSlug && (
         <section className="mb-8 rounded-xl border border-line bg-bg/60 p-5">

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { MODULE_GROUPS } from "../../../../lib/modules";
+import { PageHeader } from "../../../../components/PageHeader";
 
 /**
  * Master define o preço à la carte de cada módulo (mensal). Deixa a venda
@@ -44,11 +45,11 @@ export default function MasterModulePricing() {
 
   return (
     <main className="max-w-3xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Master</p>
-        <h1 className="mt-1 text-3xl font-semibold">Preços à la carte dos módulos</h1>
-        <p className="mt-2 text-muted">Valor mensal de cada módulo vendido avulso. Aparece na página do módulo bloqueado da empresa.</p>
-      </header>
+      <PageHeader
+        eyebrow="Master"
+        title="Preços à la carte dos módulos"
+        description="Valor mensal de cada módulo vendido avulso. Aparece na página do módulo bloqueado da empresa."
+      />
       {msg && <p className="mb-4 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-200">{msg}</p>}
 
       <div className="space-y-6">

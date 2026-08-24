@@ -4,6 +4,7 @@ import { apiFetch } from "../../../lib/api";
 import { ProductsClient } from "./ProductsClient";
 import { loginPath } from "../../../lib/tenantServer";
 import { getOrganization } from "../../../lib/bootstrap";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -50,16 +51,11 @@ export default async function ProdutosPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configuração · Produtos
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Catálogo</h1>
-        <p className="mt-2 text-muted">
-          Cada produto tem 4 preços (à vista, cartão à vista, cartão parcelado,
-          crediário). O cliente só vê o preço final da forma escolhida.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Produtos"
+        title="Catálogo"
+        description="Cada produto tem 4 preços (à vista, cartão à vista, cartão parcelado, crediário). O cliente só vê o preço final da forma escolhida."
+      />
 
       <ProductsClient initialProducts={data?.items ?? []} labs={labs} stores={stores} niche={niche} />
     </div>

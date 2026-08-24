@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "../../../components/PageHeader";
 
 const FEATURES: Array<{ key: string; label: string; desc: string }> = [
   { key: "crediario", label: "Crediário", desc: "Pedir limite, ver parcelas e pagar." },
@@ -47,11 +48,11 @@ export default function PortalClienteConfig() {
 
   return (
     <main className="max-w-2xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Configuração · Portal</p>
-        <h1 className="mt-1 text-3xl font-semibold">Portal do cliente</h1>
-        <p className="mt-2 text-muted">Escolha quais recursos seus clientes veem no portal. "Meus dados", "Ajuda" e avaliação ficam sempre visíveis.</p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Portal"
+        title="Portal do cliente"
+        description={<>Escolha quais recursos seus clientes veem no portal. "Meus dados", "Ajuda" e avaliação ficam sempre visíveis.</>}
+      />
       {!loaded ? <p className="text-sm text-muted">Carregando…</p> : (
         <div className="space-y-2">
           {FEATURES.map((f) => (

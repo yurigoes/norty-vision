@@ -2,6 +2,7 @@ import Link from "next/link";
 import { apiFetch } from "../../../../lib/api";
 import { AccountActions } from "./AccountActions";
 import { InstallmentPay } from "./InstallmentPay";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -76,13 +77,12 @@ export default async function CreditAccountDetail({
     <div className="max-w-4xl space-y-8">
       <div>
         <Link href="/app/crediario" className="text-sm text-brand hover:underline">← Crediário</Link>
-        <header className="mt-4 flex items-start justify-between">
-          <div>
-            <h1 className="text-3xl font-semibold">{acc.holderName}</h1>
-            <p className="font-mono text-sm text-muted">{acc.document}</p>
-          </div>
-          <AccountActions account={{ id: acc.id, status: acc.status, limitCents: acc.limitCents }} />
-        </header>
+        <PageHeader
+          className="mt-4"
+          title={acc.holderName}
+          description={<span className="font-mono text-sm">{acc.document}</span>}
+          actions={<AccountActions account={{ id: acc.id, status: acc.status, limitCents: acc.limitCents }} />}
+        />
       </div>
 
       <section className="grid gap-4 sm:grid-cols-4">

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { GrantsClient } from "./GrantsClient";
 import { loginPath } from "../../../../lib/tenantServer";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,11 @@ export default async function GrantsPage() {
   }
   return (
     <div className="max-w-3xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Master · Acessos</p>
-        <h1 className="mt-1 text-3xl font-semibold">Acessos às Specs</h1>
-        <p className="mt-2 text-muted">Defina quais categorias das Specs Técnicas cada membro do suporte pode ver. O <b>owner</b> sempre vê todas.</p>
-      </header>
+      <PageHeader
+        eyebrow="Master · Acessos"
+        title="Acessos às Specs"
+        description={<>Defina quais categorias das Specs Técnicas cada membro do suporte pode ver. O <b>owner</b> sempre vê todas.</>}
+      />
       <GrantsClient />
     </div>
   );

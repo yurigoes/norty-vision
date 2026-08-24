@@ -3,6 +3,7 @@ import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { UsersClient } from "./UsersClient";
 import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -62,16 +63,11 @@ export default async function UsuariosPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configuração · Usuários
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Equipe</h1>
-        <p className="mt-2 text-muted">
-          Pessoas com acesso ao sistema. Cada usuário pode ter um papel
-          (owner, admin, gerente, recepção, etc.) e estar vinculado a uma loja.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Usuários"
+        title="Equipe"
+        description="Pessoas com acesso ao sistema. Cada usuário pode ter um papel (owner, admin, gerente, recepção, etc.) e estar vinculado a uma loja."
+      />
 
       <UsersClient
         initialUsers={usersRes.data?.items ?? []}

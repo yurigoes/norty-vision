@@ -6,6 +6,7 @@ import { OrgBrandingCard } from "./OrgBrandingCard";
 import { KioskPanelsCard } from "./KioskPanelsCard";
 import { loginPath } from "../../../lib/tenantServer";
 import { getOrganization } from "../../../lib/bootstrap";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -46,16 +47,11 @@ export default async function LojasPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configuração · Lojas
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Suas lojas</h1>
-        <p className="mt-2 text-muted">
-          Cada loja tem agenda, leads e disparador próprios. Adicione filiais,
-          franquias ou pontos de atendimento.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Lojas"
+        title="Suas lojas"
+        description="Cada loja tem agenda, leads e disparador próprios. Adicione filiais, franquias ou pontos de atendimento."
+      />
 
       <OrgBrandingCard initial={orgBrand} />
 

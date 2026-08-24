@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { ProspectorClient } from "./ProspectorClient";
 import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,11 @@ export default async function ProspectorPage() {
   }
   return (
     <div className="max-w-5xl">
-      <header className="mb-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Central de Atendimento · Prospecção</p>
-        <h1 className="mt-1 text-3xl font-semibold">Motor de busca de leads (B2B)</h1>
-        <p className="mt-2 text-muted">Busca empresas por nicho + cidade em fontes públicas grátis (OpenStreetMap) e joga na fila de <b>Leads novos</b>. Respeita opt-out (LGPD) — só dado público de empresa.</p>
-      </header>
+      <PageHeader
+        eyebrow="Central de Atendimento · Prospecção"
+        title="Motor de busca de leads (B2B)"
+        description={<>Busca empresas por nicho + cidade em fontes públicas grátis (OpenStreetMap) e joga na fila de <b>Leads novos</b>. Respeita opt-out (LGPD) — só dado público de empresa.</>}
+      />
       <ProspectorClient isMaster={session.master !== null} />
     </div>
   );

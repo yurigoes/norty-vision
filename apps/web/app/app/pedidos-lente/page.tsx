@@ -3,6 +3,7 @@ import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { LensOrdersClient } from "./LensOrdersClient";
 import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -31,14 +32,11 @@ export default async function PedidosLentePage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Ótica</p>
-        <h1 className="mt-1 text-3xl font-semibold">Pedidos de lente</h1>
-        <p className="mt-2 text-muted">
-          Medidas, anexo do exame e acompanhamento do status (medido →
-          solicitado → chegou → avisado → entregue) com lotes pro laboratório.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Ótica"
+        title="Pedidos de lente"
+        description="Medidas, anexo do exame e acompanhamento do status (medido → solicitado → chegou → avisado → entregue) com lotes pro laboratório."
+      />
 
       <LensOrdersClient
         initialOrders={ordersRes.data?.items ?? []}

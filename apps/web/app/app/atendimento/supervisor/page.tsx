@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { PageHeader } from "../../../../components/PageHeader";
 
 type Presence = { membershipId: string; name: string; status: string; maxConcurrent: number; activeCount: number; lastSeenAt: string | null };
 type Row = { id: string; name: string; count: number };
@@ -40,12 +41,12 @@ export default function SupervisorPanel() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <Link href="/app/atendimento" className="text-sm text-brand hover:underline">← Atendimento</Link>
-        <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-brand">Atendimento</p>
-        <h1 className="mt-1 text-3xl font-semibold">Supervisão do call center</h1>
-        <p className="mt-2 text-muted">Quem está online, pausado ou offline — e quem está atendendo mais hoje.</p>
-      </header>
+      <PageHeader
+        eyebrow="Atendimento"
+        title="Supervisão do call center"
+        description="Quem está online, pausado ou offline — e quem está atendendo mais hoje."
+        back={{ href: "/app/atendimento", label: "Atendimento" }}
+      />
 
       <section className="card">
         <h2 className="mb-3 text-sm font-semibold">Operadores ({presence.filter((p) => p.status === "online").length} disponíveis)</h2>

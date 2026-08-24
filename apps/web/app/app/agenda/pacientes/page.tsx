@@ -1,5 +1,6 @@
 import { apiFetch } from "../../../../lib/api";
 import { CustomersClient } from "./CustomersClient";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -39,15 +40,11 @@ export default async function PacientesPage({
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Agenda · Pacientes
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Pacientes / clientes</h1>
-        <p className="mt-2 text-muted">
-          Cadastro central. WhatsApp obrigatório pra receber lembretes.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Agenda · Pacientes"
+        title="Pacientes / clientes"
+        description="Cadastro central. WhatsApp obrigatório pra receber lembretes."
+      />
 
       <CustomersClient
         initialCustomers={custRes.data?.items ?? []}

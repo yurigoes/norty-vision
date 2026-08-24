@@ -4,6 +4,7 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { moduleLabel, moduleDescription } from "../../../../lib/modules";
 import { useDialog } from "../../../../components/SystemDialog";
+import { PageHeader } from "../../../../components/PageHeader";
 
 function brl(c: number): string {
   return (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -51,8 +52,7 @@ export default function ModuloPage({ params }: { params: Promise<{ key: string }
       <Link href="/app/billing" className="text-sm text-muted hover:text-fg">← Assinatura</Link>
       <div className="card mt-4 p-6">
         <span className="rounded-full bg-line px-2 py-0.5 text-[10px] font-semibold uppercase text-muted">🔒 Não liberado no seu plano</span>
-        <h1 className="mt-3 text-2xl font-semibold">{label}</h1>
-        <p className="mt-2 text-muted">{desc}</p>
+        <PageHeader className="mt-3" eyebrow={null} title={label} description={desc} />
 
         <div className="mt-6 rounded-xl border border-line bg-surface-2 p-4">
           {hasPrice ? (

@@ -4,6 +4,7 @@ import { apiFetch } from "../../../lib/api";
 import { SuppliersClient } from "./SuppliersClient";
 import { loginPath } from "../../../lib/tenantServer";
 import { getOrganization } from "../../../lib/bootstrap";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -35,13 +36,11 @@ export default async function FornecedoresPage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configuração · Fornecedores
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">{title}</h1>
-        <p className="mt-2 text-muted">{subtitle}</p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Fornecedores"
+        title={<>{title}</>}
+        description={<>{subtitle}</>}
+      />
 
       <SuppliersClient initial={suppliersRes.data?.items ?? []} niche={niche} />
     </div>

@@ -1,5 +1,6 @@
 import { apiFetch } from "../../../../lib/api";
 import { ProfessionalsClient } from "./ProfessionalsClient";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -43,18 +44,11 @@ export default async function ProfissionaisPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Agenda · Profissionais
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">
-          Profissionais e jornadas
-        </h1>
-        <p className="mt-2 text-muted">
-          Cadastre quem atende, configure a jornada semanal e gere slots para
-          o calendário.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Agenda · Profissionais"
+        title="Profissionais e jornadas"
+        description="Cadastre quem atende, configure a jornada semanal e gere slots para o calendário."
+      />
 
       <ProfessionalsClient
         initialProfessionals={profRes.data?.items ?? []}

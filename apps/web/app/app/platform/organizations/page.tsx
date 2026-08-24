@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
 import { CreateOrgForm } from "./CreateOrgForm";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -27,18 +28,11 @@ export default async function OrganizationsPage() {
 
   return (
     <div className="max-w-5xl space-y-10">
-      <header>
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Master · Organizações
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">
-          Empresas na plataforma
-        </h1>
-        <p className="mt-2 text-muted">
-          Cada empresa tem suas próprias lojas, usuários, leads e dados —
-          isolados via Row-Level Security no Postgres.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Master · Organizações"
+        title="Empresas na plataforma"
+        description="Cada empresa tem suas próprias lojas, usuários, leads e dados — isolados via Row-Level Security no Postgres."
+      />
 
       <section>
         <h2 className="mb-4 text-lg font-semibold">

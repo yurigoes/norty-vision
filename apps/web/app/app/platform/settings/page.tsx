@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getSession } from "../../../../lib/session";
 import { SettingsForm } from "./SettingsForm";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -27,16 +28,11 @@ export default async function PlatformSettingsPage() {
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configurações da plataforma
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Identidade do SaaS</h1>
-        <p className="mt-2 text-muted">
-          Edite o que aparece na landing pública e nos materiais legais.
-          Salvar regrava a tabela <code className="font-mono text-xs">platform_settings</code> (id=1).
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Configurações da plataforma"
+        title="Identidade do SaaS"
+        description={<>Edite o que aparece na landing pública e nos materiais legais. Salvar regrava a tabela <code className="font-mono text-xs">platform_settings</code> (id=1).</>}
+      />
 
       <SettingsForm initial={settings} />
     </div>

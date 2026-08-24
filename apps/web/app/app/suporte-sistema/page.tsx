@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { SuporteSistemaClient } from "./SuporteSistemaClient";
 import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -10,11 +11,11 @@ export default async function SuporteSistemaPage() {
   if (!session.authenticated) redirect(await loginPath());
   return (
     <div className="max-w-5xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Suporte ao Sistema</p>
-        <h1 className="mt-1 text-3xl font-semibold">Chamados</h1>
-        <p className="mt-2 text-muted">Abra um chamado para o suporte do sistema. A IA tenta te ajudar na hora; se precisar, encaminha para o time. Trocas de senha, e-mail e telefone são feitas com segurança por aqui.</p>
-      </header>
+      <PageHeader
+        eyebrow="Suporte ao Sistema"
+        title="Chamados"
+        description="Abra um chamado para o suporte do sistema. A IA tenta te ajudar na hora; se precisar, encaminha para o time. Trocas de senha, e-mail e telefone são feitas com segurança por aqui."
+      />
       <SuporteSistemaClient isAdmin={session.user?.isOrgAdmin ?? false} />
     </div>
   );

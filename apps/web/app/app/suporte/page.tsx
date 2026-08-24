@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SsoCards } from "./SsoCards";
+import { PageHeader } from "../../../components/PageHeader";
 
 export default function SuporteIndex() {
   const cards = [
@@ -15,15 +16,11 @@ export default function SuporteIndex() {
   ];
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Suporte
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Como podemos ajudar?</h1>
-        <p className="mt-2 text-muted">
-          Documentação, status e informações da plataforma. Tudo num só lugar.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Suporte"
+        title="Como podemos ajudar?"
+        description="Documentação, status e informações da plataforma. Tudo num só lugar."
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {cards.map((c) => (

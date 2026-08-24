@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export default function FiscalRefPage() {
   const [counts, setCounts] = useState<{ ncm: number; cest: number; servicos: number } | null>(null);
@@ -35,11 +36,11 @@ export default function FiscalRefPage() {
 
   return (
     <main className="max-w-3xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Master · Fiscal</p>
-        <h1 className="mt-1 text-3xl font-semibold">Tabelas fiscais (NCM / CEST / LC116)</h1>
-        <p className="mt-2 text-muted">Tabelas oficiais globais usadas no auto-preenchimento dos produtos e na NFS-e. Importação feita uma vez (atualize quando sair versão nova).</p>
-      </header>
+      <PageHeader
+        eyebrow="Master · Fiscal"
+        title="Tabelas fiscais (NCM / CEST / LC116)"
+        description="Tabelas oficiais globais usadas no auto-preenchimento dos produtos e na NFS-e. Importação feita uma vez (atualize quando sair versão nova)."
+      />
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <Card title="NCM" value={counts ? counts.ncm.toLocaleString("pt-BR") : "—"} />

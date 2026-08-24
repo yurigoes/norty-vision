@@ -153,3 +153,9 @@ de invisível para sempre (regra `.fav-star` em `globals.css`).
 
 O botão da estrela fica **fora** do `<Link>` de propósito: um `<button>` dentro
 de um `<a>` é HTML inválido e quebra o clique no meio.
+
+## Cabeçalho de página
+
+O topo de cada tela virou um componente só (`PageHeader`), e o mapa do menu
+saiu do layout para `lib/nav.ts`, de onde sidebar, busca, favoritos e cabeçalho
+leem. Ver [`cabecalho-de-pagina.md`](./cabecalho-de-pagina.md).

@@ -4,6 +4,7 @@ import { apiFetch } from "../../../lib/api";
 import { IntegrationsClient } from "./IntegrationsClient";
 import { SupportAccessOrgCard } from "./SupportAccessOrgCard";
 import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -33,16 +34,11 @@ export default async function IntegracoesPage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configuração · Integrações
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Integrações</h1>
-        <p className="mt-2 text-muted">
-          Status do Chatwoot, GLPI e do WhatsApp (Evolution) da sua empresa.
-          Conecte o WhatsApp de cada loja escaneando o QR code.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Integrações"
+        title="Integrações"
+        description="Status do Chatwoot, GLPI e do WhatsApp (Evolution) da sua empresa. Conecte o WhatsApp de cada loja escaneando o QR code."
+      />
 
       <IntegrationsClient initial={status} />
       <SupportAccessOrgCard />

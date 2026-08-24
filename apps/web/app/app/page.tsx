@@ -12,6 +12,7 @@ import {
 import { getSession } from "../../lib/session";
 import { Card } from "../../components/ui";
 import { OverviewMetrics } from "./OverviewMetrics";
+import { PageHeader } from "../../components/PageHeader";
 
 export default async function DashboardPage() {
   const session = await getSession();
@@ -35,17 +36,15 @@ export default async function DashboardPage() {
 
   return (
     <div className="animate-fade-in-up">
-      <header>
-        <h1 className="text-3xl font-extrabold tracking-tight">
-          Bem-vindo
-          {session.master ? ", master" : session.user ? "!" : ""}
-        </h1>
-        <p className="mt-2 max-w-2xl text-muted">
-          {session.master
+      <PageHeader
+        eyebrow={null}
+        title={<>Bem-vindo{session.master ? ", master" : session.user ? "!" : ""}</>}
+        description={
+          session.master
             ? "Você está logado como dono da plataforma. Use o menu lateral para configurar a marca, gerenciar acessos às specs técnicas e ver métricas globais."
-            : "Escolha um módulo no menu para começar — no celular, toque no botão de menu no topo."}
-        </p>
-      </header>
+            : "Escolha um módulo no menu para começar — no celular, toque no botão de menu no topo."
+        }
+      />
 
       {isOrgUser && <OverviewMetrics />}
 

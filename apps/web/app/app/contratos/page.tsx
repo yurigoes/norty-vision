@@ -1,5 +1,6 @@
 import { apiFetch } from "../../../lib/api";
 import { ContractsClient } from "./ContractsClient";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -39,17 +40,11 @@ export default async function ContratosPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Contratos · Enviados
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Contratos para assinar</h1>
-        <p className="mt-2 text-muted">
-          Gere um link público de assinatura escolhendo um modelo. O signatário
-          recebe um link com token único; após assinar, o contrato fica
-          registrado com IP, data e dispositivo.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Contratos · Enviados"
+        title="Contratos para assinar"
+        description="Gere um link público de assinatura escolhendo um modelo. O signatário recebe um link com token único; após assinar, o contrato fica registrado com IP, data e dispositivo."
+      />
 
       <ContractsClient
         templates={templatesRes.data?.items ?? []}

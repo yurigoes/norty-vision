@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDialog } from "../../../../components/SystemDialog";
+import { PageHeader } from "../../../../components/PageHeader";
 
 const TYPE_LABEL: Record<string, string> = {
   answered: "Respondidas", uncertain: "Incertas", fallback: "Falhas", handoff: "Transferidas", tool: "Ferramentas", human_teach: "Ensinos",
@@ -52,11 +53,11 @@ export default function IaAprendizado() {
 
   return (
     <main className="max-w-3xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Atendimento · IA</p>
-        <h1 className="mt-1 text-3xl font-semibold">Aprendizado da IA</h1>
-        <p className="mt-2 text-muted">Como a IA está se saindo no atendimento e onde ela travou. Ensine as dúvidas para ela acertar mais.</p>
-      </header>
+      <PageHeader
+        eyebrow="Atendimento · IA"
+        title="Aprendizado da IA"
+        description="Como a IA está se saindo no atendimento e onde ela travou. Ensine as dúvidas para ela acertar mais."
+      />
 
       {emb && (
         <div className="card mb-6 flex flex-wrap items-center justify-between gap-3 p-4">

@@ -4,6 +4,7 @@ import { apiFetch } from "../../../lib/api";
 import { BillingClient } from "./BillingClient";
 import { Mensalidades } from "./Mensalidades";
 import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -59,15 +60,11 @@ export default async function BillingPage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configuração · Billing
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Assinatura</h1>
-        <p className="mt-2 text-muted">
-          Plano ativo, status do pagamento e troca de plano.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Billing"
+        title="Assinatura"
+        description="Plano ativo, status do pagamento e troca de plano."
+      />
 
       <BillingClient
         subscription={subRes.data?.subscription ?? null}

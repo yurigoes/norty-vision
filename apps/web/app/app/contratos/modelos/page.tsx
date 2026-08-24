@@ -1,6 +1,7 @@
 import { apiFetch } from "../../../../lib/api";
 import { getSession } from "../../../../lib/session";
 import { TemplatesClient } from "./TemplatesClient";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -33,21 +34,11 @@ export default async function TemplatesPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Contratos · Modelos
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Modelos de contrato</h1>
-        <p className="mt-2 text-muted">
-          Cada modelo tem um corpo em Markdown com placeholders{" "}
-          <code className="rounded bg-line px-1.5 py-0.5 text-xs">
-            {"{{nome_do_campo}}"}
-          </code>{" "}
-          e um esquema de campos que o signatário preenche. Sua{" "}
-          <strong>logo e cor principal</strong> são aplicadas automaticamente
-          ao imprimir/baixar o contrato.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Contratos · Modelos"
+        title="Modelos de contrato"
+        description={<>Cada modelo tem um corpo em Markdown com placeholders{" "} <code className="rounded bg-line px-1.5 py-0.5 text-xs"> {"{{nome_do_campo}}"} </code>{" "} e um esquema de campos que o signatário preenche. Sua{" "} <strong>logo e cor principal</strong> são aplicadas automaticamente ao imprimir/baixar o contrato.</>}
+      />
 
       <TemplatesClient initialTemplates={items} isMaster={isMaster} />
     </div>

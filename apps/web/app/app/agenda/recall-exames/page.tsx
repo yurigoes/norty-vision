@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
 import { loginPath } from "../../../../lib/tenantServer";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -25,15 +25,12 @@ export default async function RecallExamesPage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <Link href="/app/agenda" className="text-sm text-brand hover:underline">← Agenda</Link>
-        <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-brand">Agenda · Recall</p>
-        <h1 className="mt-1 text-3xl font-semibold">Recall de exame de vista</h1>
-        <p className="mt-2 text-muted">
-          Quantos dias faltam pra cada paciente ser notificado (1 ano após o exame). O lembrete é
-          enviado automaticamente no WhatsApp/e-mail quando vence. Vale só pra quem fez exame com o médico.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Agenda · Recall"
+        title="Recall de exame de vista"
+        description="Quantos dias faltam pra cada paciente ser notificado (1 ano após o exame). O lembrete é enviado automaticamente no WhatsApp/e-mail quando vence. Vale só pra quem fez exame com o médico."
+        back={{ href: "/app/agenda", label: "Agenda" }}
+      />
 
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <Card label="Vencidos (recall devido)" value={String(vencidos.length)} tone="red" />

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { VendasHistoricoClient } from "./VendasHistoricoClient";
 import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +14,11 @@ export default async function VendasHistoricoPage() {
   }
   return (
     <div className="max-w-5xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Vendas · Histórico</p>
-        <h1 className="mt-1 text-3xl font-semibold">Importar vendas antigas</h1>
-        <p className="mt-2 text-muted">Cole o relatório de vendas do sistema antigo. Importamos item a item, só para controle e relatório — <b>não afeta</b> estoque, caixa, fiscal nem comissões.</p>
-      </header>
+      <PageHeader
+        eyebrow="Vendas · Histórico"
+        title="Importar vendas antigas"
+        description={<>Cole o relatório de vendas do sistema antigo. Importamos item a item, só para controle e relatório — <b>não afeta</b> estoque, caixa, fiscal nem comissões.</>}
+      />
       <VendasHistoricoClient />
     </div>
   );

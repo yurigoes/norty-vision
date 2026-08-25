@@ -83,17 +83,25 @@ export class ShellLoader {
     });
 
     const row = rows?.[0] ?? null;
-    // Falha fechada: sem os GUCs no lugar certo, o RLS não devolve linha
-    // nenhuma — nunca a linha de outra empresa. Se isso acontecer com org no
-    // contexto, refaz pelo caminho transacional (quatro idas) e avisa.
-    if (row && (!ctx.orgId || row.organization)) return row;
+
+    // DUAS redes, porque uma não basta.
+    //
+    // O canário (`guc_aplicado`) diz se os GUCs valiam — mas ele roda no CTE
+    // dele, e já vi um caso em que o canário passou enquanto a leitura de uma
+    // tabela tinha sido varrida antes (junção achatada). Por isso vem também a
+    // checagem por CONSEQUÊNCIA: usuário com empresa no contexto sempre tem
+    // empresa. Se não veio, alguma coisa barrou — refaz pelo caminho
+    // transacional, que não depende de plano nenhum.
+    const canario = row?.guc_aplicado != null;
+    const coerente = !ctx.orgId || row?.organization != null;
+    if (row && canario && coerente) return row;
 
     if (!this.avisou) {
       this.avisou = true;
       this.logger.warn(
-        "a consulta única da casca voltou vazia com empresa no contexto — " +
-          "refazendo dentro de transação. Se isto se repetir, confira o plano " +
-          "da consulta (o LATERAL sobre `ctx` precisa rodar antes das tabelas).",
+        `a consulta única da casca não convence (canário=${canario}, empresa=${coerente}) — ` +
+          "refazendo dentro de transação. Se isto se repetir, confira o plano: cada " +
+          "LATERAL precisa referenciar `ctx` e terminar em OFFSET 0.",
       );
     }
 

@@ -1,4 +1,4 @@
-import { CONTEXT_CTE } from "../prisma/rls-context";
+import { CONTEXT_CTE, PROOF_CTE, PROOF_SELECT } from "../prisma/rls-context";
 
 /**
  * A CASCA DO PAINEL EM UMA INSTRUÇÃO
@@ -130,11 +130,14 @@ const INTEGRATION_JSON = `jsonb_build_object(
 /** $8 = id da empresa impersonada (texto vazio quando não há). */
 export const SHELL_SQL = `WITH ${CONTEXT_CTE},
 
+  ${PROOF_CTE},
+
   org AS MATERIALIZED (
     SELECT o.* FROM ctx, LATERAL (
       SELECT ${ORG_COLS}
         FROM organizations
        WHERE id = nullif(ctx.org_id, '')::uuid AND deleted_at IS NULL
+       OFFSET 0
     ) o
   ),
 
@@ -144,6 +147,7 @@ export const SHELL_SQL = `WITH ${CONTEXT_CTE},
              glpi_entity_id AS "glpiEntityId"
         FROM organizations
        WHERE id = nullif(ctx.org_id, '')::uuid AND deleted_at IS NULL
+       OFFSET 0
     ) f
   ),
 
@@ -152,6 +156,7 @@ export const SHELL_SQL = `WITH ${CONTEXT_CTE},
       SELECT must_reset_password AS "mustResetPassword"
         FROM users
        WHERE id = nullif(ctx.user_id, '')::uuid
+       OFFSET 0
     ) u
   ),
 
@@ -164,6 +169,7 @@ export const SHELL_SQL = `WITH ${CONTEXT_CTE},
         FROM stores s0
         LEFT JOIN organizations o ON o.id = s0.organization_id
        WHERE s0.id = nullif(ctx.store_id, '')::uuid AND s0.deleted_at IS NULL
+       OFFSET 0
     ) s
   ),
 
@@ -174,6 +180,7 @@ export const SHELL_SQL = `WITH ${CONTEXT_CTE},
         FROM subscriptions sb
         LEFT JOIN plans p ON p.id = sb.plan_id
        WHERE sb.organization_id = nullif(ctx.org_id, '')::uuid
+       OFFSET 0
     ) s
   ),
 
@@ -188,6 +195,7 @@ export const SHELL_SQL = `WITH ${CONTEXT_CTE},
         SELECT module_key, blocked, paid, expires_at
           FROM org_module_grants
          WHERE organization_id = nullif(ctx.org_id, '')::uuid
+         OFFSET 0
       ) g
   ),
 
@@ -197,7 +205,7 @@ export const SHELL_SQL = `WITH ${CONTEXT_CTE},
              production_features AS "productionFeatures"
         FROM call_center_settings
        WHERE organization_id = nullif(ctx.org_id, '')::uuid
-       LIMIT 1
+       LIMIT 1 OFFSET 0
     ) c
   ),
 
@@ -206,7 +214,7 @@ export const SHELL_SQL = `WITH ${CONTEXT_CTE},
       SELECT hidden_module_keys AS hidden
         FROM niches
        WHERE key = lower(org.niche)
-       LIMIT 1
+       LIMIT 1 OFFSET 0
     ) n
   ),
 
@@ -229,26 +237,53 @@ export const SHELL_SQL = `WITH ${CONTEXT_CTE},
       FROM tenant t
   ),
 
-  platform AS MATERIALIZED (
-    SELECT
-      (SELECT p.features FROM plans p
-        WHERE p.slug = a.plan_code LIMIT 1) AS plan_features,
-      (SELECT ${INTEGRATION_JSON} FROM platform_integrations i
-        WHERE i.provider = 'chatwoot' AND i.organization_id IS NULL
-          AND a.escalado IS NOT NULL LIMIT 1) AS chatwoot,
-      (SELECT ${INTEGRATION_JSON} FROM platform_integrations i
-        WHERE i.provider = 'glpi' AND i.organization_id IS NULL
-          AND a.escalado IS NOT NULL LIMIT 1) AS glpi,
-      (SELECT o.name FROM organizations o
-        WHERE o.id = nullif($8, '')::uuid
-          AND a.escalado IS NOT NULL LIMIT 1) AS impersonating_org_name
-      FROM adm a
+  plano AS MATERIALIZED (
+    SELECT p.* FROM adm, LATERAL (
+      SELECT features
+        FROM plans
+       WHERE slug = adm.plan_code
+       LIMIT 1 OFFSET 0
+    ) p
+  ),
+
+  cw AS MATERIALIZED (
+    SELECT x.* FROM adm, LATERAL (
+      SELECT ${INTEGRATION_JSON} AS json
+        FROM platform_integrations i
+       WHERE i.provider = 'chatwoot' AND i.organization_id IS NULL
+         AND adm.escalado IS NOT NULL
+       LIMIT 1 OFFSET 0
+    ) x
+  ),
+
+  glpi_i AS MATERIALIZED (
+    SELECT x.* FROM adm, LATERAL (
+      SELECT ${INTEGRATION_JSON} AS json
+        FROM platform_integrations i
+       WHERE i.provider = 'glpi' AND i.organization_id IS NULL
+         AND adm.escalado IS NOT NULL
+       LIMIT 1 OFFSET 0
+    ) x
+  ),
+
+  imperso AS MATERIALIZED (
+    SELECT x.* FROM adm, LATERAL (
+      SELECT o.name
+        FROM organizations o
+       WHERE o.id = nullif($8, '')::uuid
+         AND adm.escalado IS NOT NULL
+       LIMIT 1 OFFSET 0
+    ) x
   )
 
 SELECT t.organization, t.org_flags, t.store, t.subscription, t.grants, t.ccs,
        t.niche_hidden, t.must_reset_password,
-       p.plan_features, p.chatwoot, p.glpi, p.impersonating_org_name
-  FROM tenant t, platform p`;
+       (SELECT features FROM plano)   AS plan_features,
+       (SELECT json FROM cw)          AS chatwoot,
+       (SELECT json FROM glpi_i)      AS glpi,
+       (SELECT name FROM imperso)     AS impersonating_org_name,
+       ${PROOF_SELECT}
+  FROM tenant t`;
 
 export interface PlatformIntegrationRow {
   status: string;
@@ -272,4 +307,6 @@ export interface ShellRow {
   chatwoot: PlatformIntegrationRow | null;
   glpi: PlatformIntegrationRow | null;
   impersonating_org_name: string | null;
+  /** null = os GUCs do RLS não valiam quando a consulta rodou (ver `PROOF_CTE`) */
+  guc_aplicado: string | null;
 }

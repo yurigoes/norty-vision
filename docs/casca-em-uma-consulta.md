@@ -45,20 +45,49 @@ adm        só então eleva para platform admin
 platform   plano, integrações globais, nome da empresa impersonada
 ```
 
-O detalhe que faz isso funcionar é o `LATERAL`:
+### A armadilha, e a trava
+
+O que faz isso funcionar é o `LATERAL` — mas ele sozinho **não basta**:
 
 ```sql
 org AS MATERIALIZED (
   SELECT o.* FROM ctx, LATERAL (
     SELECT ... FROM organizations WHERE id = nullif(ctx.org_id, '')::uuid
+    OFFSET 0            -- <<< sem isto, nada disso vale
   ) o
 )
 ```
 
-O lado `LATERAL` é avaliado **por linha de `ctx`**, então `set_config` já
-rodou quando o `organizations` é lido. Um `FROM organizations, ctx` comum não
-daria essa garantia: o planejador poderia varrer a tabela antes. No plano real
-isso aparece como `Nested Loop` com `CTE Scan on ctx` do lado de fora.
+São duas condições, juntas:
+
+1. **o corpo do `LATERAL` tem que referenciar `ctx`** — senão não é
+   dependência, é cross join;
+2. **e terminar em `OFFSET 0`**.
+
+A segunda foi aprendida do jeito difícil. A primeira versão desta consulta não
+tinha `OFFSET 0` e funcionava — por sorte. Ao escrever a consulta do guard, com
+três tabelas na junção (`sessions ⋈ memberships ⋈ roles`), o planejador
+**achatou** o subselect no plano de junção e pôs o `ctx` do lado de DENTRO do
+nested loop:
+
+```
+->  Nested Loop
+      ->  Nested Loop Left Join          <- as tabelas, varridas primeiro
+            ->  Index Scan on sessions
+            ...
+      ->  CTE Scan on ctx                <- o set_config, depois
+```
+
+Resultado: RLS barrou tudo, a consulta voltou vazia, e o guard não achou
+sessão nenhuma. `OFFSET 0` é a trava de otimização clássica do Postgres:
+impede o achatamento, e aí a dependência do `LATERAL` obriga o `ctx` a ser o
+lado de fora. Com ela, o plano de todos os CTEs vira:
+
+```
+->  Nested Loop
+      ->  CTE Scan on ctx                <- primeiro
+      ->  Result                          <- a leitura, por linha de ctx
+```
 
 Fora de transação explícita, cada instrução é a sua própria transação — então
 `set_config(..., true)` (SET LOCAL) morre junto com ela. Nada vaza para a
@@ -82,16 +111,26 @@ alcançado depois que `tenant` já produziu sua linha. Nada além dessas três
 leituras acontece depois dele — e a conferência executável reprova qualquer
 tabela nova que apareça ali.
 
-## A rede de segurança
+## As redes de segurança
 
-A ordem acima depende de o planejador respeitar a dependência do `LATERAL`. Se
-algum dia uma versão do Postgres mudar isso, o sintoma é o RLS barrar tudo: a
-consulta volta **vazia** — falha fechada, nunca com dado de outra empresa.
+A ordem acima é estrutural, não sorte — mas é uma afirmação sobre o executor do
+Postgres, e o episódio acima mostra que dá pra errar. Então são duas redes, e
+elas se cobrem:
 
-Quando isso acontece com empresa no contexto, o `ShellLoader` refaz a MESMA
-instrução por dentro de `runWithContext()` (quatro idas, GUCs setados antes) e
-registra um aviso. É o mesmo SQL nos dois modos, então não há um segundo
-caminho para divergir.
+1. **O canário.** Um CTE (`prova`) lê `current_setting(...)` pela mesma
+   construção das outras leituras. Se os GUCs não valiam, volta `NULL`.
+2. **A consequência.** Usuário com empresa no contexto sempre tem empresa; um
+   cookie na mão sempre acha uma sessão ou não acha nada por um motivo real. Se
+   o resultado não fecha, alguma coisa barrou.
+
+Só o canário não bastaria: no episódio do guard, ele **passou** enquanto a
+leitura da tabela já tinha sido varrida antes — porque `prova` roda no CTE
+dele, com o plano dele.
+
+Quando qualquer uma das duas acusa, refaz-se a MESMA instrução por dentro de
+`runWithContext()` (quatro idas, GUCs setados antes, sem depender de plano
+nenhum) e registra-se um aviso. É o mesmo SQL nos dois modos, então não há um
+segundo caminho para divergir.
 
 ## Os números
 
@@ -111,9 +150,8 @@ datas: o Postgres devolveria `+00:00` e microssegundos, então elas passam por
 Prisma entregava — mesmo instante e mesmo texto, senão quem compara string de
 `updatedAt` quebraria.
 
-Quando a sessão **não** está no cache do Redis, a requisição custa ~11 idas: o
-guard de autenticação resolve a sessão pelo Prisma. É o próximo alvo, pelo
-mesmo método.
+O guard de autenticação recebeu o mesmo tratamento — ver
+[`guard-em-uma-consulta.md`](guard-em-uma-consulta.md).
 
 ## Uma conta só, em um lugar só
 
@@ -124,11 +162,14 @@ tanto o formato do Prisma (`Date`) quanto o da consulta única (texto ISO).
 
 ## O que confere isso
 
-`pnpm --filter @yugo/api check` (`src/bootstrap/__checks__/shell.check.mts`),
-sem banco e sem Prisma Client gerado:
+`pnpm --filter @yugo/api check` (`src/__checks__/sql.check.mts`), sem banco e
+sem Prisma Client gerado:
 
 1. cada coluna e apelido do SQL bate com o `schema.prisma` — renomear uma
    coluna no schema e esquecer o SQL reprova;
-2. toda tabela com RLS é lida pendurada em `ctx`;
-3. a elevação a platform admin acontece uma vez, no `adm`, e depois dela só se
+2. **todo `LATERAL` referencia a fonte e termina em `OFFSET 0`** — é a regra
+   que teria evitado o episódio acima;
+3. nenhuma tabela é lida fora de um `LATERAL` travado;
+4. o canário está no `WITH` e no `SELECT` de cada consulta;
+5. a elevação a platform admin acontece uma vez, no `adm`, e depois dela só se
    lê `plans`, `platform_integrations` e `organizations`.

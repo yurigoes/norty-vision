@@ -26,6 +26,9 @@ const SET_CONTEXT_SQL = `SELECT
 export {
   CONTEXT_CTE,
   CONTEXT_PARAMS,
+  PROOF_CTE,
+  PROOF_SELECT,
+  TIED_TO_CTX,
   contextParams,
   type RlsContext,
 } from "./rls-context";

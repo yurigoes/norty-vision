@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { SNAPSHOT_SQL, type SnapshotRow } from "./guard.sql";
 import type { RequestContext } from "./session.middleware";
 
 export interface SessionSnapshot {
@@ -34,16 +35,33 @@ export interface SessionSnapshot {
 export class SessionSnapshotService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * O retrato da sessão, numa ida ao banco.
+   *
+   * As duas leituras extras — "precisa trocar a senha?" e o nome da empresa
+   * impersonada — custavam uma transação cada. Agora saem juntas
+   * (`SNAPSHOT_SQL`), e quem já tem os dois valores em mãos usa `compose()`
+   * sem ir ao banco nenhuma vez.
+   */
   async build(ctx: RequestContext): Promise<SessionSnapshot> {
-    // as duas leituras extras são independentes — vão juntas
-    const [mustResetPassword, impersonating] = await Promise.all([
-      this.mustResetPassword(ctx),
-      this.impersonating(ctx),
-    ]);
+    const rls = { isPlatformAdmin: true };
+    const params = [ctx.userId ?? "", ctx.impersonatingOrgId ?? ""];
+
+    let linha = await this.prisma
+      .queryWithContext<SnapshotRow>(rls, SNAPSHOT_SQL, ...params)
+      .then((r) => r[0] ?? null)
+      .catch(() => null);
+
+    if (linha?.guc_aplicado == null) {
+      linha = await this.prisma
+        .queryWithContextInTransaction<SnapshotRow>(rls, SNAPSHOT_SQL, ...params)
+        .then((r) => r[0] ?? null)
+        .catch(() => null);
+    }
 
     return this.compose(ctx, {
-      mustResetPassword,
-      impersonatingOrgName: impersonating?.orgName ?? null,
+      mustResetPassword: linha?.must_reset_password ?? false,
+      impersonatingOrgName: linha?.impersonating_org_name ?? null,
     });
   }
 
@@ -87,34 +105,5 @@ export class SessionSnapshotService {
         : null,
       impersonating,
     };
-  }
-
-  private async mustResetPassword(ctx: RequestContext): Promise<boolean> {
-    if (!ctx.userId) return false;
-    const row = await this.prisma
-      .runWithContext({ isPlatformAdmin: true }, (tx) =>
-        tx.user.findUnique({
-          where: { id: ctx.userId! },
-          select: { mustResetPassword: true },
-        }),
-      )
-      .catch(() => null);
-    return row?.mustResetPassword ?? false;
-  }
-
-  /** Quando o master está impersonando, informa a empresa (banner + sair). */
-  private async impersonating(
-    ctx: RequestContext,
-  ): Promise<{ orgId: string; orgName: string | null } | null> {
-    if (!ctx.impersonating || !ctx.impersonatingOrgId) return null;
-    const org = await this.prisma
-      .runWithContext({ isPlatformAdmin: true }, (tx) =>
-        tx.organization.findUnique({
-          where: { id: ctx.impersonatingOrgId! },
-          select: { name: true },
-        }),
-      )
-      .catch(() => null);
-    return { orgId: ctx.impersonatingOrgId, orgName: org?.name ?? null };
   }
 }

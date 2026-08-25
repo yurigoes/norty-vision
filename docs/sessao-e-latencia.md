@@ -106,6 +106,6 @@ teoria:
 Prisma virando uma consulta por tabela). **Resolvido**: hoje é uma consulta só
 — ver [`casca-em-uma-consulta.md`](casca-em-uma-consulta.md).
 
-O que sobra é o próprio guard: quando a sessão **não** está no cache do Redis,
-resolvê-la pelo Prisma custa ~11 idas. Vale o mesmo tratamento — uma consulta
-escrita à mão no lugar da sequência de leituras.
+O guard também: resolver a sessão pelo Prisma custava até 21 idas (com os dois
+cookies). Hoje é uma consulta — ver
+[`guard-em-uma-consulta.md`](guard-em-uma-consulta.md).

@@ -2,6 +2,7 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
+  Logger,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import type { FastifyRequest } from "fastify";
@@ -15,6 +16,13 @@ import {
 } from "./decorators";
 import { PrismaService } from "../prisma/prisma.service";
 import { SessionCacheService } from "./session-cache.service";
+import {
+  SESSION_SQL,
+  CANCELLATION_SQL,
+  type SessionRow,
+  type CancellationRow,
+  type LinhaImpersonacao,
+} from "./guard.sql";
 import { loadEnv } from "../config";
 import type { RequestContext } from "./session.middleware";
 
@@ -51,6 +59,10 @@ const NONE_CONTEXT: RequestContext = {
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
+  private readonly logger = new Logger("Auth");
+  /** avisa uma vez só, pra não inundar o log */
+  private avisouSessao = false;
+
   constructor(
     private readonly reflector: Reflector,
     private readonly prisma: PrismaService,
@@ -158,9 +170,22 @@ export class AuthGuard implements CanActivate {
 
   /** Fase do cancelamento: active | grace(30d) | readonly(+180d) | ended. */
   private async cancellationPhase(orgId: string): Promise<"active" | "grace" | "readonly" | "ended"> {
-    const sub = await this.prisma
-      .runWithContext({ isPlatformAdmin: true }, (tx) => tx.subscription.findFirst({ where: { organizationId: orgId }, select: { status: true, canceledAt: true } }))
+    const linhas = await this.prisma
+      .queryWithContext<CancellationRow>({ isPlatformAdmin: true }, CANCELLATION_SQL, orgId)
       .catch(() => null);
+    // canário desligado: só o caminho transacional pode responder com confiança
+    const linha =
+      linhas?.[0]?.guc_aplicado != null
+        ? linhas[0]
+        : await this.prisma
+            .queryWithContextInTransaction<CancellationRow>(
+              { isPlatformAdmin: true },
+              CANCELLATION_SQL,
+              orgId,
+            )
+            .catch(() => null)
+            .then((r) => r?.[0] ?? null);
+    const sub = linha?.assinatura ?? null;
     if (!sub || sub.status !== "canceled" || !sub.canceledAt) return "active";
     const days = (Date.now() - new Date(sub.canceledAt).getTime()) / 86400_000;
     if (days < 30) return "grace";
@@ -168,118 +193,149 @@ export class AuthGuard implements CanActivate {
     return "ended";
   }
 
+  /**
+   * Quem é esta pessoa — em uma ida ao banco (ou nenhuma).
+   *
+   * Antes eram até três transações: a sessão do usuário (com `include`, que
+   * vira uma consulta por tabela), a do master e, se estivesse impersonando,
+   * a busca do membership representativo. Agora é uma instrução só
+   * (`session.sql.ts`) — e, com a sessão quente no Redis, nem isso.
+   */
   private async resolveSession(req: FastifyRequest): Promise<RequestContext> {
     const env = loadEnv();
     const ctx: RequestContext = { ...NONE_CONTEXT };
 
     const userToken = req.cookies?.[env.SESSION_COOKIE_NAME];
     const masterToken = req.cookies?.[env.MASTER_COOKIE_NAME];
+    if (!userToken && !masterToken) return ctx;
 
-    if (userToken) {
-      try {
-        const tokenHash = sha256(userToken);
+    const userHash = userToken ? sha256(userToken) : "";
+    const masterHash = masterToken ? sha256(masterToken) : "";
 
-        // 1) cache: absorve a rajada de requisições de uma mesma tela sem
-        //    tocar no banco. Ver `SessionCacheService`.
-        const emCache = await this.cache.get<ContextoUsuario>(tokenHash);
-        if (emCache) {
-          Object.assign(ctx, emCache);
-        } else {
-          const session = await this.prisma.runWithContext(
-            { isPlatformAdmin: true },
-            (tx) =>
-              tx.session.findUnique({
-                where: { tokenHash },
-                include: {
-                  activeMembership: {
-                    include: { role: true, store: true, organization: true },
-                  },
-                },
-              }),
-          );
-          if (session && !session.revokedAt && session.expiresAt > new Date()) {
-            const m = session.activeMembership;
-            const resolvido: ContextoUsuario = {
-              userId: session.userId,
-              membershipId: m?.id ?? null,
-              orgId: m?.organizationId ?? null,
-              storeId: m?.storeId ?? null,
-              role: m?.role.slug ?? null,
-              isOrgAdmin: m?.role.slug === "owner" || m?.role.slug === "admin",
-              // permissoes do papel + overrides por usuario (membership.permissions)
-              permissions: mergePermissions(m?.role.permissions, (m as any)?.permissions),
-            };
-            Object.assign(ctx, resolvido);
-            await this.cache.set(tokenHash, resolvido);
-          }
+    try {
+      // 1) cache: absorve a rajada de requisições de uma mesma tela sem tocar
+      //    no banco. Só serve quando não há cookie de master — a sessão do
+      //    master nunca foi cacheada, e é ela que decide a impersonação.
+      const emCache =
+        userHash && !masterHash ? await this.cache.get<ContextoUsuario>(userHash) : null;
+
+      if (emCache) {
+        Object.assign(ctx, emCache);
+      } else {
+        const linha = await this.consultaSessao(userHash, masterHash);
+        if (linha) {
+          await this.aplicaUsuario(ctx, linha, userHash);
+          await this.aplicaMaster(ctx, linha, masterHash);
         }
-
-        // 2) "sessão ativa": escrita no banco no máximo a cada 5 min, e não a
-        //    cada clique. O valor só serve pra saber que a sessão está viva.
-        if (ctx.userId && (await this.cache.deveMarcarAtividade(tokenHash))) {
-          this.prisma
-            .runWithContext({ isPlatformAdmin: true }, (tx) =>
-              tx.session.updateMany({
-                where: { tokenHash },
-                data: { lastSeenAt: new Date() },
-              }),
-            )
-            .catch(() => undefined);
-        }
-      } catch {
-        // ignore
       }
-    }
 
-    if (masterToken) {
-      try {
-        const tokenHash = sha256(masterToken);
-        const ps = await this.prisma.runWithContext(
-          { isPlatformAdmin: true },
-          (tx) =>
-            tx.platformSession.findUnique({
-              where: { tokenHash },
-              include: { platformUser: { select: { role: true } } },
+      // 2) "sessão ativa": escrita no banco no máximo a cada 5 min, e não a
+      //    cada clique. O valor só serve pra saber que a sessão está viva.
+      if (ctx.userId && userHash && (await this.cache.deveMarcarAtividade(userHash))) {
+        this.prisma
+          .runWithContext({ isPlatformAdmin: true }, (tx) =>
+            tx.session.updateMany({
+              where: { tokenHash: userHash },
+              data: { lastSeenAt: new Date() },
             }),
-        );
-        if (ps && !ps.revokedAt && ps.expiresAt > new Date()) {
-          if (ps.impersonatingOrgId) {
-            // IMPERSONANDO: o contexto vira o de um usuário da empresa.
-            await this.applyImpersonation(ctx, ps.impersonatingOrgId, ps.platformUserId);
-          } else {
-            // MASTER PURO (sem impersonar): descarta qualquer contexto de
-            // usuário de empresa que tenha vazado de um cookie de sessão antigo
-            // (ex.: trocou de conta sem limpar cookies). Sem isso, o /app
-            // herdaria o branding/identidade da empresa anterior. #108
-            ctx.userId = null;
-            ctx.membershipId = null;
-            ctx.orgId = null;
-            ctx.storeId = null;
-            ctx.role = null;
-            ctx.isOrgAdmin = false;
-            ctx.permissions = {};
-            ctx.platformUserId = ps.platformUserId;
-            ctx.isPlatformAdmin = true;
-            ctx.platformRole =
-              (ps as any).platformUser?.role === "support" ? "support" : "owner";
-            ctx.techSpecsCategories = ps.techSpecsCategories;
-          }
-
-          this.prisma
-            .runWithContext({ isPlatformAdmin: true }, (tx) =>
-              tx.platformSession.update({
-                where: { id: ps.id },
-                data: { lastSeenAt: new Date() },
-              }),
-            )
-            .catch(() => undefined);
-        }
-      } catch {
-        // ignore
+          )
+          .catch(() => undefined);
       }
+    } catch {
+      // ignore
     }
 
     return ctx;
+  }
+
+  /** Sessão do usuário + sessão do master + membership impersonado, numa ida. */
+  private async consultaSessao(userHash: string, masterHash: string): Promise<SessionRow | null> {
+    const rls = { isPlatformAdmin: true };
+    const linhas = await this.prisma
+      .queryWithContext<SessionRow>(rls, SESSION_SQL, userHash, masterHash)
+      .catch(() => null);
+    const linha = linhas?.[0] ?? null;
+
+    // DUAS redes. O canário diz se os GUCs valiam; a segunda olha a
+    // CONSEQUÊNCIA: veio cookie e não achamos NADA. Quase sempre é cookie
+    // velho — e aí a segunda consulta é o preço de um pedido já perdido —,
+    // mas é também como um RLS barrado se manifestaria, e aqui isso
+    // significaria deslogar todo mundo em silêncio.
+    const canario = linha?.guc_aplicado != null;
+    const achou = Boolean(linha?.sessao || linha?.master);
+    if (linha && canario && achou) return linha;
+
+    if (!this.avisouSessao && !canario) {
+      this.avisouSessao = true;
+      this.logger.warn(
+        "os GUCs do RLS não valiam na consulta da sessão — refazendo dentro de " +
+          "transação. Se isto se repetir, confira o plano: cada LATERAL precisa " +
+          "referenciar `ctx` e terminar em OFFSET 0.",
+      );
+    }
+
+    const seguro = await this.prisma
+      .queryWithContextInTransaction<SessionRow>(rls, SESSION_SQL, userHash, masterHash)
+      .catch(() => null);
+    return seguro?.[0] ?? linha;
+  }
+
+  private async aplicaUsuario(ctx: RequestContext, linha: SessionRow, userHash: string): Promise<void> {
+    const s = linha.sessao;
+    if (!s || !viva(s.revokedAt, s.expiresAt)) return;
+
+    const resolvido: ContextoUsuario = {
+      userId: s.userId,
+      membershipId: s.membershipId,
+      orgId: s.orgId,
+      storeId: s.storeId,
+      role: s.roleSlug,
+      isOrgAdmin: s.roleSlug === "owner" || s.roleSlug === "admin",
+      // permissoes do papel + overrides por usuario (membership.permissions)
+      permissions: mergePermissions(s.rolePermissions, s.membershipPermissions),
+    };
+    Object.assign(ctx, resolvido);
+    if (userHash) await this.cache.set(userHash, resolvido);
+  }
+
+  private async aplicaMaster(ctx: RequestContext, linha: SessionRow, masterHash: string): Promise<void> {
+    const ps = linha.master;
+    if (!ps || !viva(ps.revokedAt, ps.expiresAt)) return;
+
+    if (ps.impersonatingOrgId) {
+      // IMPERSONANDO: o contexto vira o de um usuário da empresa.
+      this.applyImpersonation(ctx, ps.impersonatingOrgId, ps.platformUserId, linha.impersonado);
+    } else {
+      // MASTER PURO (sem impersonar): descarta qualquer contexto de
+      // usuário de empresa que tenha vazado de um cookie de sessão antigo
+      // (ex.: trocou de conta sem limpar cookies). Sem isso, o /app
+      // herdaria o branding/identidade da empresa anterior. #108
+      ctx.userId = null;
+      ctx.membershipId = null;
+      ctx.orgId = null;
+      ctx.storeId = null;
+      ctx.role = null;
+      ctx.isOrgAdmin = false;
+      ctx.permissions = {};
+      ctx.platformUserId = ps.platformUserId;
+      ctx.isPlatformAdmin = true;
+      ctx.platformRole = ps.platformUserRole === "support" ? "support" : "owner";
+      ctx.techSpecsCategories = ps.techSpecsCategories ?? [];
+    }
+
+    // mesma regra do usuário: "visto por último" no máximo a cada 5 min. Aqui
+    // era gravado a CADA requisição do master — uma transação por clique numa
+    // linha quente.
+    if (masterHash && (await this.cache.deveMarcarAtividade(masterHash))) {
+      this.prisma
+        .runWithContext({ isPlatformAdmin: true }, (tx) =>
+          tx.platformSession.update({
+            where: { id: ps.id },
+            data: { lastSeenAt: new Date() },
+          }),
+        )
+        .catch(() => undefined);
+    }
   }
 
   /**
@@ -287,21 +343,16 @@ export class AuthGuard implements CanActivate {
    * impersonada. Mantém isPlatformAdmin=false pra que todos os serviços
    * org-scoped enxerguem APENAS os dados daquela empresa (RLS por org),
    * exatamente como a empresa veria. Guarda o id do master pra auditoria.
+   *
+   * O membership representativo é o mais antigo da empresa — vem na mesma
+   * consulta, no CTE `imp`.
    */
-  private async applyImpersonation(
+  private applyImpersonation(
     ctx: RequestContext,
     orgId: string,
     impersonatorPlatformUserId: string,
-  ): Promise<void> {
-    // membership representativo: prioriza owner, depois admin, depois qualquer.
-    const membership = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
-      tx.membership.findFirst({
-        where: { organizationId: orgId },
-        orderBy: { createdAt: "asc" },
-        include: { role: true, store: true, organization: true },
-      }),
-    ).catch(() => null);
-
+    membership: LinhaImpersonacao | null,
+  ): void {
     ctx.impersonating = true;
     ctx.impersonatingOrgId = orgId;
     ctx.impersonatorPlatformUserId = impersonatorPlatformUserId;
@@ -311,17 +362,22 @@ export class AuthGuard implements CanActivate {
 
     if (membership) {
       ctx.userId = membership.userId;
-      ctx.membershipId = membership.id;
+      ctx.membershipId = membership.membershipId;
       ctx.storeId = membership.storeId ?? null;
-      ctx.role = membership.role?.slug ?? "owner";
-      ctx.isOrgAdmin = membership.role?.slug === "owner" || membership.role?.slug === "admin";
-      ctx.permissions = mergePermissions(membership.role?.permissions, (membership as any)?.permissions);
+      ctx.role = membership.roleSlug ?? "owner";
+      ctx.isOrgAdmin = membership.roleSlug === "owner" || membership.roleSlug === "admin";
+      ctx.permissions = mergePermissions(membership.rolePermissions, membership.membershipPermissions);
     } else {
       // empresa sem usuários: ainda assim entra como admin da org
       ctx.isOrgAdmin = true;
       ctx.role = "owner";
     }
   }
+}
+
+/** Sessão de pé: não revogada e dentro da validade. */
+function viva(revokedAt: string | null, expiresAt: string): boolean {
+  return revokedAt == null && new Date(expiresAt) > new Date();
 }
 
 function sha256(input: string): string {

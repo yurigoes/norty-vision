@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { usePaginacao, Paginacao, PorPagina } from "../../../components/Paginacao";
 import { useRouter } from "next/navigation";
 import { useDialog } from "../../../components/SystemDialog";
 
@@ -28,6 +29,8 @@ export function OrcamentosClient({ initial }: { initial: Quote[] }) {
   const dialog = useDialog();
   const [, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
+  // a tela montava TODOS os orçamentos de uma vez; agora corta em páginas
+  const pag = usePaginacao(initial, 50);
 
   async function send(q: Quote, channel: "whatsapp" | "email" | "both") {
     const res = await fetch(`/api/quotes/${q.id}/send`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ channel }) });
@@ -56,7 +59,13 @@ export function OrcamentosClient({ initial }: { initial: Quote[] }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {initial.length > 0 && (
+          <p className="mr-auto text-[11px] text-muted">
+            {pag.total} orçamento(s){pag.porPagina !== 0 ? ` · mostrando ${pag.pagina.length} · página ${pag.paginaAtual}/${pag.totalPaginas}` : ""}
+          </p>
+        )}
+        {initial.length > 0 && <PorPagina p={pag} className="py-1 text-xs" />}
         <button onClick={() => setOpen(true)} className="btn-grad">+ Novo orçamento</button>
       </div>
 
@@ -64,7 +73,7 @@ export function OrcamentosClient({ initial }: { initial: Quote[] }) {
         <p className="rounded-2xl border border-line bg-surface p-8 text-center text-muted">Nenhum orçamento ainda. Crie o primeiro!</p>
       ) : (
         <div className="space-y-2">
-          {initial.map((q) => (
+          {pag.pagina.map((q) => (
             <div key={q.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
               <div className="min-w-0">
                 <p className="font-medium">{q.contactName} <span className="ml-1 text-xs text-muted">{q.shortCode}</span>{!q.createdByUserId && <span className="ml-1 rounded-full bg-brand/15 px-2 py-0.5 text-[9px] font-semibold uppercase text-brand">via IA</span>}</p>
@@ -81,6 +90,7 @@ export function OrcamentosClient({ initial }: { initial: Quote[] }) {
               </div>
             </div>
           ))}
+          <Paginacao p={pag} />
         </div>
       )}
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePaginacao, Paginacao, PorPagina } from "../../../components/Paginacao";
 
 export interface Tx {
   kind: "sale" | "installment";
@@ -57,6 +58,9 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
   }
 
   const shown = filter === "all" ? rows : rows.filter((r) => [r.status].includes(filter));
+  // a tela montava TODAS as transações de uma vez; agora corta em páginas.
+  // O relatório impresso continua com tudo — papel não rola.
+  const pag = usePaginacao(shown, 50);
   const totalShown = shown.reduce((s, r) => s + r.amountCents, 0);
   const totalPaid = shown.filter((r) => ["paid", "approved"].includes(r.status)).reduce((s, r) => s + r.amountCents, 0);
   const FILTER_LABEL: Record<string, string> = { all: "Todas", pending: "Pendentes", paid: "Pagas", failed: "Falhas" };
@@ -71,9 +75,10 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
           ["paid", "Pagas"],
           ["failed", "Falhas"],
         ].map(([k, l]) => (
-          <button key={k} onClick={() => setFilter(k)} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${filter === k ? "border-brand text-brand" : "border-line text-muted hover:text-fg"}`}>{l}</button>
+          <button key={k} onClick={() => { setFilter(k); pag.aoTopo(); }} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${filter === k ? "border-brand text-brand" : "border-line text-muted hover:text-fg"}`}>{l}</button>
         ))}
-        <button onClick={() => window.print()} className="btn-grad ml-auto px-4 py-1.5 text-xs">🖨️ PDF / Imprimir</button>
+        <PorPagina p={pag} className="ml-auto py-1 text-xs" />
+        <button onClick={() => window.print()} className="btn-grad px-4 py-1.5 text-xs">🖨️ PDF / Imprimir</button>
       </div>
 
       {/* versão branded só pra impressão */}
@@ -116,6 +121,10 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
       {shown.length === 0 ? (
         <p className="no-print rounded-2xl border border-line bg-surface p-8 text-center text-sm text-muted">Nenhuma transação.</p>
       ) : (
+        <>
+        <p className="no-print text-[11px] text-muted">
+          {pag.total} transação(ões){pag.porPagina !== 0 ? ` · mostrando ${pag.pagina.length} · página ${pag.paginaAtual}/${pag.totalPaginas}` : ""}
+        </p>
         <div className="no-print overflow-x-auto rounded-2xl border border-line bg-surface">
           <table className="w-full text-sm table-cards">
             <thead className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
@@ -130,7 +139,7 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
               </tr>
             </thead>
             <tbody>
-              {shown.map((t) => {
+              {pag.pagina.map((t) => {
                 const s = STATUS[t.status] ?? { label: t.status, cls: "bg-line text-muted" };
                 const pending = ["pending"].includes(t.status);
                 return (
@@ -154,6 +163,8 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
             </tbody>
           </table>
         </div>
+        <div className="no-print"><Paginacao p={pag} /></div>
+        </>
       )}
     </div>
   );

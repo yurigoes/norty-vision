@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useBuscaServidor } from "../../../lib/useBuscaServidor";
+import { usePaginacao, Paginacao, PorPagina } from "../../../components/Paginacao";
 
 interface Product {
   id: string;
@@ -56,8 +57,6 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
   // quem estivesse fora deles simplesmente "nao existia"
   const busca = useBuscaServidor<Product>({ rota: "/api/products", inicial: initialProducts, limite: 500 });
   const { q, setQ, buscando, doServidor } = busca;
-  const [pageSize, setPageSize] = useState<number>(50); // 0 = todas
-  const [page, setPage] = useState(1);
   const [entradaFor, setEntradaFor] = useState<Product | null>(null);
   const [movFor, setMovFor] = useState<Product | null>(null);
   const [viewing, setViewing] = useState<Product | null>(null);
@@ -115,12 +114,10 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
   }
 
   // nome / SKU / categoria, procurados no banco em todos os produtos
-  const filtered = busca.itens;
-  const total = filtered.length;
+  const pag = usePaginacao(busca.itens, 50);
+  const total = pag.total;
   const noTeto = doServidor && total >= 500;
-  const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
-  const curPage = Math.min(page, totalPages);
-  const paged = pageSize === 0 ? filtered : filtered.slice((curPage - 1) * pageSize, curPage * pageSize);
+  const paged = pag.pagina;
 
   /** recarrega a pagina e, se houver busca ativa, refaz a busca no servidor */
   function atualizar() {
@@ -387,7 +384,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
         <div className="relative flex-1">
           <input
             value={q}
-            onChange={(e) => { setQ(e.target.value); setPage(1); }}
+            onChange={(e) => { setQ(e.target.value); pag.aoTopo(); }}
             placeholder="Buscar por nome, SKU ou categoria"
             className="input-base w-full"
             aria-label="Buscar produtos"
@@ -398,19 +395,13 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
             </span>
           )}
         </div>
-        <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-          className="input-base w-auto">
-          <option value={10}>10 por página</option>
-          <option value={50}>50 por página</option>
-          <option value={100}>100 por página</option>
-          <option value={0}>Todas</option>
-        </select>
+        <PorPagina p={pag} />
       </div>
       <p className="text-[11px] text-muted">
         {doServidor
           ? `${total} resultado(s) para "${q.trim()}"${noTeto ? " — mostrando os 500 primeiros, refine a busca" : ""} · procurado em todos os produtos`
           : `${total} produto(s)`}
-        {pageSize !== 0 ? ` · página ${curPage}/${totalPages}` : ""}
+        {pag.porPagina !== 0 ? ` · página ${pag.paginaAtual}/${pag.totalPaginas}` : ""}
       </p>
       {busca.erro && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{busca.erro}</p>}
 
@@ -482,13 +473,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
         </table>
       </div>
 
-      {pageSize !== 0 && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 text-sm">
-          <button disabled={curPage <= 1} onClick={() => setPage(curPage - 1)} className="rounded-xl border border-line px-3 py-1.5 transition hover:border-brand/60 disabled:opacity-40">‹ Anterior</button>
-          <span className="text-muted">{curPage} / {totalPages}</span>
-          <button disabled={curPage >= totalPages} onClick={() => setPage(curPage + 1)} className="rounded-xl border border-line px-3 py-1.5 transition hover:border-brand/60 disabled:opacity-40">Próxima ›</button>
-        </div>
-      )}
+      <Paginacao p={pag} />
 
       {entradaFor && <EntradaModal product={entradaFor} stores={stores} onClose={() => setEntradaFor(null)} onSaved={() => { setEntradaFor(null); atualizar(); }} />}
       {movFor && <MovsModal product={movFor} stores={stores} onClose={() => setMovFor(null)} onChanged={() => atualizar()} />}

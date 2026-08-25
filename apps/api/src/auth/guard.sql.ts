@@ -45,10 +45,15 @@ export const SESSION_SQL = `WITH ${CONTEXT_CTE},
              m.organization_id AS "orgId",
              m.store_id AS "storeId",
              m.permissions AS "membershipPermissions",
+             r.id AS "roleId",
              r.slug AS "roleSlug",
              r.permissions AS "rolePermissions"
         FROM sessions se
-        LEFT JOIN memberships m ON m.id = se.active_membership_id
+        -- o status active não é detalhe: vínculo revogado (ou suspenso, ou
+        -- ainda pendente) não pode continuar dando empresa, papel e permissões
+        -- pra uma sessão já aberta. É a mesma regra que as policies de RLS
+        -- usam. Sem ele, "revogar o acesso" não expulsava ninguém.
+        LEFT JOIN memberships m ON m.id = se.active_membership_id AND m.status = 'active'
         LEFT JOIN roles r ON r.id = m.role_id
        WHERE se.token_hash = nullif($8, '') AND ${TIED_TO_CTX}
        OFFSET 0
@@ -84,6 +89,7 @@ export const SESSION_SQL = `WITH ${CONTEXT_CTE},
         FROM memberships m
         LEFT JOIN roles r ON r.id = m.role_id
        WHERE m.organization_id = psess."impersonatingOrgId"
+         AND m.status = 'active' 
        ORDER BY m.created_at ASC
        LIMIT 1 OFFSET 0
     ) i
@@ -102,6 +108,8 @@ export interface LinhaSessao {
   orgId: string | null;
   storeId: string | null;
   membershipPermissions: unknown;
+  /** só para indexar o cache por papel — não entra no contexto */
+  roleId: string | null;
   roleSlug: string | null;
   rolePermissions: unknown;
 }

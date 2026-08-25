@@ -169,6 +169,8 @@ export class PlatformService {
       const target = await tx.platformUser.findUnique({ where: { id: targetId }, select: { id: true, role: true } });
       if (!target) throw new AppError(ErrorCode.NotFound, "Master não encontrado", 404);
       const cats = Array.from(new Set((categories ?? []).map((c) => String(c).trim()).filter(Boolean)));
+      // cache-ok: o guard lê as categorias da SESSÃO (fotografadas no login),
+      // não do usuário — a mudança já valia só no próximo login
       return tx.platformUser.update({ where: { id: targetId }, data: { techSpecsCategories: cats }, select: { id: true, name: true, techSpecsCategories: true } });
     });
   }

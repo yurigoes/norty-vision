@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ArgonService } from "../auth/argon.service";
 import { ProvisioningService } from "../integrations/provisioning.service";
 import { NotificationService } from "../notifications/notification.service";
+import { SessionCacheService } from "../auth/session-cache.service";
 import type { RequestContext } from "../auth/session.middleware";
 
 interface CreateUserInput {
@@ -222,6 +223,7 @@ export class UsersService {
     private readonly argon: ArgonService,
     private readonly provisioning: ProvisioningService,
     private readonly notifications: NotificationService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   async list(ctx: RequestContext, filter?: { organizationId?: string }) {
@@ -359,6 +361,7 @@ export class UsersService {
             mustResetPassword: true, // troca obrigatória no 1º acesso
           },
         });
+        // cache-ok: usuário recém-criado; não tem sessão pra invalidar
         const membership = await tx.membership.create({
           data: {
             userId: user.id,
@@ -490,7 +493,7 @@ export class UsersService {
       throw new AppError(ErrorCode.NotFound, `Role ${input.roleSlug} nao existe`, 404);
     }
 
-    return this.prisma.runWithContext(
+    const criado = await this.prisma.runWithContext(
       { isPlatformAdmin: true },
       (tx) =>
         tx.membership.create({
@@ -504,6 +507,8 @@ export class UsersService {
           },
         }),
     );
+    await this.cache.dropByUser(userId);
+    return criado;
   }
 
   async revokeMembership(ctx: RequestContext, membershipId: string) {
@@ -518,12 +523,24 @@ export class UsersService {
         if (!ctx.isPlatformAdmin && m.organizationId !== ctx.orgId) {
           throw new AppError(ErrorCode.Forbidden, "Fora da sua org", 403);
         }
-        return tx.membership.update({
+        const alterado = await tx.membership.update({
           where: { id: membershipId },
           data: { status: "revoked", revokedAt: new Date() },
         });
+        // e encerra as sessões abertas nesse vínculo. Sem isto, revogar o
+        // acesso deixava a pessoa trabalhando normalmente até o cookie vencer
+        // (30 dias) — o guard nunca olhava o status do membership.
+        await tx.session.updateMany({
+          where: { activeMembershipId: membershipId, revokedAt: null },
+          data: { revokedAt: new Date(), revokeReason: "membership_revoked" },
+        });
+        return { alterado, userId: m.userId };
       },
-    );
+    ).then(async ({ alterado, userId }) => {
+      // acesso revogado é revogado agora, não daqui a um TTL
+      await this.cache.dropByUser(userId);
+      return alterado;
+    });
   }
 
   async listRoles(ctx: RequestContext, orgIdFilter?: string) {
@@ -595,6 +612,7 @@ export class UsersService {
     return this.prisma.runWithContext({ isPlatformAdmin: true }, async (tx) => {
       const m = await tx.membership.findFirst({ where: { userId, organizationId: ctx.orgId! } });
       if (!m) throw new AppError(ErrorCode.NotFound, "Usuario sem vinculo nesta org", 404);
+      // cache-ok: comissão não entra no contexto do guard
       await tx.membership.update({ where: { id: m.id }, data: { commissionPct: pct } });
       return { ok: true };
     });
@@ -655,6 +673,7 @@ export class UsersService {
     return this.prisma.runWithContext({ isPlatformAdmin: true }, async (tx) => {
       const m = await tx.membership.findFirst({ where: { userId, organizationId: ctx.orgId! } });
       if (!m) throw new AppError(ErrorCode.NotFound, "Usuario sem vinculo nesta org", 404);
+      // cache-ok: marca de vendedor não entra no contexto do guard
       await tx.membership.update({ where: { id: m.id }, data: { isSeller } });
       return { ok: true };
     });
@@ -691,6 +710,9 @@ export class UsersService {
       if (!role) throw new AppError(ErrorCode.NotFound, "Papel não encontrado/ativo", 404);
       await tx.membership.update({ where: { id: m.id }, data: { roleId: role.id } });
       return { ok: true };
+    }).then(async (r) => {
+      await this.cache.dropByUser(m.userId);
+      return r;
     });
   }
 
@@ -703,7 +725,10 @@ export class UsersService {
         data: { permissions: this.sanitizePermissions(permissions) as any },
         select: { id: true, permissions: true },
       }),
-    );
+    ).then(async (r) => {
+      await this.cache.dropByUser(m.userId);
+      return r;
+    });
   }
 
   /**
@@ -818,7 +843,12 @@ export class UsersService {
         }
         return tx.role.update({ where: { id: roleId }, data });
       },
-    );
+    ).then(async (r) => {
+      // mexer no papel muda o que TODO MUNDO que o usa pode fazer — e ninguém
+      // deles está clicando no botão
+      await this.cache.dropByRole(roleId);
+      return r;
+    });
   }
 
   /** Remove um papel customizado que nao esteja em uso. */
@@ -846,7 +876,11 @@ export class UsersService {
         await tx.role.delete({ where: { id: roleId } });
         return { ok: true };
       },
-    );
+    ).then(async (r) => {
+      // o papel só sai se ninguém usa, mas o índice fica limpo do mesmo jeito
+      await this.cache.dropByRole(roleId);
+      return r;
+    });
   }
 
   /**

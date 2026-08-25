@@ -94,7 +94,7 @@ comparada com o mesmo build rodando de cache **desligado**
 
 ## O cache da sessão do master
 
-A sessão do usuário já tinha cache (10s no Redis). A do master não — por isso
+A sessão do usuário já tinha cache no Redis. A do master não — por isso
 ele pagava 2 idas onde o usuário pagava 1. Agora tem, e os dois lados são
 consultados de forma independente: **com os dois cookies quentes, a requisição
 não vai ao banco nenhuma vez**; basta um lado faltar para valer a consulta, que
@@ -107,7 +107,7 @@ na hora em cinco situações:
 | o que aconteceu | por que não pode esperar o TTL |
 | --- | --- |
 | master **entra** numa empresa | o painel inteiro muda de dono |
-| master **sai** da empresa | volta a ser master; 10s de empresa fantasma seria confuso |
+| master **sai** da empresa | volta a ser master; empresa fantasma seria confuso |
 | master faz **logout** | quem clicou em "sair" não pode continuar dentro |
 | outro owner **inativa** o master | é revogação de acesso |
 | outro owner **troca o papel** (owner ⇄ support) | owner enxerga o que support não enxerga |
@@ -123,8 +123,8 @@ um `DEL` inofensivo, e ele mesmo tem prazo de validade.
 - **Sair invalida na hora**, dos dois lados.
 - **Redis fora do ar não quebra login**: cai no banco, com um aviso no log —
   verificado derrubando o Redis com a sessão do master quente.
-- **Trocar permissão de usuário** continua levando até 10s (`SESSION_CACHE_TTL_SECONDS`;
-  `0` desliga tudo).
+- **Trocar permissão de usuário** também vale na hora — ver
+  [`permissoes-e-cache.md`](permissoes-e-cache.md).
 
 ## Um bug que apareceu no caminho
 

@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ArgonService } from "./argon.service";
 import { EmailService } from "../notifications/email.service";
 import { loadEnv } from "../config";
+import { SessionCacheService } from "./session-cache.service";
 
 const TOKEN_TTL_MINUTES = 30;
 
@@ -14,6 +15,7 @@ export class PasswordResetService {
     private readonly prisma: PrismaService,
     private readonly argon: ArgonService,
     private readonly email: EmailService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   /**
@@ -126,6 +128,8 @@ export class PasswordResetService {
         where: { userId: record.userId!, revokedAt: null },
         data: { revokedAt: new Date(), revokeReason: "password_reset" },
       });
+      // e as que estiverem no cache — trocar a senha derruba quem estava dentro
+      await this.cache.dropByUser(record.userId!);
       // marca token como usado
       await tx.passwordResetToken.update({
         where: { id: record.id },

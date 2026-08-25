@@ -241,6 +241,7 @@ export class AuthGuard implements CanActivate {
       //    cada clique. O valor só serve pra saber que a sessão está viva.
       if (ctx.userId && userHash && (await this.cache.deveMarcarAtividade(userHash))) {
         this.prisma
+          // cache-ok: só carimba "visto por último"; não muda papel nem permissão
           .runWithContext({ isPlatformAdmin: true }, (tx) =>
             tx.session.updateMany({
               where: { tokenHash: userHash },
@@ -303,7 +304,11 @@ export class AuthGuard implements CanActivate {
       permissions: mergePermissions(s.rolePermissions, s.membershipPermissions),
     };
     Object.assign(ctx, resolvido);
-    if (userHash) await this.cache.set(userHash, resolvido);
+    // indexado por usuário e por papel: é assim que uma troca de permissão
+    // derruba a sessão de quem nem está com o navegador aberto
+    if (userHash) {
+      await this.cache.set(userHash, resolvido, { userId: s.userId, roleId: s.roleId });
+    }
   }
 
   private async aplicaMaster(
@@ -345,6 +350,7 @@ export class AuthGuard implements CanActivate {
     // linha quente.
     if (masterHash && (await this.cache.deveMarcarAtividade(masterHash))) {
       this.prisma
+        // cache-ok: só carimba "visto por último" do master
         .runWithContext({ isPlatformAdmin: true }, (tx) =>
           tx.platformSession.update({
             where: { id: ps.id },

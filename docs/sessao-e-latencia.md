@@ -46,7 +46,7 @@ um `SET NX EX` no Redis — uma ida ao Redis no lugar de uma transação no
 Postgres.
 
 **3. Cache do contexto da sessão no Redis** (`SessionCacheService`). Quem é, de
-qual empresa, qual papel, quais permissões: 10s de TTL, o suficiente pra
+qual empresa, qual papel, quais permissões: na época 10s de TTL, o suficiente pra
 absorver a rajada de requisições de uma tela. O `SessionService` já prometia
 isso no comentário — "Redis acelera lookups; DB é fonte da verdade" — só que
 nunca tinha sido escrito.
@@ -73,8 +73,11 @@ O caminho quente — o que a pessoa vive depois do primeiro clique — caiu de
 
 ## O que se paga por isso
 
-- **Trocar uma permissão leva até 10s pra valer.** É o TTL. Ajustável em
-  `SESSION_CACHE_TTL_SECONDS`; `0` desliga o cache e tudo volta a bater no
+- **Trocar uma permissão vale na hora** — desde que o cache passou a ser
+  invalidado por usuário e por papel (ver
+  [`permissoes-e-cache.md`](permissoes-e-cache.md)). Enquanto isso não existia,
+  o TTL era a única coisa segurando a mudança, e por isso ele era de 10s.
+  Ajustável em `SESSION_CACHE_TTL_SECONDS`; `0` desliga o cache e tudo volta a bater no
   banco.
 - **`last_seen_at` tem até 5 minutos de atraso.** Só afeta a coluna "visto por
   último" da lista de sessões.

@@ -16,10 +16,17 @@ import { RedisService } from "../redis/redis.service";
  *
  * DECISÕES:
  *
- * - **TTL curto** (10s por padrão, `SESSION_CACHE_TTL_SECONDS`). O que se
- *   ganha é absorver a rajada de requisições de UMA tela; o que se paga é uma
- *   troca de permissão levar até 10s pra valer. Com `0`, o cache desliga e
- *   tudo volta a bater no banco.
+ * - **TTL de 5 minutos** (`SESSION_CACHE_TTL_SECONDS`, padrão 300). Começou em
+ *   10s porque o TTL era a ÚNICA coisa que segurava uma troca de permissão:
+ *   sem invalidação, cache longo = permissão velha valendo. Hoje toda mudança
+ *   que mexe no contexto derruba o cache na hora (ver os índices abaixo), e o
+ *   TTL virou o que devia ser desde o início: um limite de segurança, não o
+ *   mecanismo. Com `0`, o cache desliga e tudo volta a bater no banco.
+ * - **Índices para apagar sem ter o cookie.** Quem troca a permissão de um
+ *   usuário, ou edita um PAPEL que dezenas de pessoas usam, não tem o token de
+ *   ninguém em mãos — só o id. Por isso cada hash entra também em dois
+ *   conjuntos: `nv:sess:user:<id>` e `nv:sess:role:<id>`. Editar o papel
+ *   "vendedor" apaga a sessão de todos os vendedores de uma vez.
  * - **Redis fora do ar não quebra login.** Toda chamada aqui é best-effort:
  *   falhou, o guard segue pro banco como antes.
  * - **Logout invalida na hora** — quem some do sistema tem que sumir mesmo,
@@ -41,8 +48,13 @@ export class SessionCacheService {
   constructor(private readonly redis: RedisService) {}
 
   private get ttl(): number {
-    const raw = Number(process.env.SESSION_CACHE_TTL_SECONDS ?? 10);
-    return Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : 10;
+    const raw = Number(process.env.SESSION_CACHE_TTL_SECONDS ?? 300);
+    return Number.isFinite(raw) && raw >= 0 ? Math.floor(raw) : 300;
+  }
+
+  /** Prazo dos conjuntos-índice: sobrevivem às chaves que indexam. */
+  private get ttlIndice(): number {
+    return Math.max(this.ttl * 2, 600);
   }
 
   private key(tokenHash: string): string {
@@ -61,10 +73,62 @@ export class SessionCacheService {
     }
   }
 
-  async set(tokenHash: string, value: unknown): Promise<void> {
+  /**
+   * Guarda o contexto e indexa o hash por usuário e por papel — é o que
+   * permite apagar depois sem ter o cookie em mãos.
+   */
+  async set(
+    tokenHash: string,
+    value: unknown,
+    indices?: { userId?: string | null; roleId?: string | null },
+  ): Promise<void> {
     if (this.ttl === 0) return;
     try {
-      await this.redis.client.set(this.key(tokenHash), JSON.stringify(value), "EX", this.ttl);
+      const m = this.redis.client.multi();
+      m.set(this.key(tokenHash), JSON.stringify(value), "EX", this.ttl);
+      if (indices?.userId) {
+        m.sadd(this.userKey(indices.userId), tokenHash).expire(this.userKey(indices.userId), this.ttlIndice);
+      }
+      if (indices?.roleId) {
+        m.sadd(this.roleKey(indices.roleId), tokenHash).expire(this.roleKey(indices.roleId), this.ttlIndice);
+      }
+      await m.exec();
+    } catch (e) {
+      this.aviso(e);
+    }
+  }
+
+  private userKey(userId: string): string {
+    return `nv:sess:user:${userId}`;
+  }
+
+  private roleKey(roleId: string): string {
+    return `nv:sess:role:${roleId}`;
+  }
+
+  /**
+   * Apaga as sessões em cache de um usuário. Chamada quando muda o que o cache
+   * guarda: papel, permissões, membership revogado, senha redefinida.
+   */
+  async dropByUser(userId: string): Promise<void> {
+    await this.apagaConjunto(this.userKey(userId));
+  }
+
+  /**
+   * Apaga as sessões em cache de TODO MUNDO que usa um papel. Editar as
+   * permissões de "vendedor" muda o que dezenas de pessoas podem fazer — e
+   * nenhuma delas está clicando no botão.
+   */
+  async dropByRole(roleId: string): Promise<void> {
+    await this.apagaConjunto(this.roleKey(roleId));
+  }
+
+  private async apagaConjunto(conjunto: string): Promise<void> {
+    try {
+      const hashes = await this.redis.client.smembers(conjunto);
+      const chaves = hashes.flatMap((h) => [this.key(h), this.seenKey(h)]);
+      if (chaves.length) await this.redis.client.del(...chaves);
+      await this.redis.client.del(conjunto);
     } catch (e) {
       this.aviso(e);
     }
@@ -115,7 +179,7 @@ export class SessionCacheService {
         .sadd(conjunto, tokenHash)
         // o conjunto vive mais que as chaves: é só um índice, e membro que já
         // expirou vira DEL inofensivo
-        .expire(conjunto, Math.max(this.ttl * 6, 60))
+        .expire(conjunto, this.ttlIndice)
         .exec();
     } catch (e) {
       this.aviso(e);
@@ -149,6 +213,13 @@ export class SessionCacheService {
       this.aviso(e);
     }
   }
+
+  /** Nomes dos conjuntos-índice, pra quem precisa inspecionar em produção. */
+  static readonly INDICES = {
+    usuario: "nv:sess:user:<userId>",
+    papel: "nv:sess:role:<roleId>",
+    master: "nv:msess:user:<platformUserId>",
+  } as const;
 
   /**
    * `last_seen_at` valia uma ESCRITA no Postgres a cada requisição — linha

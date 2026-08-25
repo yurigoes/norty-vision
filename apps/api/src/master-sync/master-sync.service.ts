@@ -193,6 +193,7 @@ export class MasterSyncService {
       updates.email = opts.newEmail.toLowerCase().trim();
     }
     await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+      // cache-ok: senha e e-mail não entram no contexto do guard
       tx.platformUser.update({
         where: { id: opts.platformUserId },
         data: updates,

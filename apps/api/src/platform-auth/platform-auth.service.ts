@@ -53,6 +53,7 @@ export class PlatformAuthService {
     if (this.argon.needsRehash(user.passwordHash)) {
       const newHash = await this.argon.hash(opts.password);
       await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+        // cache-ok: rehash da senha durante o login; a sessão nasce depois
         tx.platformUser.update({
           where: { id: user.id },
           data: { passwordHash: newHash },

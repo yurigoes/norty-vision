@@ -513,6 +513,7 @@ export class OrganizationsService {
           },
         });
 
+        // cache-ok: empresa e usuário acabaram de nascer; ninguém tem sessão
         const membership = await tx.membership.create({
           data: {
             userId: user.id,

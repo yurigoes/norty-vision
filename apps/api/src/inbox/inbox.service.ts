@@ -1162,6 +1162,7 @@ export class InboxService {
   async setMyDisplayName(ctx: RequestContext, name: string) {
     if (!ctx.membershipId) throw new AppError(ErrorCode.Forbidden, "Sem operador", 403);
     const v = (name ?? "").trim().slice(0, 60) || null;
+    // cache-ok: apelido no inbox não entra no contexto do guard
     await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.membership.update({ where: { id: ctx.membershipId! }, data: { inboxDisplayName: v } }));
     return { displayName: v };
   }

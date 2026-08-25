@@ -183,3 +183,9 @@ virou uma faixa de abas só, que marca a tela atual e funciona no celular. Ver
 O nome do produto deixou de estar cravado em 45 lugares: o web parte de
 `lib/brand.ts`, a API usa `NORTY_SYSTEM_NAME`, e `platform_settings` continua
 mandando. Ver [`marca-unica.md`](./marca-unica.md).
+
+## Sessão e latência
+
+O "soft auth" era remendo para uma causa concreta: cada consulta com RLS
+custava sete idas ao Postgres só para montar o contexto. Ver
+[`sessao-e-latencia.md`](./sessao-e-latencia.md).

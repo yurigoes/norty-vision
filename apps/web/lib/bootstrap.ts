@@ -83,10 +83,10 @@ export const getBootstrap = cache(async (): Promise<BootstrapSnapshot> => {
     // API ainda sem o endpoint (deploy pela metade): usa o caminho antigo.
     if (res.status === 404) return legacyBootstrap(base, header, hasSession);
 
-    if (!res.ok) return softAuth(hasSession);
+    if (!res.ok) return softAuth(hasSession, `HTTP ${res.status}`);
 
     const data = (await res.json()) as Partial<BootstrapSnapshot> | null;
-    if (!data?.session) return softAuth(hasSession);
+    if (!data?.session) return softAuth(hasSession, "resposta sem sessão");
 
     return {
       session: data.session,
@@ -96,12 +96,28 @@ export const getBootstrap = cache(async (): Promise<BootstrapSnapshot> => {
       shortcuts: Array.isArray(data.shortcuts) ? data.shortcuts : [],
       chatwoot: data.chatwoot ?? null,
     };
-  } catch {
-    return softAuth(hasSession);
+  } catch (e) {
+    const motivo = e instanceof Error && e.name === "TimeoutError" ? "timeout de 8s" : String(e);
+    return softAuth(hasSession, motivo);
   }
 });
 
-function softAuth(hasSession: boolean): BootstrapSnapshot {
+/**
+ * "Soft auth": a API não respondeu (timeout, rede, 5xx), mas há cookie de
+ * sessão — mantém o usuário dentro em vez de expulsá-lo pro login.
+ *
+ * Continua sendo a rede de segurança, mas agora DEIXA RASTRO. Antes era
+ * silencioso: quando acontecia, ninguém ficava sabendo, e o sintoma chegava
+ * como "o sistema me deslogou do nada" sem nada no log pra confirmar. Se esta
+ * linha aparecer com frequência, o problema é a API estar lenta — não o front.
+ */
+function softAuth(hasSession: boolean, motivo: string): BootstrapSnapshot {
+  if (hasSession) {
+    console.warn(
+      `[auth] /api/bootstrap não respondeu (${motivo}) — mantendo a sessão pelo cookie. ` +
+        `Se isto se repetir, investigue a latência da API.`,
+    );
+  }
   return { ...EMPTY, session: { authenticated: hasSession, user: null, master: null } };
 }
 
@@ -129,7 +145,7 @@ async function legacyBootstrap(
   };
 
   const me = await get<SessionSnapshot>("/api/auth/me");
-  if (!me) return softAuth(hasSession);
+  if (!me) return softAuth(hasSession, "caminho antigo: /api/auth/me falhou");
   if (!me.authenticated) return { ...EMPTY, session: me };
 
   const isMaster = me.master !== null;

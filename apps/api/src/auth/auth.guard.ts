@@ -14,8 +14,15 @@ import {
   REQUIRE_PERMISSION_KEY,
 } from "./decorators";
 import { PrismaService } from "../prisma/prisma.service";
+import { SessionCacheService } from "./session-cache.service";
 import { loadEnv } from "../config";
 import type { RequestContext } from "./session.middleware";
+
+/** O que vai pro cache: só o que o guard monta a partir do banco. */
+type ContextoUsuario = Pick<
+  RequestContext,
+  "userId" | "membershipId" | "orgId" | "storeId" | "role" | "isOrgAdmin" | "permissions"
+>;
 
 const NONE_CONTEXT: RequestContext = {
   userId: null,
@@ -47,6 +54,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly prisma: PrismaService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   async canActivate(execCtx: ExecutionContext): Promise<boolean> {
@@ -170,36 +178,49 @@ export class AuthGuard implements CanActivate {
     if (userToken) {
       try {
         const tokenHash = sha256(userToken);
-        const session = await this.prisma.runWithContext(
-          { isPlatformAdmin: true },
-          (tx) =>
-            tx.session.findUnique({
-              where: { tokenHash },
-              include: {
-                activeMembership: {
-                  include: { role: true, store: true, organization: true },
-                },
-              },
-            }),
-        );
-        if (session && !session.revokedAt && session.expiresAt > new Date()) {
-          const m = session.activeMembership;
-          ctx.userId = session.userId;
-          ctx.membershipId = m?.id ?? null;
-          ctx.orgId = m?.organizationId ?? null;
-          ctx.storeId = m?.storeId ?? null;
-          ctx.role = m?.role.slug ?? null;
-          ctx.isOrgAdmin = m?.role.slug === "owner" || m?.role.slug === "admin";
-          // permissoes do papel + overrides por usuario (membership.permissions)
-          ctx.permissions = mergePermissions(
-            m?.role.permissions,
-            (m as any)?.permissions,
-          );
 
+        // 1) cache: absorve a rajada de requisições de uma mesma tela sem
+        //    tocar no banco. Ver `SessionCacheService`.
+        const emCache = await this.cache.get<ContextoUsuario>(tokenHash);
+        if (emCache) {
+          Object.assign(ctx, emCache);
+        } else {
+          const session = await this.prisma.runWithContext(
+            { isPlatformAdmin: true },
+            (tx) =>
+              tx.session.findUnique({
+                where: { tokenHash },
+                include: {
+                  activeMembership: {
+                    include: { role: true, store: true, organization: true },
+                  },
+                },
+              }),
+          );
+          if (session && !session.revokedAt && session.expiresAt > new Date()) {
+            const m = session.activeMembership;
+            const resolvido: ContextoUsuario = {
+              userId: session.userId,
+              membershipId: m?.id ?? null,
+              orgId: m?.organizationId ?? null,
+              storeId: m?.storeId ?? null,
+              role: m?.role.slug ?? null,
+              isOrgAdmin: m?.role.slug === "owner" || m?.role.slug === "admin",
+              // permissoes do papel + overrides por usuario (membership.permissions)
+              permissions: mergePermissions(m?.role.permissions, (m as any)?.permissions),
+            };
+            Object.assign(ctx, resolvido);
+            await this.cache.set(tokenHash, resolvido);
+          }
+        }
+
+        // 2) "sessão ativa": escrita no banco no máximo a cada 5 min, e não a
+        //    cada clique. O valor só serve pra saber que a sessão está viva.
+        if (ctx.userId && (await this.cache.deveMarcarAtividade(tokenHash))) {
           this.prisma
             .runWithContext({ isPlatformAdmin: true }, (tx) =>
-              tx.session.update({
-                where: { id: session.id },
+              tx.session.updateMany({
+                where: { tokenHash },
                 data: { lastSeenAt: new Date() },
               }),
             )

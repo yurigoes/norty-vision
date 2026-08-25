@@ -41,6 +41,29 @@ export class SessionSnapshotService {
       this.impersonating(ctx),
     ]);
 
+    return this.compose(ctx, {
+      mustResetPassword,
+      impersonatingOrgName: impersonating?.orgName ?? null,
+    });
+  }
+
+  /**
+   * O mesmo retrato, sem ir ao banco.
+   *
+   * O `/bootstrap` já traz `must_reset_password` e o nome da empresa
+   * impersonada na sua consulta única — não faz sentido buscar de novo. Quem
+   * tem os dois em mãos monta por aqui; quem não tem chama `build()`.
+   */
+  compose(
+    ctx: RequestContext,
+    extras: { mustResetPassword: boolean; impersonatingOrgName: string | null },
+  ): SessionSnapshot {
+    const { mustResetPassword } = extras;
+    const impersonating =
+      ctx.impersonating && ctx.impersonatingOrgId
+        ? { orgId: ctx.impersonatingOrgId, orgName: extras.impersonatingOrgName }
+        : null;
+
     return {
       authenticated: Boolean(ctx.userId || ctx.platformUserId),
       user: ctx.userId

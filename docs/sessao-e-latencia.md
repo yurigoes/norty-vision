@@ -102,7 +102,10 @@ teoria:
 
 ## O que ainda dá pra melhorar
 
-`/api/bootstrap` custa 34 idas ao banco (cinco consultas em paralelo, e o
-`include` do Prisma vira uma consulta por tabela). É uma requisição por
-navegação, não por clique — mas é o próximo alvo, provavelmente com um
-`SELECT` escrito à mão no lugar do `include`.
+`/api/bootstrap` custava 34 idas ao banco (onze transações, e o `include` do
+Prisma virando uma consulta por tabela). **Resolvido**: hoje é uma consulta só
+— ver [`casca-em-uma-consulta.md`](casca-em-uma-consulta.md).
+
+O que sobra é o próprio guard: quando a sessão **não** está no cache do Redis,
+resolvê-la pelo Prisma custa ~11 idas. Vale o mesmo tratamento — uma consulta
+escrita à mão no lugar da sequência de leituras.

@@ -53,9 +53,13 @@ lado de dentro da rede — sem passar pelo Caddy nem pelo túnel a cada uma.
 
 ### Nada disso derruba a tela
 
-Cada peça é resolvida com tolerância a falha (`soft()` na API): quem falhar
-vira `null` / `[]` e a casca renderiza sem aquele pedaço — o mesmo
-comportamento de antes, quando um dos endpoints dava erro.
+Cada peça é resolvida com tolerância a falha: o que faltar vira `null` / `[]`
+e a casca renderiza sem aquele pedaço — o mesmo comportamento de antes, quando
+um dos endpoints dava erro.
+
+> **Continuação:** uma chamada HTTP não era uma ida ao banco. Por dentro, isto
+> aqui eram onze transações e 34 idas ao Postgres. Hoje é **uma consulta só** —
+> ver [`casca-em-uma-consulta.md`](casca-em-uma-consulta.md).
 
 A tolerância do lado do web também continua: só devolve "não autenticado"
 quando a API responde **401/403**. Timeout, erro de rede ou 5xx mantêm a sessão
@@ -70,6 +74,6 @@ Ninguém fica na mão durante uma janela de deploy.
 
 ## Próximo passo natural
 
-`getBootstrap()` é `cache()` **por requisição**. Um cache curto em Redis por
-sessão (5–15s), invalidado quando a empresa ou a assinatura muda, tiraria
-também essa consulta do caminho de cada navegação.
+`getBootstrap()` é `cache()` **por requisição**. Do lado da API a consulta já
+custa uma ida ao banco; o que ainda pesa quando a sessão não está no cache do
+Redis é o guard de autenticação resolvê-la pelo Prisma (~11 idas).

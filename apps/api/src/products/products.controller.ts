@@ -56,8 +56,16 @@ export class ProductsController {
     @Query("q") search?: string,
     @Query("activeOnly") activeOnly?: string,
     @Query("storeId") storeId?: string,
+    @Query("limit") limit?: string,
   ) {
-    return { items: await this.svc.list(ctx, { search, activeOnly: activeOnly === "true", storeId: storeId || undefined }) };
+    return {
+      items: await this.svc.list(ctx, {
+        search,
+        activeOnly: activeOnly === "true",
+        storeId: storeId || undefined,
+        limit: limit ? Number(limit) : undefined,
+      }),
+    };
   }
 
   // ---- relatórios de estoque (rotas literais antes de :id) ----

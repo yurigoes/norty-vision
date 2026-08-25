@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDialog } from "../../../components/SystemDialog";
 import { openDocBlob } from "../../../lib/openDoc";
+import { useBuscaServidor } from "../../../lib/useBuscaServidor";
 
 interface Customer {
   id: string;
@@ -102,7 +103,10 @@ function parseClientsCsv(text: string): ImportRow[] {
 export function ClientesClient({ initial }: { initial: Customer[] }) {
   const router = useRouter();
   const dialog = useDialog();
-  const [q, setQ] = useState("");
+  // a busca vai ao servidor: antes filtrava os 300 que a página trouxe, e
+  // quem estivesse fora deles simplesmente "não existia"
+  const busca = useBuscaServidor<Customer>({ rota: "/api/customers", inicial: initial, limite: 100 });
+  const { q, setQ, buscando, doServidor } = busca;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -155,20 +159,8 @@ export function ClientesClient({ initial }: { initial: Customer[] }) {
     } catch (e: any) { dialog.toast(e.message, "error"); } finally { setSavingDetail(false); }
   }
 
-  const list = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return initial.slice(0, 100);
-    const d = s.replace(/\D/g, "");
-    return initial
-      .filter(
-        (c) =>
-          c.name.toLowerCase().includes(s) ||
-          (d.length >= 3 && (c.document ?? "").replace(/\D/g, "").includes(d)) ||
-          (d.length >= 3 && (c.phone ?? "").replace(/\D/g, "").includes(d)) ||
-          (c.email ?? "").toLowerCase().includes(s),
-      )
-      .slice(0, 100);
-  }, [q, initial]);
+  const list = busca.itens.slice(0, 100);
+  const noTeto = list.length >= 100;
 
   async function resetPassword(c: Customer) {
     const ok = await dialog.confirm({
@@ -221,12 +213,20 @@ export function ClientesClient({ initial }: { initial: Customer[] }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar por nome, CPF/CNPJ, telefone ou e-mail"
-          className="input-base flex-1"
-        />
+        <div className="relative flex-1">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar por nome, CPF/CNPJ, telefone ou e-mail"
+            className="input-base w-full"
+            aria-label="Buscar clientes"
+          />
+          {buscando && (
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-muted">
+              buscando…
+            </span>
+          )}
+        </div>
         <button onClick={() => setCreating(true)} className="btn-grad">
           + Novo cliente
         </button>
@@ -236,13 +236,23 @@ export function ClientesClient({ initial }: { initial: Customer[] }) {
             onChange={(e) => { const f = e.target.files?.[0]; if (f) importCsv(f); e.currentTarget.value = ""; }} />
         </label>
       </div>
-      {creating && <NewCustomerModal onClose={() => setCreating(false)} onCreated={() => { setCreating(false); router.refresh(); }} />}
+      {creating && <NewCustomerModal onClose={() => setCreating(false)} onCreated={() => { setCreating(false); router.refresh(); busca.refazer(); }} />}
       <p className="text-[11px] text-muted">CSV com colunas: CPF, Nome, Telefone, Email, CEP, Rua, Numero, Nascimento. Duplicados (CPF/telefone) são ignorados; o restante o cliente completa no portal.</p>
       {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{err}</p>}
       {msg && <p className="rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-200">{msg}</p>}
 
+      <p className="text-[11px] text-muted">
+        {doServidor
+          ? `${list.length} resultado(s) para "${q.trim()}"${noTeto ? " — mostrando os 100 primeiros, refine a busca" : ""} · procurado em todos os clientes`
+          : `Mostrando ${list.length} cliente(s). Digite pra buscar em todos.`}
+      </p>
+
+      {busca.erro && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{busca.erro}</p>}
+
       {list.length === 0 ? (
-        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhum cliente.</p>
+        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">
+          {doServidor ? `Nenhum cliente encontrado para "${q.trim()}".` : "Nenhum cliente."}
+        </p>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
           <table className="w-full text-sm table-cards">

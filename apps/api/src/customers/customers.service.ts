@@ -108,6 +108,9 @@ export class CustomersService {
                   { phone: { contains: opts.search } },
                   { whatsappPhone: { contains: opts.search } },
                   { document: { contains: opts.search } },
+                  // a tela também procurava por e-mail quando filtrava na
+                  // memória; sem isto, ligar a busca no servidor tiraria algo
+                  { email: { contains: opts.search, mode: "insensitive" } },
                 ],
               }
             : {}),

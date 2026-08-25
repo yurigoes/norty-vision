@@ -44,7 +44,7 @@ export class ProductsService {
       : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
   }
 
-  async list(ctx: RequestContext, opts?: { search?: string; activeOnly?: boolean; storeId?: string }) {
+  async list(ctx: RequestContext, opts?: { search?: string; activeOnly?: boolean; storeId?: string; limit?: number }) {
     if (!ctx.orgId && !ctx.isPlatformAdmin) {
       throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
     }
@@ -58,12 +58,16 @@ export class ProductsService {
                 OR: [
                   { name: { contains: opts.search, mode: "insensitive" } },
                   { sku: { contains: opts.search, mode: "insensitive" } },
+                  // a tela também procurava por categoria quando filtrava na
+                  // memória; sem isto, ligar a busca no servidor tiraria algo
+                  { category: { contains: opts.search, mode: "insensitive" } },
                 ],
               }
             : {}),
         },
         orderBy: { name: "asc" },
-        take: 500,
+        // 500 continua sendo o teto (e o padrao de quem nao pede nada)
+        take: Math.min(Number.isFinite(opts?.limit as number) && (opts!.limit as number) > 0 ? (opts!.limit as number) : 500, 500),
       });
       // PDV: quando vem o storeId, o stockQty reflete o SALDO DAQUELA LOJA
       // (e expõe storeStockQty), pro aviso de estoque ser por loja, não o total.

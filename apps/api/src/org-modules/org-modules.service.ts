@@ -2,10 +2,14 @@ import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import type { RequestContext } from "../auth/session.middleware";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 @Injectable()
 export class OrgModulesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: SessionCacheService,
+  ) {}
 
   private requireMaster(ctx: RequestContext) {
     if (!ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas master", 403);
@@ -43,7 +47,7 @@ export class OrgModulesService {
       : input.kind === "alacarte" ? new Date(Date.now() + 3 * 86400_000) // prazo p/ pagar (3 dias)
       : null;
 
-    return this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+    const grant = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.orgModuleGrant.upsert({
         where: { organizationId_moduleKey: { organizationId, moduleKey: input.moduleKey } },
         update: {
@@ -65,16 +69,20 @@ export class OrgModulesService {
         },
       }),
     );
+    await this.cache.dropOrg(organizationId);
+    return grant;
   }
 
   async markPaid(ctx: RequestContext, organizationId: string, moduleKey: string) {
     this.requireMaster(ctx);
-    return this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+    const r = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.orgModuleGrant.update({
         where: { organizationId_moduleKey: { organizationId, moduleKey } },
         data: { paid: true, paidAt: new Date(), blocked: false },
       }),
     );
+    await this.cache.dropOrg(organizationId);
+    return r;
   }
 
   async revoke(ctx: RequestContext, organizationId: string, moduleKey: string) {
@@ -82,6 +90,7 @@ export class OrgModulesService {
     await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.orgModuleGrant.deleteMany({ where: { organizationId, moduleKey } }),
     );
+    await this.cache.dropOrg(organizationId);
     return { ok: true };
   }
 
@@ -89,13 +98,15 @@ export class OrgModulesService {
    *  um grant blocked=true; o getMine remove esse módulo do enabledModules. */
   async block(ctx: RequestContext, organizationId: string, moduleKey: string, notes?: string | null) {
     this.requireMaster(ctx);
-    return this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+    const r = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.orgModuleGrant.upsert({
         where: { organizationId_moduleKey: { organizationId, moduleKey } },
         update: { blocked: true, notes: notes ?? null, createdByPlatformUserId: ctx.platformUserId ?? null },
         create: { organizationId, moduleKey, kind: "courtesy", blocked: true, notes: notes ?? null, createdByPlatformUserId: ctx.platformUserId ?? null },
       }),
     );
+    await this.cache.dropOrg(organizationId);
+    return r;
   }
 
   /** Desbloqueia: remove o grant (volta ao que o plano define). */
@@ -104,6 +115,7 @@ export class OrgModulesService {
     await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.orgModuleGrant.deleteMany({ where: { organizationId, moduleKey, blocked: true } }),
     );
+    await this.cache.dropOrg(organizationId);
     return { ok: true };
   }
 
@@ -143,6 +155,7 @@ export class OrgModulesService {
         create: { organizationId, submoduleFeatures: denied },
       }),
     );
+    await this.cache.dropOrg(organizationId);
     return { ok: true, submoduleFeatures: denied };
   }
 

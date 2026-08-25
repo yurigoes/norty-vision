@@ -5,7 +5,7 @@ import { ArgonService } from "./argon.service";
 import { SessionService } from "./session.service";
 import { MeController } from "./me.controller";
 import { SessionSnapshotService } from "./session-snapshot.service";
-import { SessionCacheService } from "./session-cache.service";
+import { SessionCacheModule } from "./session-cache.module";
 import { RedisModule } from "../redis/redis.module";
 import { MfaService } from "./mfa.service";
 import { MfaController } from "./mfa.controller";
@@ -15,7 +15,7 @@ import { EmailService } from "../notifications/email.service";
 import { IntegrationsModule } from "../integrations/integrations.module";
 
 @Module({
-  imports: [IntegrationsModule, RedisModule],
+  imports: [IntegrationsModule, RedisModule, SessionCacheModule],
   controllers: [
     AuthController,
     MeController,
@@ -25,7 +25,6 @@ import { IntegrationsModule } from "../integrations/integrations.module";
   providers: [
     AuthService,
     SessionSnapshotService,
-    SessionCacheService,
     ArgonService,
     SessionService,
     MfaService,
@@ -35,7 +34,6 @@ import { IntegrationsModule } from "../integrations/integrations.module";
   exports: [
     AuthService,
     SessionSnapshotService,
-    SessionCacheService,
     SessionService,
     ArgonService,
     MfaService,

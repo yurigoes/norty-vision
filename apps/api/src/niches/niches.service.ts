@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 interface UpsertNicheInput {
   key?: string;
@@ -12,7 +13,10 @@ interface UpsertNicheInput {
 
 @Injectable()
 export class NichesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: SessionCacheService,
+  ) {}
 
   /** Lista todos os nichos (master). Ordenados por displayOrder. */
   async listAll() {
@@ -47,7 +51,7 @@ export class NichesService {
       tx.niche.findFirst({ where: { key }, select: { id: true } }),
     );
     if (exists) throw new AppError(ErrorCode.Conflict, `Já existe um nicho com a chave "${key}".`, 409);
-    return this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+    const criado = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.niche.create({
         data: {
           key,
@@ -58,6 +62,8 @@ export class NichesService {
         },
       }),
     );
+    await this.cache.dropAllOrgs();
+    return criado;
   }
 
   async update(id: string, input: UpsertNicheInput) {
@@ -67,9 +73,13 @@ export class NichesService {
     if (input.isActive !== undefined) data.isActive = !!input.isActive;
     if (input.displayOrder !== undefined) data.displayOrder = Math.floor(input.displayOrder);
     data.updatedAt = new Date();
-    return this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+    const r = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.niche.update({ where: { id }, data }),
     );
+    // a deny-list do nicho vale pra TODAS as empresas dele — e não há índice
+    // por nicho: é ação rara do master, então limpa o cache de empresa inteiro
+    await this.cache.dropAllOrgs();
+    return r;
   }
 
   async remove(id: string) {
@@ -83,6 +93,7 @@ export class NichesService {
     );
     if (inUse > 0) throw new AppError(ErrorCode.Conflict, `Não dá pra excluir: ${inUse} empresa(s) usam o nicho "${niche.key}". Troque o nicho delas antes.`, 409);
     await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) => tx.niche.delete({ where: { id } }));
+    await this.cache.dropAllOrgs();
     return { ok: true };
   }
 

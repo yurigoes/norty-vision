@@ -129,6 +129,7 @@ export class ProvisioningService {
       if (!r.ok || !r.body?.id) return { error: r.error ?? "createAccount falhou" };
       accountId = String(r.body.id);
       await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+        // cache-ok: o id do Chatwoot não entra na resposta de /organizations/me
         tx.organization.update({
           where: { id: org.id },
           data: { chatwootAccountId: accountId },

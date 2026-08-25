@@ -4,6 +4,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ArgonService } from "../auth/argon.service";
 import { ProvisioningService } from "../integrations/provisioning.service";
 import { ShellLoader } from "../bootstrap/shell.loader";
+import { SessionCacheService } from "../auth/session-cache.service";
 import type { RequestContext } from "../auth/session.middleware";
 
 interface FirstUserInput {
@@ -58,6 +59,7 @@ export class OrganizationsService {
     private readonly argon: ArgonService,
     private readonly provisioning: ProvisioningService,
     private readonly shell: ShellLoader,
+    private readonly cache: SessionCacheService,
   ) {}
 
   /**
@@ -91,8 +93,17 @@ export class OrganizationsService {
    */
   async getMine(ctx: RequestContext) {
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
+
+    // A resposta é a mesma pra todo mundo da empresa, então o cache é POR
+    // EMPRESA: dez pessoas trabalhando na loja pedem a mesma coisa e o banco vê
+    // uma consulta só. Chegar aqui já significa ter provado, pela sessão, que
+    // se pertence a esta empresa.
+    const emCache = await this.cache.getOrg<Record<string, unknown>>(ctx.orgId);
+    if (emCache) return emCache;
+
     const { organization } = await this.shell.load(ctx);
     if (!organization) throw new AppError(ErrorCode.NotFound, "Organizacao nao encontrada", 404);
+    await this.cache.setOrg(ctx.orgId, organization);
     return organization;
   }
 
@@ -301,6 +312,7 @@ export class OrganizationsService {
         },
       }),
     );
+    await this.cache.dropOrg(ctx.orgId);
     return org;
   }
 
@@ -320,39 +332,45 @@ export class OrganizationsService {
     if (input.logoUrl !== undefined) data.logoUrl = input.logoUrl;
     if (input.primaryColor !== undefined) data.primaryColor = input.primaryColor;
     if (input.themeMode !== undefined) data.themeMode = input.themeMode;
-    return this.prisma.runWithContext(this.rls(ctx), (tx) =>
+    const r = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.organization.update({
         where: { id: ctx.orgId! },
         data,
         select: { id: true, name: true, logoUrl: true, primaryColor: true, themeMode: true },
       }),
     );
+    await this.cache.dropOrg(ctx.orgId);
+    return r;
   }
 
   /** Configura os recursos do portal do cliente (null = padrão, mostra todos). */
   async updatePortal(ctx: RequestContext, features: string[] | null) {
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
     if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
-    return this.prisma.runWithContext(this.rls(ctx), (tx) =>
+    const r = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.organization.update({
         where: { id: ctx.orgId! },
         data: { portalConfig: features === null ? null : (features as any) },
         select: { id: true, portalConfig: true },
       }),
     );
+    await this.cache.dropOrg(ctx.orgId);
+    return r;
   }
 
   /** Configura os botões do call center (null = padrão, segue os módulos). */
   async updateCallcenter(ctx: RequestContext, buttons: string[] | null) {
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
     if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
-    return this.prisma.runWithContext(this.rls(ctx), (tx) =>
+    const r = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.organization.update({
         where: { id: ctx.orgId! },
         data: { callcenterConfig: buttons === null ? null : (buttons as any) },
         select: { id: true, callcenterConfig: true },
       }),
     );
+    await this.cache.dropOrg(ctx.orgId);
+    return r;
   }
 
   /**
@@ -395,9 +413,11 @@ export class OrganizationsService {
     if (typeof data.slug === "string") {
       data.slug = (data.slug as string).trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
     }
-    return this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+    const r = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.organization.update({ where: { id }, data }),
     );
+    await this.cache.dropOrg(id);
+    return r;
   }
 
   /**

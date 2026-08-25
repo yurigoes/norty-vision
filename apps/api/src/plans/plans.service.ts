@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 interface UpsertPlanInput {
   slug: string;
@@ -23,7 +24,10 @@ interface UpsertPlanInput {
 
 @Injectable()
 export class PlansService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: SessionCacheService,
+  ) {}
 
   /** Publica: lista planos ativos (RLS abre is_active=true). Opcional: filtra por nicho. */
   async listActive(niche?: string | null) {
@@ -130,8 +134,11 @@ export class PlansService {
     ] as const) {
       if ((input as any)[k] !== undefined) data[k] = (input as any)[k];
     }
-    return this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+    const r = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.plan.update({ where: { id }, data }),
     );
+    // as features do plano decidem os módulos de TODAS as empresas nele
+    await this.cache.dropAllOrgs();
+    return r;
   }
 }

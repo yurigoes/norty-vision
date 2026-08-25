@@ -73,6 +73,49 @@ dias**. Corrigido dos dois lados: a consulta do guard agora só aceita vínculo
 `active` (a mesma regra que as policies de RLS já usavam), e `revokeMembership`
 encerra as sessões daquele vínculo.
 
+## O mesmo tratamento para a empresa
+
+`GET /api/organizations/me` — quem responde "qual é a marca, o nicho, quais
+módulos estão liberados" — custava **uma** consulta. Agora custa **zero**, e
+por um motivo que vale registrar: **a resposta é a mesma para todo mundo da
+empresa**. O cache é por `orgId`, não por pessoa.
+
+Medido com duas funcionárias da mesma loja e o cache vazio:
+
+| requisição | idas ao banco |
+| --- | ---: |
+| Ana, primeira | 6 (sessão + empresa + `last_seen_at`) |
+| Bia, primeira | 5 — **a empresa não foi consultada** |
+| Ana e Bia, de novo | 0 |
+
+Bia nunca perguntou pela empresa: a requisição da Ana já tinha respondido.
+Numa loja com dez pessoas trabalhando, dez telas pedindo a mesma coisa viram
+uma consulta.
+
+Chegar ao cache já significa ter provado, pela sessão, que se pertence àquela
+empresa — `getMine()` confere `ctx.orgId` antes.
+
+### O que derruba o cache da empresa
+
+| o que mudou | onde |
+| --- | --- |
+| marca (logo, cor, tema), vitrine, portal, botões do call center | admin da empresa |
+| dados gerais, plano, status, nicho | master |
+| aditivo de módulo: concedido, pago, bloqueado, desbloqueado | master ou compra à la carte |
+| sub-módulos | master |
+| status por inadimplência (suspende / reativa) | cobrança automática e licença |
+| **features de um plano** | master — atinge **todas** as empresas do plano |
+| **deny-list de um nicho** | master — atinge **todas** as empresas do nicho |
+
+Os dois últimos não têm índice por plano nem por nicho: são ações raras e só do
+master, então limpam o cache de empresa inteiro (`SCAN` + `DEL` sobre
+`nv:org:*`). É mais barato — e muito mais simples — que manter dois índices a
+mais para um evento que acontece uma vez por mês.
+
+Verificado ao vivo, com o cache quente: trocar a cor, bloquear um módulo,
+desligar um sub-módulo, mudar as features do plano e mudar o nicho — todos
+valeram no clique seguinte.
+
 ## Quanto isso custa no banco
 
 30 requisições em 30 segundos, uma por segundo, contando quantas vezes o guard
@@ -92,10 +135,11 @@ usuário, como master, com os dois cookies e com o master impersonando).
 
 `pnpm --filter @yugo/api check` roda `src/__checks__/cache.check.mts`: ele varre
 a API atrás de escritas em `memberships`, `roles`, `sessions`,
-`platform_sessions` e do `mustResetPassword` de `users`, e **reprova qualquer
-método que mexa nisso sem apagar o cache** — a não ser que a linha traga um
-`// cache-ok:` com o motivo. Hoje são 35 escritas: 22 apagam, 13 dispensadas
-com motivo escrito.
+`platform_sessions`, `organizations`, `org_module_grants`,
+`call_center_settings`, `niches`, `plans` e do `mustResetPassword` de `users`, e
+**reprova qualquer método que mexa nisso sem apagar o cache** — a não ser que a
+linha traga um `// cache-ok:` com o motivo. Hoje são 60 escritas: 45 apagam, 15
+dispensadas com motivo escrito.
 
 É o que impede o problema de voltar por descuido: método novo que troca papel e
 esquece de invalidar não passa da conferência.

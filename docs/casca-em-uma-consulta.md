@@ -141,7 +141,7 @@ quente no cache:
 | --- | --- | --- |
 | `GET /api/bootstrap` (usuário comum) | 34 idas / 30 ms | **1 ida / 16 ms** |
 | `GET /api/bootstrap` (admin da empresa) | 46 idas / 30 ms | **1 ida / 17 ms** |
-| `GET /api/organizations/me` | 20 idas / 26 ms | **1 ida / 18 ms** |
+| `GET /api/organizations/me` | 20 idas / 26 ms | **1 ida / 18 ms** (hoje 0 — ver [`permissoes-e-cache.md`](permissoes-e-cache.md)) |
 
 A resposta é **idêntica byte a byte** à de antes nos quatro casos medidos
 (bootstrap e `organizations/me`, como usuário comum e como admin). Inclusive as

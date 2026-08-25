@@ -8,6 +8,7 @@ import { MercadoPagoOrgAdapter } from "../payments/mercadopago-org.adapter";
 import { PlatformContractsService } from "../platform-contracts/platform-contracts.service";
 import { SubscriptionInvoicesService } from "../subscription-invoices/subscription-invoices.service";
 import type { RequestContext } from "../auth/session.middleware";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 interface StartCheckoutInput {
   planId?: string;
@@ -24,6 +25,7 @@ export class SubscriptionsService {
     private readonly integrations: IntegrationsService,
     private readonly platformContracts: PlatformContractsService,
     private readonly subscriptionInvoices: SubscriptionInvoicesService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   /** Retorna assinatura da org atual (cria trial default se nao existir). */
@@ -89,6 +91,10 @@ export class SubscriptionsService {
         where: { id: opts.organizationId },
         data: { planCode: plan.slug },
       });
+      return sub;
+    }).then(async (sub) => {
+      // trocou de plano = trocou o conjunto de módulos liberados
+      await this.cache.dropOrg(opts.organizationId);
       return sub;
     });
   }
@@ -289,6 +295,7 @@ export class SubscriptionsService {
       grant = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
         tx.orgModuleGrant.create({ data: { organizationId: ctx.orgId!, moduleKey: input.moduleKey, kind: "alacarte", priceCents: price.priceCents, blocked: false, paid: false } }),
       );
+      await this.cache.dropOrg(ctx.orgId!);
     }
     if (grant.kind !== "alacarte") throw new AppError(ErrorCode.NotFound, "Módulo não está disponível para compra", 404);
     if (grant.paid) throw new AppError(ErrorCode.Conflict, "Módulo já está pago", 409);
@@ -481,7 +488,11 @@ export class SubscriptionsService {
         const grant = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
           tx.orgModuleGrant.findUnique({ where: { id: modGrantId! }, select: { organizationId: true, moduleKey: true } }),
         );
-        if (grant) await this.platformContracts.autoAssignModuleAddendum(grant.organizationId, grant.moduleKey);
+        if (grant) {
+          // módulo pago = módulo liberado: o cadeado tem que cair na hora
+          await this.cache.dropOrg(grant.organizationId);
+          await this.platformContracts.autoAssignModuleAddendum(grant.organizationId, grant.moduleKey);
+        }
       } catch { /* best-effort */ }
     }
 

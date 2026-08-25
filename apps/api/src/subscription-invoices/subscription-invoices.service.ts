@@ -8,6 +8,7 @@ import { NotificationService } from "../notifications/notification.service";
 import { IntegrationsService } from "../integrations/integrations.service";
 import { MercadoPagoOrgAdapter } from "../payments/mercadopago-org.adapter";
 import type { RequestContext } from "../auth/session.middleware";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 // dias após o vencimento para suspender a empresa inadimplente
 const GRACE_DAYS = 7;
@@ -39,6 +40,7 @@ export class SubscriptionInvoicesService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationService,
     private readonly integrations: IntegrationsService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   private rls(ctx: RequestContext) {
@@ -156,6 +158,8 @@ export class SubscriptionInvoicesService {
       const overdue = await tx.subscriptionInvoice.count({ where: { organizationId, status: "pending", dueDate: { lt: new Date() } } });
       if (overdue === 0) await tx.organization.update({ where: { id: organizationId }, data: { status: "active" } });
     });
+    // status suspended/active decide se a empresa entra no painel
+    await this.cache.dropOrg(organizationId);
   }
 
   // ============================== COBRANÇA AUTOMÁTICA (cron) ==============================
@@ -227,6 +231,7 @@ export class SubscriptionInvoicesService {
         // suspende após carência
         if (dueDays >= GRACE_DAYS && org.status === "active") {
           await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) => tx.organization.update({ where: { id: org.id }, data: { status: "suspended" } }));
+          await this.cache.dropOrg(org.id);
           suspended++;
           this.logger.warn(`Empresa suspensa por inadimplência: ${org.name} (${org.id})`);
         }

@@ -23,13 +23,23 @@ import { dirname, join } from "node:path";
 const here = dirname(fileURLToPath(import.meta.url));
 const src = join(here, "..");
 
-/** Escritas que mexem no contexto que o guard guarda em cache. */
+/**
+ * Escritas que mexem no que fica em cache: o contexto da sessão (guard) e a
+ * resposta de `/organizations/me` (empresa, marca, módulos, sub-módulos).
+ */
 const ESCRITAS = [
+  // sessão
   /tx\.membership\.(update|create|updateMany|delete)\b/,
   /tx\.role\.(update|delete)\b/,
   /tx\.session\.updateMany\b/,
   /tx\.platformSession\.(update|updateMany)\b/,
   /tx\.platformUser\.update\b/,
+  // empresa
+  /tx\.organization\.update\b/,
+  /tx\.orgModuleGrant\.(upsert|update|updateMany|create|delete|deleteMany)\b/,
+  /tx\.callCenterSettings\.(update|upsert|create)\b/,
+  /tx\.niche\.(create|update|delete)\b/,
+  /tx\.plan\.update\b/,
 ];
 
 /**
@@ -42,7 +52,7 @@ const MUST_RESET = /mustResetPassword:\s*(?:true|false)/;
 const TABELA_USERS = /tx\.user\./;
 
 /** O que conta como "apagou". */
-const APAGA = /this\.cache\.(drop|dropByUser|dropByRole|dropMaster|dropMasterByUser)\b/;
+const APAGA = /this\.cache\.drop\w*\(/;
 
 /** Assinatura de método de classe (2 espaços de indentação). */
 const METODO = /^ {2}(?:private |public |protected )?(?:readonly )?(?:async )?([a-zA-Z_]\w*)\s*[(<]/;

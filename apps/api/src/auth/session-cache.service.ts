@@ -214,11 +214,78 @@ export class SessionCacheService {
     }
   }
 
+  // ------------------------------------------------------------ empresa ----
+
+  /**
+   * CACHE DA EMPRESA (`/api/organizations/me`).
+   *
+   * A resposta é a MESMA para todo mundo da empresa — nome, marca, módulos
+   * liberados, sub-módulos. Numa loja com dez pessoas trabalhando, dez telas
+   * pedindo a mesma coisa viram uma consulta só, e depois nenhuma.
+   *
+   * A chave é o id da empresa, e quem lê já provou (pela sessão) que pertence
+   * a ela: `getMine()` só chega aqui depois de conferir `ctx.orgId`.
+   */
+  private orgKey(orgId: string): string {
+    return `nv:org:${orgId}`;
+  }
+
+  async getOrg<T>(orgId: string): Promise<T | null> {
+    if (this.ttl === 0) return null;
+    try {
+      const raw = await this.redis.client.get(this.orgKey(orgId));
+      return raw ? (JSON.parse(raw) as T) : null;
+    } catch (e) {
+      this.aviso(e);
+      return null;
+    }
+  }
+
+  async setOrg(orgId: string, value: unknown): Promise<void> {
+    if (this.ttl === 0) return;
+    try {
+      await this.redis.client.set(this.orgKey(orgId), JSON.stringify(value), "EX", this.ttl);
+    } catch (e) {
+      this.aviso(e);
+    }
+  }
+
+  /** Mudou algo da empresa (marca, nicho, plano, aditivo, sub-módulo). */
+  async dropOrg(orgId: string): Promise<void> {
+    try {
+      await this.redis.client.del(this.orgKey(orgId));
+    } catch (e) {
+      this.aviso(e);
+    }
+  }
+
+  /**
+   * Mudou algo que atravessa TODAS as empresas: as features de um plano, ou a
+   * deny-list de um nicho. São ações raras e só do master, então varrer as
+   * chaves é mais barato (e muito mais simples) que manter um índice por plano
+   * e por nicho.
+   */
+  async dropAllOrgs(): Promise<void> {
+    try {
+      let cursor = "0";
+      do {
+        const [proximo, chaves] = await this.redis.client.scan(
+          cursor, "MATCH", this.orgKey("*"), "COUNT", 500,
+        );
+        cursor = proximo;
+        if (chaves.length) await this.redis.client.del(...chaves);
+      } while (cursor !== "0");
+    } catch (e) {
+      this.aviso(e);
+    }
+  }
+
   /** Nomes dos conjuntos-índice, pra quem precisa inspecionar em produção. */
   static readonly INDICES = {
     usuario: "nv:sess:user:<userId>",
     papel: "nv:sess:role:<roleId>",
     master: "nv:msess:user:<platformUserId>",
+    empresa: "nv:org:<orgId>",
   } as const;
 
   /**

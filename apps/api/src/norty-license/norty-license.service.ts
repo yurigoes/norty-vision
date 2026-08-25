@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { OrganizationsService } from "../organizations/organizations.service";
 import { SubscriptionsService } from "../subscriptions/subscriptions.service";
 import { orgBaseUrl } from "../common/org-url";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 const ADM = { isPlatformAdmin: true as const };
 
@@ -23,6 +24,7 @@ export class NortyLicenseService {
     private readonly prisma: PrismaService,
     private readonly orgs: OrganizationsService,
     private readonly subs: SubscriptionsService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   me() {
@@ -134,6 +136,7 @@ export class NortyLicenseService {
     const orgStatus = status === "ACTIVE" ? "active" : "suspended"; // canceled/suspended → bloqueia acesso, mantém dados
     if (l.organizationId) {
       await this.prisma.runWithContext(ADM, (tx) => tx.organization.update({ where: { id: l.organizationId! }, data: { status: orgStatus } })).catch((e: any) => this.logger.warn(`update org status: ${e?.message}`));
+      await this.cache.dropOrg(l.organizationId);
     }
     const updated = await this.prisma.runWithContext(ADM, (tx) => tx.nortyLicense.update({ where: { id: l.id }, data: { status } }));
     return { licenseId: updated.id, status: updated.status };

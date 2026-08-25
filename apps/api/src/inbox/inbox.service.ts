@@ -14,6 +14,7 @@ import { ProductionService } from "../production/production.service";
 import { QuotesService } from "../quotes/quotes.service";
 import { orgBaseUrl } from "../common/org-url";
 import type { RequestContext } from "../auth/session.middleware";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 function brl(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -39,6 +40,7 @@ export class InboxService {
     private readonly aiLearning: AiLearningService,
     private readonly production: ProductionService,
     private readonly quotes: QuotesService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   /** Contexto de sistema p/ chamar serviços org-scoped a partir do bot/IA. */
@@ -1150,6 +1152,9 @@ export class InboxService {
       // liga/desliga o bot nas inboxes de WhatsApp da empresa
       await tx.inbox.updateMany({ where: { channel: "whatsapp" }, data: { botEnabled } });
     });
+    // a linha de call_center_settings carrega os sub-módulos que o
+    // /organizations/me devolve
+    await this.cache.dropOrg(orgId);
     return this.getSettings(ctx);
   }
 

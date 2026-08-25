@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { ArgonService } from "../auth/argon.service";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 /** snake_case -> camelCase nas chaves de um objeto raso. */
 function toCamelCase(row: Record<string, unknown>): Record<string, unknown> {
@@ -24,6 +25,7 @@ export class PlatformService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly argon: ArgonService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   private genPassword(): string {
@@ -63,22 +65,27 @@ export class PlatformService {
     await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.platformSession.updateMany({ where: { platformUserId: targetId, revokedAt: null }, data: { revokedAt: new Date() } }),
     ).catch(() => undefined);
+    await this.cache.dropMasterByUser(targetId);
     return { member, tempPassword };
   }
 
   /** Ativa/inativa um master (owner-only). Impede inativar o último owner ativo. */
-  async setMemberStatus(targetId: string, status: "active" | "inactive") {
+  async setMemberStatus(targetId: string, status: "active" | "disabled") {
     return this.prisma.runWithContext({ isPlatformAdmin: true }, async (tx) => {
       const target = await tx.platformUser.findUnique({ where: { id: targetId } });
       if (!target) throw new AppError(ErrorCode.NotFound, "Master não encontrado", 404);
-      if (status === "inactive" && target.role === "owner") {
+      if (status === "disabled" && target.role === "owner") {
         const owners = await tx.platformUser.count({ where: { role: "owner", status: "active" } });
         if (owners <= 1) throw new AppError(ErrorCode.ValidationFailed, "Não é possível inativar o último owner", 400);
       }
-      if (status === "inactive") {
+      if (status === "disabled") {
         await tx.platformSession.updateMany({ where: { platformUserId: targetId, revokedAt: null }, data: { revokedAt: new Date() } });
       }
       return tx.platformUser.update({ where: { id: targetId }, data: { status }, select: { id: true, email: true, name: true, status: true } });
+    }).then(async (r) => {
+      // inativar derruba as sessões; o cache tem que cair junto
+      await this.cache.dropMasterByUser(targetId);
+      return r;
     });
   }
 
@@ -192,6 +199,11 @@ export class PlatformService {
         data: { role },
         select: { id: true, email: true, name: true, role: true },
       });
+    }).then(async (r) => {
+      // o papel entra no contexto do guard (owner vê o que support não vê),
+      // então a troca precisa valer na hora
+      await this.cache.dropMasterByUser(targetId);
+      return r;
     });
   }
 

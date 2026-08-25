@@ -21,6 +21,7 @@ import {
   CANCELLATION_SQL,
   type SessionRow,
   type CancellationRow,
+  type LinhaMaster,
   type LinhaImpersonacao,
 } from "./guard.sql";
 import { loadEnv } from "../config";
@@ -31,6 +32,12 @@ type ContextoUsuario = Pick<
   RequestContext,
   "userId" | "membershipId" | "orgId" | "storeId" | "role" | "isOrgAdmin" | "permissions"
 >;
+
+/** O que vai pro cache do master: a sessão dele e a empresa impersonada. */
+interface CacheMaster {
+  master: LinhaMaster;
+  impersonado: LinhaImpersonacao | null;
+}
 
 const NONE_CONTEXT: RequestContext = {
   userId: null,
@@ -214,20 +221,21 @@ export class AuthGuard implements CanActivate {
 
     try {
       // 1) cache: absorve a rajada de requisições de uma mesma tela sem tocar
-      //    no banco. Só serve quando não há cookie de master — a sessão do
-      //    master nunca foi cacheada, e é ela que decide a impersonação.
-      const emCache =
-        userHash && !masterHash ? await this.cache.get<ContextoUsuario>(userHash) : null;
+      //    no banco. Os dois lados têm cache próprio — se os dois cookies
+      //    estiverem quentes, a requisição não vai ao banco nenhuma vez.
+      const doUsuario = userHash ? await this.cache.get<ContextoUsuario>(userHash) : null;
+      const doMaster = masterHash ? await this.cache.getMaster<CacheMaster>(masterHash) : null;
 
-      if (emCache) {
-        Object.assign(ctx, emCache);
-      } else {
-        const linha = await this.consultaSessao(userHash, masterHash);
-        if (linha) {
-          await this.aplicaUsuario(ctx, linha, userHash);
-          await this.aplicaMaster(ctx, linha, masterHash);
-        }
-      }
+      // basta um lado faltando pra valer a consulta — ela traz os dois
+      const faltaAlgo = (Boolean(userHash) && !doUsuario) || (Boolean(masterHash) && !doMaster);
+      const linha = faltaAlgo ? await this.consultaSessao(userHash, masterHash) : null;
+
+      if (doUsuario) Object.assign(ctx, doUsuario);
+      else if (linha) await this.aplicaUsuario(ctx, linha, userHash);
+
+      // o master vem DEPOIS: master puro descarta o contexto de empresa
+      if (doMaster) await this.aplicaMaster(ctx, doMaster.master, doMaster.impersonado, masterHash, false);
+      else if (linha) await this.aplicaMaster(ctx, linha.master, linha.impersonado, masterHash, true);
 
       // 2) "sessão ativa": escrita no banco no máximo a cada 5 min, e não a
       //    cada clique. O valor só serve pra saber que a sessão está viva.
@@ -298,13 +306,22 @@ export class AuthGuard implements CanActivate {
     if (userHash) await this.cache.set(userHash, resolvido);
   }
 
-  private async aplicaMaster(ctx: RequestContext, linha: SessionRow, masterHash: string): Promise<void> {
-    const ps = linha.master;
+  private async aplicaMaster(
+    ctx: RequestContext,
+    ps: LinhaMaster | null,
+    impersonado: LinhaImpersonacao | null,
+    masterHash: string,
+    guardarNoCache: boolean,
+  ): Promise<void> {
     if (!ps || !viva(ps.revokedAt, ps.expiresAt)) return;
+
+    if (guardarNoCache && masterHash) {
+      await this.cache.setMaster(masterHash, ps.platformUserId, { master: ps, impersonado });
+    }
 
     if (ps.impersonatingOrgId) {
       // IMPERSONANDO: o contexto vira o de um usuário da empresa.
-      this.applyImpersonation(ctx, ps.impersonatingOrgId, ps.platformUserId, linha.impersonado);
+      this.applyImpersonation(ctx, ps.impersonatingOrgId, ps.platformUserId, impersonado);
     } else {
       // MASTER PURO (sem impersonar): descarta qualquer contexto de
       // usuário de empresa que tenha vazado de um cookie de sessão antigo

@@ -39,7 +39,7 @@ export function TeamClient({ initial, selfId }: { initial: Member[]; selfId: str
     }
   }
 
-  async function setStatus(m: Member, status: "active" | "inactive") {
+  async function setStatus(m: Member, status: "active" | "disabled") {
     setBusyId(m.id); setErr(null);
     try {
       const res = await fetch(`/api/platform/team/${m.id}/status`, {
@@ -112,7 +112,7 @@ export function TeamClient({ initial, selfId }: { initial: Member[]; selfId: str
             <div className="min-w-0">
               <p className="text-sm font-medium">
                 {m.name} {isSelf && <span className="text-xs text-muted">(você)</span>}
-                {m.status === "inactive" && <span className="ml-2 rounded bg-red-500/20 px-2 py-0.5 text-[10px] uppercase text-red-300">inativo</span>}
+                {m.status !== "active" && <span className="ml-2 rounded bg-red-500/20 px-2 py-0.5 text-[10px] uppercase text-red-300">inativo</span>}
               </p>
               <p className="truncate text-xs text-muted">{m.email}</p>
             </div>
@@ -133,7 +133,7 @@ export function TeamClient({ initial, selfId }: { initial: Member[]; selfId: str
                   </select>
                   <button disabled={busyId === m.id} onClick={() => resetPassword(m)} className="rounded border border-line px-2 py-1 text-xs hover:border-brand disabled:opacity-50">Resetar senha</button>
                   {m.status === "active"
-                    ? <button disabled={busyId === m.id} onClick={() => setStatus(m, "inactive")} className="rounded border border-line px-2 py-1 text-xs text-muted hover:text-red-300 disabled:opacity-50">Inativar</button>
+                    ? <button disabled={busyId === m.id} onClick={() => setStatus(m, "disabled")} className="rounded border border-line px-2 py-1 text-xs text-muted hover:text-red-300 disabled:opacity-50">Inativar</button>
                     : <button disabled={busyId === m.id} onClick={() => setStatus(m, "active")} className="rounded border border-line px-2 py-1 text-xs text-green-300 disabled:opacity-50">Reativar</button>}
                 </>
               )}

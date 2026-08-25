@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { SupportAccessService } from "../support-access/support-access.service";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 function sha256(input: string): string {
   return createHash("sha256").update(input).digest("hex");
@@ -20,6 +21,7 @@ export class ImpersonationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly supportAccess: SupportAccessService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   /** Valida o cookie do master e devolve a sessão ativa. */
@@ -61,6 +63,9 @@ export class ImpersonationService {
       }),
     );
 
+    // entrar numa empresa tem que valer no clique seguinte, não em dez segundos
+    await this.cache.dropMaster(sha256(rawToken!));
+
     await this.audit(organizationId, ps.platformUserId, "impersonation.start").catch(() => undefined);
     this.logger.log(`master ${ps.platformUserId} começou a impersonar org ${org.id}`);
     return { ok: true, orgId: org.id, orgName: org.name };
@@ -77,6 +82,7 @@ export class ImpersonationService {
           data: { impersonatingOrgId: null },
         }),
       );
+      await this.cache.dropMaster(sha256(rawToken!));
       await this.audit(wasOrg, ps.platformUserId, "impersonation.stop").catch(() => undefined);
     }
     return { ok: true };

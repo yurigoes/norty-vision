@@ -67,11 +67,11 @@ Com a sessão **no cache** do Redis (o caso comum):
 | requisição | antes | depois |
 | --- | ---: | ---: |
 | `/api/auth/me` — usuário | 4 idas / 10 ms | **1 ida / 8 ms** |
-| `/api/auth/me` — master | 9 idas / 10 ms | **2 idas / 9 ms** |
-| `/api/auth/me` — usuário + master | 9 idas / 10 ms | **2 idas / 9 ms** |
+| `/api/auth/me` — master | 9 idas / 10 ms | **1 ida / 8 ms** |
+| `/api/auth/me` — usuário + master | 9 idas / 10 ms | **1 ida / 8 ms** |
 | `/api/bootstrap` — usuário | 1 ida / 8 ms | 1 ida / 9 ms |
-| `/api/bootstrap` — master | 10 idas / 10 ms | **2 idas / 9 ms** |
-| `/api/bootstrap` — usuário + master | 10 idas / 11 ms | **2 idas / 10 ms** |
+| `/api/bootstrap` — master | 10 idas / 10 ms | **1 ida / 8 ms** |
+| `/api/bootstrap` — usuário + master | 10 idas / 11 ms | **1 ida / 9 ms** |
 
 Com a sessão **fora do cache** (primeira requisição, ou TTL vencido):
 
@@ -86,20 +86,53 @@ Das 6 idas do caso frio, **4 são a escrita do `last_seen_at`** — que aqui era
 forçada a cada medida porque limpar o Redis também limpa o contador dos 5
 minutos. Em produção, quem já esteve ativo nos últimos 5 min paga 2.
 
-A resposta é **idêntica byte a byte** à de antes nos oito casos medidos:
-`/auth/me` e `/bootstrap`, como usuário, como master, com os dois cookies ao
-mesmo tempo, e com o master impersonando uma empresa.
+A resposta é **idêntica byte a byte** nos oito casos medidos (`/auth/me` e
+`/bootstrap`, como usuário, como master, com os dois cookies ao mesmo tempo e
+com o master impersonando) — tanto comparada com a versão anterior quanto
+comparada com o mesmo build rodando de cache **desligado**
+(`SESSION_CACHE_TTL_SECONDS=0`). O cache é transparente.
+
+## O cache da sessão do master
+
+A sessão do usuário já tinha cache (10s no Redis). A do master não — por isso
+ele pagava 2 idas onde o usuário pagava 1. Agora tem, e os dois lados são
+consultados de forma independente: **com os dois cookies quentes, a requisição
+não vai ao banco nenhuma vez**; basta um lado faltar para valer a consulta, que
+traz os dois.
+
+A sessão do master é diferente da do usuário em uma coisa: ela **muda por fora**
+com muito mais frequência, e às vezes por mão alheia. Por isso o cache dela cai
+na hora em cinco situações:
+
+| o que aconteceu | por que não pode esperar o TTL |
+| --- | --- |
+| master **entra** numa empresa | o painel inteiro muda de dono |
+| master **sai** da empresa | volta a ser master; 10s de empresa fantasma seria confuso |
+| master faz **logout** | quem clicou em "sair" não pode continuar dentro |
+| outro owner **inativa** o master | é revogação de acesso |
+| outro owner **troca o papel** (owner ⇄ support) | owner enxerga o que support não enxerga |
+
+Os três primeiros têm o cookie em mãos e apagam pelo hash. Os dois últimos
+**não têm** — quem revoga só conhece o id do master. Para esses, os hashes das
+sessões ficam também num conjunto por master (`nv:msess:user:<id>`), e dá pra
+apagar todas de uma vez. O conjunto é só um índice: membro que já expirou vira
+um `DEL` inofensivo, e ele mesmo tem prazo de validade.
 
 ## O que continua igual
 
-- **O cache do Redis** (10s) segue absorvendo a rajada de requisições de uma
-  tela. Ele só não vale quando há cookie de master: a sessão do master nunca
-  foi cacheada, e é ela que decide a impersonação.
-- **Sair invalida na hora.** `revoke()` limpa o cache junto.
-- **Redis fora do ar não quebra login**: cai no banco, com um aviso no log.
+- **Sair invalida na hora**, dos dois lados.
+- **Redis fora do ar não quebra login**: cai no banco, com um aviso no log —
+  verificado derrubando o Redis com a sessão do master quente.
+- **Trocar permissão de usuário** continua levando até 10s (`SESSION_CACHE_TTL_SECONDS`;
+  `0` desliga tudo).
 
-## O que ainda dá pra melhorar
+## Um bug que apareceu no caminho
 
-A sessão do **master** não é cacheada — por isso ele paga 2 idas onde o usuário
-paga 1. Cachear exige cuidado com a impersonação (trocar de empresa tem que
-valer na hora), então ficou de fora por ora.
+Testando a invalidação por "inativar um master", a chamada devolveu **500**.
+Não era o cache: a API aceitava `status: "inactive"`, mas o `CHECK` da tabela
+`platform_users` só conhece `active | suspended | disabled`. Ou seja, **inativar
+um master nunca funcionou** — e o front ainda pintava o selo "inativo"
+comparando com um valor que o banco jamais gravaria. Corrigido de ponta a
+ponta: o valor gravado é `disabled`, `"inactive"` continua aceito na entrada
+para não quebrar um front antigo, e o selo passou a ser "qualquer coisa que não
+seja `active`".

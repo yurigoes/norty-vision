@@ -24,6 +24,13 @@ import { RedisService } from "../redis/redis.service";
  *   falhou, o guard segue pro banco como antes.
  * - **Logout invalida na hora** — quem some do sistema tem que sumir mesmo,
  *   sem esperar TTL.
+ *
+ * A sessão do MASTER tem o seu próprio par de métodos. Ela não é igual à do
+ * usuário: além de logout, ela muda quando o master entra ou sai de uma
+ * empresa (impersonação), e pode ser derrubada por OUTRO master (inativar,
+ * resetar senha, trocar o papel) — que não tem o cookie em mãos, só o id.
+ * Por isso os hashes ficam também num conjunto por master, e dá pra apagar
+ * todas as sessões de alguém de uma vez.
  */
 @Injectable()
 export class SessionCacheService {
@@ -74,6 +81,73 @@ export class SessionCacheService {
 
   private seenKey(tokenHash: string): string {
     return `nv:seen:${tokenHash}`;
+  }
+
+  // ------------------------------------------------------------- master ----
+
+  private masterKey(tokenHash: string): string {
+    return `nv:msess:${tokenHash}`;
+  }
+
+  /** Conjunto com os hashes das sessões de um master, pra apagar todas. */
+  private masterUserKey(platformUserId: string): string {
+    return `nv:msess:user:${platformUserId}`;
+  }
+
+  async getMaster<T>(tokenHash: string): Promise<T | null> {
+    if (this.ttl === 0) return null;
+    try {
+      const raw = await this.redis.client.get(this.masterKey(tokenHash));
+      return raw ? (JSON.parse(raw) as T) : null;
+    } catch (e) {
+      this.aviso(e);
+      return null;
+    }
+  }
+
+  async setMaster(tokenHash: string, platformUserId: string, value: unknown): Promise<void> {
+    if (this.ttl === 0) return;
+    try {
+      const conjunto = this.masterUserKey(platformUserId);
+      await this.redis.client
+        .multi()
+        .set(this.masterKey(tokenHash), JSON.stringify(value), "EX", this.ttl)
+        .sadd(conjunto, tokenHash)
+        // o conjunto vive mais que as chaves: é só um índice, e membro que já
+        // expirou vira DEL inofensivo
+        .expire(conjunto, Math.max(this.ttl * 6, 60))
+        .exec();
+    } catch (e) {
+      this.aviso(e);
+    }
+  }
+
+  /** Logout do master, ou entrada/saída de empresa: some do cache na hora. */
+  async dropMaster(tokenHash: string): Promise<void> {
+    try {
+      await this.redis.client.del(this.masterKey(tokenHash), this.seenKey(tokenHash));
+    } catch (e) {
+      this.aviso(e);
+    }
+  }
+
+  /**
+   * Derruba TODAS as sessões em cache de um master.
+   *
+   * É o caso em que quem revoga não tem o cookie: inativar um master, resetar
+   * a senha dele, trocar o papel. Sem isto, a sessão dele continuaria de pé
+   * até o TTL — dez segundos que numa ação dessas não deveriam existir.
+   */
+  async dropMasterByUser(platformUserId: string): Promise<void> {
+    try {
+      const conjunto = this.masterUserKey(platformUserId);
+      const hashes = await this.redis.client.smembers(conjunto);
+      const chaves = hashes.flatMap((h) => [this.masterKey(h), this.seenKey(h)]);
+      if (chaves.length) await this.redis.client.del(...chaves);
+      await this.redis.client.del(conjunto);
+    } catch (e) {
+      this.aviso(e);
+    }
   }
 
   /**

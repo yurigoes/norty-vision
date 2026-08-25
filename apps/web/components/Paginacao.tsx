@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /**
  * PAGINAÇÃO NO NAVEGADOR
@@ -90,4 +90,28 @@ export function Paginacao({ p }: { p: Paginado<unknown> }) {
       </button>
     </div>
   );
+}
+
+/**
+ * LIGA O "CARREGAR MAIS" À PAGINAÇÃO
+ * ============================================================================
+ * Numa tela que corta em páginas de 50 E carrega mais do servidor, clicar em
+ * "carregar mais" parecia não fazer nada: os 50 novos entram na página 2, e o
+ * usuário continua olhando a 1. Aqui a tela pula pro pedaço que acabou de
+ * chegar — que é onde ele espera estar.
+ */
+export function useIrParaONovo(p: Paginado<unknown>, quantidade: number) {
+  const antes = useRef(quantidade);
+  useEffect(() => {
+    if (quantidade > antes.current) {
+      const porPagina = p.porPagina || quantidade || 1;
+      p.irPara(Math.floor(antes.current / porPagina) + 1);
+      antes.current = quantidade;
+    } else if (quantidade < antes.current) {
+      // a lista foi trocada (uma busca, um filtro): recomeça a contagem
+      antes.current = quantidade;
+    }
+    // `p` muda de identidade a cada render; o gatilho é a quantidade
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quantidade]);
 }

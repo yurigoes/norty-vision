@@ -6,6 +6,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
 import { OrgAiService } from "../ai/org-ai.service";
 import type { RequestContext } from "../auth/session.middleware";
+import { paginar } from "../common/pagina";
 
 interface InstallmentInput { number?: number; dueDate: string; amountCents: number; barcode?: string | null }
 interface CreatePayableInput {
@@ -72,7 +73,7 @@ export class PayablesService {
   }
 
   /** Lista parcelas (com a conta) por status derivado + período de vencimento. */
-  async list(ctx: RequestContext, opts: { status?: string; from?: string; to?: string; search?: string }) {
+  async list(ctx: RequestContext, opts: { status?: string; from?: string; to?: string; search?: string; limit?: number; offset?: number }) {
     this.requireOrg(ctx);
     const today = new Date(); today.setUTCHours(0, 0, 0, 0);
     const where: any = {};
@@ -81,15 +82,26 @@ export class PayablesService {
     else if (opts.status === "a_vencer") { where.status = "a_pagar"; where.dueDate = { gte: today }; }
     else if (opts.status === "a_pagar") where.status = "a_pagar";
     if (opts.from || opts.to) where.dueDate = { ...(where.dueDate ?? {}), ...(opts.from ? { gte: new Date(opts.from + "T00:00:00Z") } : {}), ...(opts.to ? { lte: new Date(opts.to + "T23:59:59Z") } : {}) };
-    const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.payableInstallment.findMany({
-      where, orderBy: [{ dueDate: "asc" }], take: 1000,
+    // a busca ia ao banco pra 1.000 parcelas e filtrava as 1.000 na memória —
+    // fornecedor fora desse pedaço não era encontrado. Agora o filtro é do banco.
+    const search = (opts.search || "").trim();
+    if (search) {
+      where.payable = {
+        OR: [
+          { supplier: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+          { docNumber: { contains: search, mode: "insensitive" } },
+        ],
+      };
+    }
+    const pagina = await this.prisma.runWithContext(this.rls(ctx), (tx) => paginar(tx.payableInstallment, {
+      where, orderBy: [{ dueDate: "asc" }],
       include: { payable: { select: { id: true, supplier: true, description: true, category: true, docType: true, docNumber: true } } },
-    }));
-    const search = (opts.search || "").trim().toLowerCase();
-    const items = rows
-      .filter((r: any) => !search || `${r.payable?.supplier ?? ""} ${r.payable?.description ?? ""} ${r.payable?.docNumber ?? ""}`.toLowerCase().includes(search))
-      .map((r: any) => ({ ...r, amountCents: Number(r.amountCents), paidCents: r.paidCents != null ? Number(r.paidCents) : null, overdue: r.status === "a_pagar" && new Date(r.dueDate) < today }));
-    return { items };
+    }, { limit: opts.limit ?? 1000, offset: opts.offset ?? 0 }));
+    return {
+      ...pagina,
+      items: pagina.items.map((r: any) => ({ ...r, amountCents: Number(r.amountCents), paidCents: r.paidCents != null ? Number(r.paidCents) : null, overdue: r.status === "a_pagar" && new Date(r.dueDate) < today })),
+    };
   }
 
   async getById(ctx: RequestContext, payableId: string) {

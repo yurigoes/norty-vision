@@ -11,6 +11,7 @@ import { normalizeBRPhone } from "../customers/customers.service";
 import { applyStoreStockDelta } from "../products/products.service";
 import { orgBaseUrl } from "../common/org-url";
 import type { RequestContext } from "../auth/session.middleware";
+import { paginar } from "../common/pagina";
 
 interface ItemInput { description: string; qty: number; unitPriceCents: number }
 interface UpsertInput {
@@ -124,10 +125,10 @@ export class ProductionService {
     return { lines, total: lines.reduce((s, l) => s + l.lineTotalCents, 0) };
   }
 
-  async list(ctx: RequestContext, opts?: { status?: string }) {
+  async list(ctx: RequestContext, opts?: { status?: string; limit?: number; offset?: number }) {
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.productionOrder.findMany({ where: { ...(opts?.status ? { status: opts.status } : {}) }, orderBy: { createdAt: "desc" }, include: { items: true, files: true }, take: 500 }),
+      paginar(tx.productionOrder, { where: { ...(opts?.status ? { status: opts.status } : {}) }, orderBy: { createdAt: "desc" }, include: { items: true, files: true } }, { limit: opts?.limit ?? 500, offset: opts?.offset ?? 0 }),
     );
   }
 

@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { useBuscaServidor } from "../../../lib/useBuscaServidor";
-import { usePaginacao, Paginacao, PorPagina } from "../../../components/Paginacao";
+import { useListaServidor } from "../../../lib/useListaServidor";
+import { CarregarMais } from "../../../components/CarregarMais";
+import { usePaginacao, Paginacao, PorPagina, useIrParaONovo } from "../../../components/Paginacao";
 
 interface Product {
   id: string;
@@ -45,7 +46,7 @@ function toCents(v: FormDataEntryValue | null): number | null {
   return isNaN(n) ? null : Math.round(n * 100);
 }
 
-export function ProductsClient({ initialProducts, labs = [], stores = [], niche = null }: { initialProducts: Product[]; labs?: LabOpt[]; stores?: Array<{ id: string; name: string }>; niche?: string | null }) {
+export function ProductsClient({ initialProducts, total: totalServidor = 0, labs = [], stores = [], niche = null }: { initialProducts: Product[]; total?: number; labs?: LabOpt[]; stores?: Array<{ id: string; name: string }>; niche?: string | null }) {
   const isOtica = niche === "otica";
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -53,10 +54,10 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
   const [editing, setEditing] = useState<Product | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  // a busca vai ao servidor: antes filtrava os 500 que a pagina trouxe, e
-  // quem estivesse fora deles simplesmente "nao existia"
-  const busca = useBuscaServidor<Product>({ rota: "/api/products", inicial: initialProducts, limite: 500 });
-  const { q, setQ, buscando, doServidor } = busca;
+  // a busca vai ao servidor (antes filtrava os 500 que a pagina trouxe, e quem
+  // estivesse fora deles "nao existia") e o resto da lista vem por pedacos
+  const lista = useListaServidor<Product>({ rota: "/api/products", inicial: initialProducts, totalInicial: totalServidor, passo: 50 });
+  const { q, setQ, buscando, doServidor } = lista;
   const [entradaFor, setEntradaFor] = useState<Product | null>(null);
   const [movFor, setMovFor] = useState<Product | null>(null);
   const [viewing, setViewing] = useState<Product | null>(null);
@@ -113,16 +114,17 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
     } catch { /* silencioso: dicas não atrapalham o fluxo */ }
   }
 
-  // nome / SKU / categoria, procurados no banco em todos os produtos
-  const pag = usePaginacao(busca.itens, 50);
+  // nome / SKU / categoria, procurados no banco em todos os produtos.
+  // `pag` corta o que já foi carregado; `lista` traz mais do servidor.
+  const pag = usePaginacao(lista.itens, 50);
   const total = pag.total;
-  const noTeto = doServidor && total >= 500;
   const paged = pag.pagina;
+  useIrParaONovo(pag, lista.itens.length); // o pedaço novo entra na página seguinte
 
   /** recarrega a pagina e, se houver busca ativa, refaz a busca no servidor */
   function atualizar() {
     startTransition(() => router.refresh());
-    busca.refazer();
+    lista.refazer();
   }
 
   function startEdit(p: Product) { setEditing(p); setImageUrl(p.imageUrl ?? null); setTips([]); setNcmVal((p as any).ncm ?? ""); setCestVal((p as any).cest ?? ""); setNcmSugs([]); setNcmDesc(null); }
@@ -398,12 +400,10 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
         <PorPagina p={pag} />
       </div>
       <p className="text-[11px] text-muted">
-        {doServidor
-          ? `${total} resultado(s) para "${q.trim()}"${noTeto ? " — mostrando os 500 primeiros, refine a busca" : ""} · procurado em todos os produtos`
-          : `${total} produto(s)`}
+        {doServidor ? `Procurado em todos os produtos por "${q.trim()}"` : "Catálogo"}
         {pag.porPagina !== 0 ? ` · página ${pag.paginaAtual}/${pag.totalPaginas}` : ""}
       </p>
-      {busca.erro && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{busca.erro}</p>}
+      {lista.erro && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{lista.erro}</p>}
 
       <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
         <table className="w-full text-sm table-cards">
@@ -474,6 +474,15 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
       </div>
 
       <Paginacao p={pag} />
+
+      <CarregarMais
+        mostrando={lista.itens.length}
+        total={lista.total}
+        temMais={lista.temMais}
+        carregando={lista.carregando}
+        aoCarregar={lista.carregarMais}
+        substantivo={doServidor ? "resultado" : "produto"}
+      />
 
       {entradaFor && <EntradaModal product={entradaFor} stores={stores} onClose={() => setEntradaFor(null)} onSaved={() => { setEntradaFor(null); atualizar(); }} />}
       {movFor && <MovsModal product={movFor} stores={stores} onClose={() => setMovFor(null)} onChanged={() => atualizar()} />}

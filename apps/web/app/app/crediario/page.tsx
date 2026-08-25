@@ -42,7 +42,8 @@ export default async function CrediarioPage() {
   }
 
   const [accRes, reqRes, appRes] = await Promise.all([
-    apiFetch<{ items: Account[] }>("/api/credit/accounts"),
+    // primeiro pedaço pequeno: o resto vem no "carregar mais"
+    apiFetch<{ items: Account[]; total?: number }>("/api/credit/accounts?limit=50"),
     apiFetch<{ items: LimitRequest[] }>("/api/credit/limit-requests?status=pending"),
     apiFetch<{ items: any[] }>("/api/credit/applications?status=pending"),
   ]);
@@ -57,6 +58,7 @@ export default async function CrediarioPage() {
 
       <CreditClient
         initialAccounts={accRes.data?.items ?? []}
+        totalAccounts={accRes.data?.total ?? 0}
         initialRequests={reqRes.data?.items ?? []}
         initialApplications={appRes.data?.items ?? []}
       />

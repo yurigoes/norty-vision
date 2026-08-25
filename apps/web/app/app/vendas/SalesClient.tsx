@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useListaServidor } from "../../../lib/useListaServidor";
+import { CarregarMais } from "../../../components/CarregarMais";
 
 interface Product {
   id: string;
@@ -75,6 +77,7 @@ export function SalesClient({
   customers,
   accounts,
   recentSales,
+  totalSales = 0,
   defaultMaxInstallments,
   sellers = [],
 }: {
@@ -83,6 +86,7 @@ export function SalesClient({
   customers: Customer[];
   accounts: Account[];
   recentSales: any[];
+  totalSales?: number;
   defaultMaxInstallments: number;
   sellers?: Array<{ id: string; name: string }>;
 }) {
@@ -450,7 +454,7 @@ export function SalesClient({
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       <button onClick={() => setShowSales(true)} className="fixed bottom-4 left-4 z-40 rounded-full border border-line bg-bg/90 px-4 py-2 text-xs font-semibold shadow-lg backdrop-blur transition hover:border-brand">↺ Vendas / emitir NF-e / devoluções</button>
-      {showSales && <RecentSalesModal sales={recentSales} onClose={() => setShowSales(false)} onChanged={() => startTransition(() => router.refresh())} />}
+      {showSales && <RecentSalesModal sales={recentSales} total={totalSales} onClose={() => setShowSales(false)} onChanged={() => startTransition(() => router.refresh())} />}
       {/* Gate obrigatório: sem caixa aberto não vende */}
       {cashRegister === null && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
@@ -943,7 +947,10 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   );
 }
 
-function RecentSalesModal({ sales, onClose, onChanged }: { sales: any[]; onClose: () => void; onChanged: () => void }) {
+function RecentSalesModal({ sales, total = 0, onClose, onChanged }: { sales: any[]; total?: number; onClose: () => void; onChanged: () => void }) {
+  // o modal mostrava as 500 que a página tinha baixado, sem dizer que eram 500
+  // de quantas; agora começa com 50 e diz o total
+  const lista = useListaServidor<any>({ rota: "/api/sales", inicial: sales, totalInicial: total, passo: 50, buscavel: false });
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [nfce, setNfce] = useState<Record<string, { ok: boolean; msg: string; docId?: string; status?: string }>>({});
@@ -1012,7 +1019,7 @@ function RecentSalesModal({ sales, onClose, onChanged }: { sales: any[]; onClose
         <p className="mt-1 text-xs text-muted">A venda não exige nota: emita a <b>NFC-e</b> ou <b>NF-e</b> aqui quando quiser (precisa do certificado A1 + CSC configurados em <b>Nota fiscal</b>). Cancelar/devolver repõe o estoque.</p>
         {err && <p className="mt-2 text-xs text-red-300">{err}</p>}
         <div className="mt-3 flex-1 space-y-1.5 overflow-y-auto">
-          {(!sales || sales.length === 0) ? <p className="text-sm text-muted">Nenhuma venda recente.</p> : sales.map((s) => (
+          {lista.itens.length === 0 ? <p className="text-sm text-muted">Nenhuma venda recente.</p> : lista.itens.map((s) => (
             <div key={s.id} className="rounded-lg border border-line/60 bg-bg/40 px-3 py-2 text-sm">
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0">
@@ -1045,6 +1052,14 @@ function RecentSalesModal({ sales, onClose, onChanged }: { sales: any[]; onClose
               )}
             </div>
           ))}
+          <CarregarMais
+            mostrando={lista.itens.length}
+            total={lista.total}
+            temMais={lista.temMais}
+            carregando={lista.carregando}
+            aoCarregar={lista.carregarMais}
+            substantivo="venda"
+          />
         </div>
         <button onClick={onClose} className="mt-4 w-full rounded-lg border border-line py-2 text-sm text-muted hover:text-fg">fechar</button>
       </div>

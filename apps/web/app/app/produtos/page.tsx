@@ -40,7 +40,8 @@ export default async function ProdutosPage() {
   }
 
   const [{ data }, supRes, storesRes, org] = await Promise.all([
-    apiFetch<{ items: Product[] }>("/api/products"),
+    // primeiro pedaço pequeno: o resto vem no "carregar mais"
+    apiFetch<{ items: Product[]; total?: number }>("/api/products?limit=50"),
     apiFetch<{ items: any[] }>("/api/suppliers?activeOnly=true"),
     apiFetch<{ items: any[] }>("/api/stores"),
     getOrganization(),
@@ -57,7 +58,7 @@ export default async function ProdutosPage() {
         description="Cada produto tem 4 preços (à vista, cartão à vista, cartão parcelado, crediário). O cliente só vê o preço final da forma escolhida."
       />
 
-      <ProductsClient initialProducts={data?.items ?? []} labs={labs} stores={stores} niche={niche} />
+      <ProductsClient initialProducts={data?.items ?? []} total={data?.total ?? 0} labs={labs} stores={stores} niche={niche} />
     </div>
   );
 }

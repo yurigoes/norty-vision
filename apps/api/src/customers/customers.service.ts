@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
+import { paginar } from "../common/pagina";
 import { PrismaService } from "../prisma/prisma.service";
 import type { RequestContext } from "../auth/session.middleware";
 import { ctxCan } from "../auth/decorators";
@@ -92,12 +93,13 @@ export class CustomersService {
 
   async list(
     ctx: RequestContext,
-    opts?: { storeId?: string; search?: string; limit?: number },
+    opts?: { storeId?: string; search?: string; limit?: number; offset?: number },
   ) {
     this.requireOrg(ctx);
     const limit = Math.min(opts?.limit ?? 50, 500);
+    const offset = opts?.offset ?? 0;
     return this.prisma.runWithContext(this.rlsCtx(ctx), (tx) =>
-      tx.customer.findMany({
+      paginar(tx.customer, {
         where: {
           deletedAt: null,
           ...(opts?.storeId ? { storeId: opts.storeId } : {}),
@@ -116,8 +118,7 @@ export class CustomersService {
             : {}),
         },
         orderBy: { name: "asc" },
-        take: limit,
-      }),
+      }, { limit, offset }),
     );
   }
 

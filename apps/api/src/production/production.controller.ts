@@ -8,6 +8,7 @@ import { StorageService } from "../storage/storage.service";
 import { ProductionService } from "./production.service";
 import { ProductionImportService } from "./production-import.service";
 import { ProductionWipeService, type WipeScope } from "./production-wipe.service";
+import { limitePedido, offsetPedido } from "../common/pagina";
 
 const ItemSchema = z.object({ description: z.string().min(1).max(300), qty: z.number().int().min(1).max(100000), unitPriceCents: z.number().int().min(0) });
 const UpsertSchema = z.object({
@@ -88,8 +89,13 @@ export class ProductionController {
   }
 
   @Get()
-  async list(@CurrentContext() ctx: RequestContext, @Query("status") status?: string) {
-    return { items: await this.svc.list(ctx, { status }) };
+  async list(
+    @CurrentContext() ctx: RequestContext,
+    @Query("status") status?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
+    return this.svc.list(ctx, { status, limit: limitePedido(limit, 500, 500), offset: offsetPedido(offset) });
   }
   @Get("kanban")
   async kanban(@CurrentContext() ctx: RequestContext) {

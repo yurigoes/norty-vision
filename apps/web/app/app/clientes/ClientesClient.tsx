@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDialog } from "../../../components/SystemDialog";
 import { openDocBlob } from "../../../lib/openDoc";
-import { useBuscaServidor } from "../../../lib/useBuscaServidor";
+import { useListaServidor } from "../../../lib/useListaServidor";
+import { CarregarMais } from "../../../components/CarregarMais";
 
 interface Customer {
   id: string;
@@ -100,13 +101,13 @@ function parseClientsCsv(text: string): ImportRow[] {
   return rows;
 }
 
-export function ClientesClient({ initial }: { initial: Customer[] }) {
+export function ClientesClient({ initial, total = 0 }: { initial: Customer[]; total?: number }) {
   const router = useRouter();
   const dialog = useDialog();
-  // a busca vai ao servidor: antes filtrava os 300 que a página trouxe, e
-  // quem estivesse fora deles simplesmente "não existia"
-  const busca = useBuscaServidor<Customer>({ rota: "/api/customers", inicial: initial, limite: 100 });
-  const { q, setQ, buscando, doServidor } = busca;
+  // a busca vai ao servidor (antes filtrava os 300 que a página trouxe, e quem
+  // estivesse fora deles "não existia") e o resto da lista vem por pedaços
+  const lista = useListaServidor<Customer>({ rota: "/api/customers", inicial: initial, totalInicial: total, passo: 50 });
+  const { q, setQ, buscando, doServidor } = lista;
   const [busyId, setBusyId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -159,8 +160,7 @@ export function ClientesClient({ initial }: { initial: Customer[] }) {
     } catch (e: any) { dialog.toast(e.message, "error"); } finally { setSavingDetail(false); }
   }
 
-  const list = busca.itens.slice(0, 100);
-  const noTeto = list.length >= 100;
+  const list = lista.itens;
 
   async function resetPassword(c: Customer) {
     const ok = await dialog.confirm({
@@ -236,18 +236,13 @@ export function ClientesClient({ initial }: { initial: Customer[] }) {
             onChange={(e) => { const f = e.target.files?.[0]; if (f) importCsv(f); e.currentTarget.value = ""; }} />
         </label>
       </div>
-      {creating && <NewCustomerModal onClose={() => setCreating(false)} onCreated={() => { setCreating(false); router.refresh(); busca.refazer(); }} />}
+      {creating && <NewCustomerModal onClose={() => setCreating(false)} onCreated={() => { setCreating(false); router.refresh(); lista.refazer(); }} />}
       <p className="text-[11px] text-muted">CSV com colunas: CPF, Nome, Telefone, Email, CEP, Rua, Numero, Nascimento. Duplicados (CPF/telefone) são ignorados; o restante o cliente completa no portal.</p>
       {err && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{err}</p>}
       {msg && <p className="rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-200">{msg}</p>}
 
-      <p className="text-[11px] text-muted">
-        {doServidor
-          ? `${list.length} resultado(s) para "${q.trim()}"${noTeto ? " — mostrando os 100 primeiros, refine a busca" : ""} · procurado em todos os clientes`
-          : `Mostrando ${list.length} cliente(s). Digite pra buscar em todos.`}
-      </p>
 
-      {busca.erro && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{busca.erro}</p>}
+      {lista.erro && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{lista.erro}</p>}
 
       {list.length === 0 ? (
         <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">
@@ -303,6 +298,15 @@ export function ClientesClient({ initial }: { initial: Customer[] }) {
           </table>
         </div>
       )}
+
+      <CarregarMais
+        mostrando={list.length}
+        total={lista.total}
+        temMais={lista.temMais}
+        carregando={lista.carregando}
+        aoCarregar={lista.carregarMais}
+        substantivo={doServidor ? "resultado" : "cliente"}
+      />
 
       {/* detalhe / edição do cliente (inclui o que ele preencheu no portal) */}
       {detail && (

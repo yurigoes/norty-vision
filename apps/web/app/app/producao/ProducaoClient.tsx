@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useListaServidor } from "../../../lib/useListaServidor";
+import { CarregarMais } from "../../../components/CarregarMais";
 import { useDialog } from "../../../components/SystemDialog";
 
 /** Preço unitário (centavos) da faixa correspondente à quantidade. */
@@ -39,7 +41,10 @@ function useActiveStages(): string[] {
   return stages;
 }
 
-export function ProducaoClient({ initial, features }: { initial: any[]; features?: Record<string, boolean> }) {
+export function ProducaoClient({ initial, total = 0, features }: { initial: any[]; total?: number; features?: Record<string, boolean> }) {
+  // a página traz 50 pedidos e o resto vem por pedaços, com o total do servidor
+  // (antes vinham 500 e a tela não sabia que era um teto)
+  const lista = useListaServidor<any>({ rota: "/api/production", inicial: initial, totalInicial: total, passo: 50, buscavel: false });
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [tab, setTab] = useState<"lista" | "kanban" | "lotes" | "nf" | "cancel" | "tabelas">("lista");
@@ -70,11 +75,11 @@ export function ProducaoClient({ initial, features }: { initial: any[]; features
       </div>
 
       {tab === "lista" ? (
-        <OrderList orders={initial} onOpen={setOpenId} />
+        <OrderList orders={lista.itens} onOpen={setOpenId} rodape={<CarregarMais mostrando={lista.itens.length} total={lista.total} temMais={lista.temMais} carregando={lista.carregando} aoCarregar={lista.carregarMais} substantivo="pedido" />} />
       ) : tab === "kanban" ? (
         <Kanban onOpen={setOpenId} />
       ) : tab === "lotes" ? (
-        <LotesTab orders={initial} onOpen={setOpenId} />
+        <LotesTab orders={lista.itens} onOpen={setOpenId} />
       ) : tab === "nf" ? (
         <NfTab onOpen={setOpenId} />
       ) : tab === "cancel" ? (
@@ -92,7 +97,7 @@ export function ProducaoClient({ initial, features }: { initial: any[]; features
 /** Lista de pedidos separada em "Pendentes" (em produção) e "Finalizados/
  *  cancelados" recolhível. Evita poluir a visão da recepção que só quer ver
  *  o que está em andamento. */
-function OrderList({ orders, onOpen }: { orders: any[]; onOpen: (id: string) => void }) {
+function OrderList({ orders, onOpen, rodape }: { orders: any[]; onOpen: (id: string) => void; rodape?: React.ReactNode }) {
   const [showDone, setShowDone] = useState(false);
   if (!orders.length) {
     return <p className="rounded-2xl border border-line bg-surface p-8 text-center text-muted">Nenhum pedido ainda.</p>;
@@ -134,6 +139,8 @@ function OrderList({ orders, onOpen }: { orders: any[]; onOpen: (id: string) => 
           )}
         </div>
       )}
+
+      {rodape}
     </div>
   );
 }

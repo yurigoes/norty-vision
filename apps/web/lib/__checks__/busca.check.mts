@@ -6,7 +6,7 @@
 // A tela de Clientes trazia 300 de 3.000 e filtrava esses 300 na memória; a de
 // Produtos trazia 500 de 2.000. Digitar o nome de alguém fora do pedaço devolvia
 // "nenhum resultado" — uma resposta ERRADA, não vazia. O conserto é perguntar ao
-// servidor (`lib/useBuscaServidor.ts`), que procura no banco inteiro.
+// servidor (`lib/useListaServidor.ts`), que procura no banco inteiro.
 //
 // Esta conferência acha todo filtro de TEXTO feito na memória (um `.filter(`
 // cujo corpo compara com `toLowerCase()` + `includes(`) e exige que a tela ou
@@ -74,12 +74,15 @@ for (const arquivo of walk(raiz)) {
   }
   if (!achados.length) continue;
 
-  if (src.includes("useBuscaServidor")) continue; // a busca já é do servidor
+  // a isenção vem primeiro de propósito: uma tela pode ter a busca principal no
+  // servidor E ainda filtrar outra lista na memória (o PDV faz isso com o
+  // seletor de produtos) — usar o hook não dá perdão pro resto do arquivo
   if (ISENTAS[rel]) {
     isentas += achados.length;
     usadas.add(rel);
     continue;
   }
+  if (src.includes("useListaServidor")) continue; // a busca já é do servidor
   naMemoria.push(`${rel}  (${achados.join(", ")})`);
 }
 
@@ -88,11 +91,20 @@ for (const arquivo of walk(raiz)) {
 const semUsar: string[] = [];
 for (const arquivo of walk(raiz)) {
   const src = readFileSync(arquivo, "utf8");
-  if (!/useBuscaServidor\s*[<(]/.test(src)) continue;
+  if (!/useListaServidor\s*[<(]/.test(src)) continue;
   const rel = relative(raiz, arquivo).replace(/\\/g, "/");
-  if (!/\.itens\b/.test(src)) semUsar.push(`${rel} — chama o hook mas nunca lê \`.itens\``);
-  else if (!/doServidor/.test(src)) semUsar.push(`${rel} — não avisa na tela que o resultado veio do servidor`);
-  else comHook++;
+  const comBusca = !/buscavel:\s*false/.test(src);
+  if (!/\.itens\b/.test(src)) {
+    semUsar.push(`${rel} — chama o hook mas nunca lê \`.itens\``);
+  } else if (comBusca && !/doServidor/.test(src)) {
+    semUsar.push(`${rel} — busca no servidor mas não avisa na tela de onde veio o resultado`);
+  } else if (!/<CarregarMais\b/.test(src)) {
+    // sem isto o usuário continua sem saber que existe mais do que está vendo:
+    // era exatamente o teto silencioso
+    semUsar.push(`${rel} — carrega do servidor mas não mostra o total nem o "carregar mais"`);
+  } else {
+    comHook++;
+  }
 }
 
 // Isenção que não vale mais é isenção esquecida: some com ela.
@@ -112,7 +124,7 @@ if (naMemoria.length || semUsar.length) {
   if (naMemoria.length) {
     console.log(`\nFALHA — ${naMemoria.length} tela(s) filtrando texto na memória, sem motivo declarado:`);
     naMemoria.forEach((t) => console.log("  " + t));
-    console.log("\nUse `useBuscaServidor` (lib/useBuscaServidor.ts), ou declare a exceção com o motivo neste arquivo.");
+    console.log("\nUse `useListaServidor` (lib/useListaServidor.ts), ou declare a exceção com o motivo neste arquivo.");
   }
   if (semUsar.length) {
     console.log(`\nFALHA — ${semUsar.length} tela(s) usando o hook pela metade:`);

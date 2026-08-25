@@ -30,7 +30,9 @@ export default async function VendasPage() {
     apiFetch<{ items: Store[] }>("/api/stores"),
     apiFetch<{ items: Customer[] }>("/api/customers?limit=300"),
     apiFetch<{ items: Account[] }>("/api/credit/accounts"),
-    apiFetch<{ items: any[] }>("/api/sales"),
+    // o PDV carregava 500 vendas só pro modal de notas/devolução; agora traz 50
+    // e o modal pede o resto quando o usuário quiser
+    apiFetch<{ items: any[]; total?: number }>("/api/sales?limit=50"),
     apiFetch<{ config: { defaultMaxInstallments: number } }>("/api/credit/config"),
     apiFetch<{ items: Array<{ id: string; name: string }> }>("/api/users/sellers"),
   ]);
@@ -49,6 +51,7 @@ export default async function VendasPage() {
         customers={custRes.data?.items ?? []}
         accounts={accRes.data?.items ?? []}
         recentSales={salesRes.data?.items ?? []}
+        totalSales={salesRes.data?.total ?? 0}
         defaultMaxInstallments={cfgRes.data?.config?.defaultMaxInstallments ?? 12}
         sellers={sellersRes.data?.items ?? []}
       />

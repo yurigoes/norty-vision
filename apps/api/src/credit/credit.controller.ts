@@ -6,6 +6,7 @@ import { z } from "zod";
 import { CurrentContext, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { CreditService } from "./credit.service";
+import { limitePedido, offsetPedido } from "../common/pagina";
 
 const CreateAccountSchema = z.object({
   document: z.string().min(11).max(20),
@@ -53,8 +54,14 @@ export class CreditController {
     @CurrentContext() ctx: RequestContext,
     @Query("q") search?: string,
     @Query("status") status?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
   ) {
-    return { items: await this.svc.listAccounts(ctx, { search, status }) };
+    return this.svc.listAccounts(ctx, {
+      search, status,
+      limit: limitePedido(limit, 500, 500),
+      offset: offsetPedido(offset),
+    });
   }
 
   @Get("accounts/:id")

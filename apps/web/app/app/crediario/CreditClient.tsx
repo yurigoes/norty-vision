@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useState, useTransition, type FormEvent } from "react";
-import { usePaginacao, Paginacao, PorPagina } from "../../../components/Paginacao";
+import { usePaginacao, Paginacao, PorPagina, useIrParaONovo } from "../../../components/Paginacao";
+import { useListaServidor } from "../../../lib/useListaServidor";
+import { CarregarMais } from "../../../components/CarregarMais";
 import { useRouter } from "next/navigation";
 import { useDialog } from "../../../components/SystemDialog";
 import { openDocBlob } from "../../../lib/openDoc";
@@ -44,10 +46,12 @@ interface Application {
 
 export function CreditClient({
   initialAccounts,
+  totalAccounts = 0,
   initialRequests,
   initialApplications,
 }: {
   initialAccounts: Account[];
+  totalAccounts?: number;
   initialRequests: LimitRequest[];
   initialApplications: Application[];
 }) {
@@ -55,8 +59,11 @@ export function CreditClient({
   const dialog = useDialog();
   const [isPending, startTransition] = useTransition();
   const [tab, setTab] = useState<"accounts" | "requests" | "applications">("accounts");
+  // contas: a página traz 50 e o resto vem por pedaços, com o total do servidor
+  const contas = useListaServidor<Account>({ rota: "/api/credit/accounts", inicial: initialAccounts, totalInicial: totalAccounts, passo: 50, buscavel: false });
   // as três abas montavam TODAS as linhas de uma vez; agora cortam em páginas
-  const pagContas = usePaginacao(initialAccounts, 50);
+  const pagContas = usePaginacao(contas.itens, 50);
+  useIrParaONovo(pagContas, contas.itens.length); // o pedaço novo entra na página seguinte
   const pagPedidos = usePaginacao(initialRequests, 50);
   const pagKyc = usePaginacao(initialApplications, 50);
   const [creating, setCreating] = useState(false);
@@ -99,7 +106,7 @@ export function CreditClient({
       body: JSON.stringify(approvedLimitCents ? { approvedLimitCents } : {}),
       credentials: "include",
     });
-    if (res.ok) startTransition(() => router.refresh());
+    if (res.ok) { startTransition(() => router.refresh()); contas.refazer(); }
   }
 
   async function onCreate(e: FormEvent<HTMLFormElement>) {
@@ -133,14 +140,14 @@ export function CreditClient({
       body: JSON.stringify({}),
       credentials: "include",
     });
-    if (res.ok) startTransition(() => router.refresh());
+    if (res.ok) { startTransition(() => router.refresh()); contas.refazer(); }
   }
 
   return (
     <div className="space-y-6">
       <nav className="flex gap-1 border-b border-line">
         <TabBtn active={tab === "accounts"} onClick={() => setTab("accounts")}>
-          Contas ({initialAccounts.length})
+          Contas ({contas.total || contas.itens.length})
         </TabBtn>
         <TabBtn active={tab === "requests"} onClick={() => setTab("requests")}>
           Pedidos de limite ({initialRequests.length})
@@ -202,7 +209,7 @@ export function CreditClient({
             </form>
           )}
 
-          {initialAccounts.length > 0 && (
+          {contas.itens.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <p className="text-[11px] text-muted">
                 {pagContas.total} conta(s){pagContas.porPagina !== 0 ? ` · mostrando ${pagContas.pagina.length} · página ${pagContas.paginaAtual}/${pagContas.totalPaginas}` : ""}
@@ -225,7 +232,7 @@ export function CreditClient({
                 </tr>
               </thead>
               <tbody>
-                {initialAccounts.length === 0 ? (
+                {contas.itens.length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">Nenhuma conta.</td></tr>
                 ) : pagContas.pagina.map((a) => {
                   const available = Number(a.limitCents) - Number(a.usedCents);
@@ -247,6 +254,14 @@ export function CreditClient({
             </table>
           </div>
           <Paginacao p={pagContas} />
+          <CarregarMais
+            mostrando={contas.itens.length}
+            total={contas.total}
+            temMais={contas.temMais}
+            carregando={contas.carregando}
+            aoCarregar={contas.carregarMais}
+            substantivo="conta"
+          />
         </>
       )}
 

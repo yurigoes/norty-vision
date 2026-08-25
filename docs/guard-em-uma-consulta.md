@@ -36,10 +36,11 @@ uma instrução, pela mesma construção da casca do painel (ver
 [`casca-em-uma-consulta.md`](casca-em-uma-consulta.md) — inclusive a trava
 `OFFSET 0`, que foi descoberta justamente escrevendo esta):
 
-- **`SESSION_SQL`** — sessão do usuário, sessão do master e o membership da
+- **`SESSION_SQL`** — sessão do usuário, sessão do master e o vínculo da
   empresa impersonada, tudo junto. O `imp` depende de `psess`: só existe se
-  houver master impersonando.
-- **`SNAPSHOT_SQL`** — as duas leituras extras do `/api/auth/me`.
+  houver master impersonando. Traz também o "precisa trocar a senha" e o nome
+  da empresa impersonada — as duas coisas que o `/auth/me` buscava por conta
+  própria (ver abaixo).
 - **`CANCELLATION_SQL`** — a fase do cancelamento da assinatura, lida em toda
   requisição de escrita.
 
@@ -66,9 +67,9 @@ Com a sessão **no cache** do Redis (o caso comum):
 
 | requisição | antes | depois |
 | --- | ---: | ---: |
-| `/api/auth/me` — usuário | 4 idas / 10 ms | **1 ida / 8 ms** |
-| `/api/auth/me` — master | 9 idas / 10 ms | **1 ida / 8 ms** |
-| `/api/auth/me` — usuário + master | 9 idas / 10 ms | **1 ida / 8 ms** |
+| `/api/auth/me` — usuário | 4 idas / 10 ms | **0 idas / 8 ms** |
+| `/api/auth/me` — master | 9 idas / 10 ms | **0 idas / 7 ms** |
+| `/api/auth/me` — usuário + master | 9 idas / 10 ms | **0 idas / 8 ms** |
 | `/api/bootstrap` — usuário | 1 ida / 8 ms | 1 ida / 9 ms |
 | `/api/bootstrap` — master | 10 idas / 10 ms | **1 ida / 8 ms** |
 | `/api/bootstrap` — usuário + master | 10 idas / 11 ms | **1 ida / 9 ms** |
@@ -91,6 +92,26 @@ A resposta é **idêntica byte a byte** nos oito casos medidos (`/auth/me` e
 com o master impersonando) — tanto comparada com a versão anterior quanto
 comparada com o mesmo build rodando de cache **desligado**
 (`SESSION_CACHE_TTL_SECONDS=0`). O cache é transparente.
+
+## O `/api/auth/me` parou de ir ao banco
+
+Ele montava o retrato da sessão e, pra isso, buscava duas coisas que o guard
+não trazia: "precisa trocar a senha" e o nome da empresa impersonada. Primeiro
+eram duas transações; depois viraram uma consulta; agora são **zero**.
+
+As duas passaram a vir na consulta da sessão, que já lê `sessions`,
+`memberships`, `roles` e `platform_sessions` — juntar `users` e `organizations`
+ali não custa ida nenhuma. E, como a sessão fica no cache do Redis, o
+`/auth/me` responde **sem tocar no Postgres**.
+
+De quebra a casca do painel encolheu: os dois CTEs que buscavam as mesmas
+coisas saíram do `shell.sql.ts` (14 → 12 CTEs), e o `/bootstrap` também não
+precisa mais passar o id da empresa impersonada como parâmetro.
+
+Uma diferença de propósito: **o master não herda mais o "precisa trocar a
+senha" de quem ele está emprestando.** Ao impersonar, o contexto vira o de um
+usuário da empresa — e o valor lido era o daquele usuário, não o do master. O
+front já ignorava (`&& !session.impersonating`), mas o payload mentia.
 
 ## O cache da sessão do master
 

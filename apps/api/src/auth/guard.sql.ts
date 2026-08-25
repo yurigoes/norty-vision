@@ -47,7 +47,8 @@ export const SESSION_SQL = `WITH ${CONTEXT_CTE},
              m.permissions AS "membershipPermissions",
              r.id AS "roleId",
              r.slug AS "roleSlug",
-             r.permissions AS "rolePermissions"
+             r.permissions AS "rolePermissions",
+             u0.must_reset_password AS "mustResetPassword"
         FROM sessions se
         -- o status active não é detalhe: vínculo revogado (ou suspenso, ou
         -- ainda pendente) não pode continuar dando empresa, papel e permissões
@@ -55,6 +56,7 @@ export const SESSION_SQL = `WITH ${CONTEXT_CTE},
         -- usam. Sem ele, "revogar o acesso" não expulsava ninguém.
         LEFT JOIN memberships m ON m.id = se.active_membership_id AND m.status = 'active'
         LEFT JOIN roles r ON r.id = m.role_id
+        LEFT JOIN users u0 ON u0.id = se.user_id
        WHERE se.token_hash = nullif($8, '') AND ${TIED_TO_CTX}
        OFFSET 0
     ) s
@@ -80,17 +82,24 @@ export const SESSION_SQL = `WITH ${CONTEXT_CTE},
   -- só existe se houver sessão de master com empresa em curso.
   imp AS MATERIALIZED (
     SELECT i.* FROM psess, LATERAL (
-      SELECT m.id AS "membershipId",
+      SELECT o0.name AS "orgName",
+             m.id AS "membershipId",
              m.user_id AS "userId",
              m.store_id AS "storeId",
              m.permissions AS "membershipPermissions",
              r.slug AS "roleSlug",
              r.permissions AS "rolePermissions"
-        FROM memberships m
+        FROM organizations o0
+        -- o vínculo representativo é o mais antigo ATIVO da empresa; a empresa
+        -- vem primeiro porque ela existe mesmo quando não há ninguém dentro
+        LEFT JOIN LATERAL (
+          SELECT m2.* FROM memberships m2
+           WHERE m2.organization_id = o0.id AND m2.status = 'active'
+           ORDER BY m2.created_at ASC
+           LIMIT 1
+        ) m ON true
         LEFT JOIN roles r ON r.id = m.role_id
-       WHERE m.organization_id = psess."impersonatingOrgId"
-         AND m.status = 'active' 
-       ORDER BY m.created_at ASC
+       WHERE o0.id = psess."impersonatingOrgId"
        LIMIT 1 OFFSET 0
     ) i
   )
@@ -112,6 +121,7 @@ export interface LinhaSessao {
   roleId: string | null;
   roleSlug: string | null;
   rolePermissions: unknown;
+  mustResetPassword: boolean | null;
 }
 
 export interface LinhaMaster {
@@ -125,8 +135,11 @@ export interface LinhaMaster {
 }
 
 export interface LinhaImpersonacao {
-  membershipId: string;
-  userId: string;
+  /** nome da empresa impersonada — o banner do master */
+  orgName: string | null;
+  /** null quando a empresa não tem ninguém ativo dentro */
+  membershipId: string | null;
+  userId: string | null;
   storeId: string | null;
   membershipPermissions: unknown;
   roleSlug: string | null;
@@ -168,46 +181,5 @@ SELECT (SELECT to_jsonb(a) FROM assinatura a) AS assinatura,
 
 export interface CancellationRow {
   assinatura: { status: string; canceledAt: string | null } | null;
-  guc_aplicado: string | null;
-}
-
-
-/**
- * As duas leituras extras do `GET /api/auth/me`.
- *
- * O `/bootstrap` já traz as duas na consulta da casca; o `/auth/me` não, e
- * elas custavam uma transação cada. Aqui é uma instrução.
- *
- * $8 = id do usuário; $9 = id da empresa impersonada (vazio quando não há).
- */
-export const SNAPSHOT_SQL = `WITH ${CONTEXT_CTE},
-
-  ${PROOF_CTE},
-
-  usr AS MATERIALIZED (
-    SELECT u.* FROM ctx, LATERAL (
-      SELECT u0.must_reset_password AS "mustResetPassword"
-        FROM users u0
-       WHERE u0.id = nullif($8, '')::uuid AND ${TIED_TO_CTX}
-       LIMIT 1 OFFSET 0
-    ) u
-  ),
-
-  imperso AS MATERIALIZED (
-    SELECT o.* FROM ctx, LATERAL (
-      SELECT o0.name
-        FROM organizations o0
-       WHERE o0.id = nullif($9, '')::uuid AND ${TIED_TO_CTX}
-       LIMIT 1 OFFSET 0
-    ) o
-  )
-
-SELECT (SELECT "mustResetPassword" FROM usr) AS must_reset_password,
-       (SELECT name FROM imperso)            AS impersonating_org_name,
-       ${PROOF_SELECT}`;
-
-export interface SnapshotRow {
-  must_reset_password: boolean | null;
-  impersonating_org_name: string | null;
   guc_aplicado: string | null;
 }

@@ -358,6 +358,7 @@ export class UsersService {
             phone: input.phone ?? null,
             status: "active",
             emailVerifiedAt: new Date(),
+            // cache-ok: usuário nascendo agora; não tem sessão pra invalidar
             mustResetPassword: true, // troca obrigatória no 1º acesso
           },
         });
@@ -639,6 +640,8 @@ export class UsersService {
     await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.user.update({ where: { id: userId }, data: { passwordHash, mustResetPassword: true } }),
     );
+    // "precisa trocar a senha" viaja no contexto da sessão — tem que valer já
+    await this.cache.dropByUser(userId);
     // sincroniza a senha temporária no Chatwoot + GLPI (best-effort)
     await this.provisioning.syncUserPassword(userId, temp).catch(() => undefined);
     return { tempPassword: temp };

@@ -335,9 +335,9 @@ export class PaymentsService {
   private adminCtx(orgId: string): RequestContext {
     return {
       userId: null, platformUserId: null, membershipId: null, orgId, storeId: null,
-      role: null, isOrgAdmin: false, permissions: {}, isPlatformAdmin: true,
+      role: null, isOrgAdmin: false, permissions: {}, mustResetPassword: false, isPlatformAdmin: true,
       platformRole: null, techSpecsCategories: [], impersonating: false,
-      impersonatingOrgId: null, impersonatorPlatformUserId: null,
+      impersonatingOrgId: null, impersonatingOrgName: null, impersonatorPlatformUserId: null,
     };
   }
 
@@ -588,8 +588,9 @@ export class PaymentsService {
     const ctxLike: RequestContext = {
       userId: null, platformUserId: null, membershipId: null,
       orgId, storeId: null, role: null, isOrgAdmin: false, permissions: {},
+      mustResetPassword: false,
       isPlatformAdmin: true, platformRole: null, techSpecsCategories: [],
-      impersonating: false, impersonatingOrgId: null, impersonatorPlatformUserId: null,
+      impersonating: false, impersonatingOrgId: null, impersonatingOrgName: null, impersonatorPlatformUserId: null,
     };
     const data = await this.loadInstallment(ctxLike, installmentId).catch(() => null);
     if (data) {
@@ -777,9 +778,9 @@ export class PaymentsService {
   async chargeInstallmentAuto(orgId: string, installmentId: string) {
     const ctxLike: RequestContext = {
       userId: null, platformUserId: null, membershipId: null, orgId, storeId: null,
-      role: null, isOrgAdmin: false, permissions: {}, isPlatformAdmin: true,
+      role: null, isOrgAdmin: false, permissions: {}, mustResetPassword: false, isPlatformAdmin: true,
       platformRole: null, techSpecsCategories: [], impersonating: false,
-      impersonatingOrgId: null, impersonatorPlatformUserId: null,
+      impersonatingOrgId: null, impersonatingOrgName: null, impersonatorPlatformUserId: null,
     };
     const data = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.creditInstallment.findFirst({

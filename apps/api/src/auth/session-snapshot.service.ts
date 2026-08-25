@@ -1,6 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import { PrismaService } from "../prisma/prisma.service";
-import { SNAPSHOT_SQL, type SnapshotRow } from "./guard.sql";
 import type { RequestContext } from "./session.middleware";
 
 export interface SessionSnapshot {
@@ -24,64 +22,21 @@ export interface SessionSnapshot {
 }
 
 /**
- * Monta o retrato da sessão atual (o payload de `GET /api/auth/me`).
+ * O retrato da sessão atual (o payload de `GET /api/auth/me`).
  *
- * Vive num serviço porque duas rotas precisam dele: o próprio `/auth/me` e o
- * `/bootstrap`, que devolve sessão + empresa + loja + assinatura + atalhos numa
- * requisição só. Duplicar essa montagem em dois lugares era pedir pra elas
+ * NÃO VAI AO BANCO. Tudo que ele mostra já está no contexto que o guard
+ * resolveu — inclusive "precisa trocar a senha" e o nome da empresa
+ * impersonada, que antes custavam uma transação cada e depois viraram uma
+ * consulta separada. Hoje vêm na mesma consulta da sessão, e com a sessão no
+ * cache do Redis o `/auth/me` responde sem tocar no Postgres.
+ *
+ * Vive num serviço porque duas rotas montam o mesmo retrato: o próprio
+ * `/auth/me` e o `/bootstrap`. Duplicar essa montagem era pedir pra elas
  * divergirem.
  */
 @Injectable()
 export class SessionSnapshotService {
-  constructor(private readonly prisma: PrismaService) {}
-
-  /**
-   * O retrato da sessão, numa ida ao banco.
-   *
-   * As duas leituras extras — "precisa trocar a senha?" e o nome da empresa
-   * impersonada — custavam uma transação cada. Agora saem juntas
-   * (`SNAPSHOT_SQL`), e quem já tem os dois valores em mãos usa `compose()`
-   * sem ir ao banco nenhuma vez.
-   */
-  async build(ctx: RequestContext): Promise<SessionSnapshot> {
-    const rls = { isPlatformAdmin: true };
-    const params = [ctx.userId ?? "", ctx.impersonatingOrgId ?? ""];
-
-    let linha = await this.prisma
-      .queryWithContext<SnapshotRow>(rls, SNAPSHOT_SQL, ...params)
-      .then((r) => r[0] ?? null)
-      .catch(() => null);
-
-    if (linha?.guc_aplicado == null) {
-      linha = await this.prisma
-        .queryWithContextInTransaction<SnapshotRow>(rls, SNAPSHOT_SQL, ...params)
-        .then((r) => r[0] ?? null)
-        .catch(() => null);
-    }
-
-    return this.compose(ctx, {
-      mustResetPassword: linha?.must_reset_password ?? false,
-      impersonatingOrgName: linha?.impersonating_org_name ?? null,
-    });
-  }
-
-  /**
-   * O mesmo retrato, sem ir ao banco.
-   *
-   * O `/bootstrap` já traz `must_reset_password` e o nome da empresa
-   * impersonada na sua consulta única — não faz sentido buscar de novo. Quem
-   * tem os dois em mãos monta por aqui; quem não tem chama `build()`.
-   */
-  compose(
-    ctx: RequestContext,
-    extras: { mustResetPassword: boolean; impersonatingOrgName: string | null },
-  ): SessionSnapshot {
-    const { mustResetPassword } = extras;
-    const impersonating =
-      ctx.impersonating && ctx.impersonatingOrgId
-        ? { orgId: ctx.impersonatingOrgId, orgName: extras.impersonatingOrgName }
-        : null;
-
+  build(ctx: RequestContext): SessionSnapshot {
     return {
       authenticated: Boolean(ctx.userId || ctx.platformUserId),
       user: ctx.userId
@@ -93,7 +48,7 @@ export class SessionSnapshotService {
             role: ctx.role,
             isOrgAdmin: ctx.isOrgAdmin,
             permissions: ctx.permissions,
-            mustResetPassword,
+            mustResetPassword: ctx.mustResetPassword,
           }
         : null,
       master: ctx.isPlatformAdmin
@@ -103,7 +58,10 @@ export class SessionSnapshotService {
             techSpecsCategories: ctx.techSpecsCategories,
           }
         : null,
-      impersonating,
+      impersonating:
+        ctx.impersonating && ctx.impersonatingOrgId
+          ? { orgId: ctx.impersonatingOrgId, orgName: ctx.impersonatingOrgName }
+          : null,
     };
   }
 }

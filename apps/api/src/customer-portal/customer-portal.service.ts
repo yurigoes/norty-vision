@@ -40,9 +40,9 @@ export class CustomerPortalService {
   private orgCtx(ctx: CustomerContext): RequestContext {
     return {
       userId: null, platformUserId: null, membershipId: null, orgId: ctx.organizationId,
-      storeId: null, role: null, isOrgAdmin: false, permissions: {}, isPlatformAdmin: true,
+      storeId: null, role: null, isOrgAdmin: false, permissions: {}, mustResetPassword: false, isPlatformAdmin: true,
       platformRole: null, techSpecsCategories: [], impersonating: false,
-      impersonatingOrgId: null, impersonatorPlatformUserId: null,
+      impersonatingOrgId: null, impersonatingOrgName: null, impersonatorPlatformUserId: null,
     };
   }
 

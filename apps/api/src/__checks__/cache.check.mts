@@ -5,7 +5,8 @@
 // Rodar:  node --experimental-strip-types apps/api/src/__checks__/cache.check.mts
 //
 // O TTL do cache é de minutos, não de segundos — e isso só é seguro porque
-// toda mudança de papel, permissão ou vínculo derruba a sessão na hora. Um
+// toda mudança de papel, permissão, vínculo ou "precisa trocar a senha"
+// derruba a sessão na hora. Um
 // método novo que mexa em `memberships` ou `roles` e esqueça de apagar volta o
 // sistema ao problema que o TTL curto escondia: permissão velha valendo.
 //
@@ -30,6 +31,15 @@ const ESCRITAS = [
   /tx\.platformSession\.(update|updateMany)\b/,
   /tx\.platformUser\.update\b/,
 ];
+
+/**
+ * `mustResetPassword` também viaja no contexto da sessão desde que o guard
+ * passou a resolver tudo numa consulta só. Só conta quando é a tabela `users`
+ * — funcionário, fornecedor e cliente têm a coluna com o mesmo nome, em
+ * tabelas que o guard não lê.
+ */
+const MUST_RESET = /mustResetPassword:\s*(?:true|false)/;
+const TABELA_USERS = /tx\.user\./;
 
 /** O que conta como "apagou". */
 const APAGA = /this\.cache\.(drop|dropByUser|dropByRole|dropMaster|dropMasterByUser)\b/;
@@ -66,7 +76,7 @@ function metodos(texto: string): Metodo[] {
     }
     if (!atual) return;
     atual.linhas.push(linha);
-    if (ESCRITAS.some((re) => re.test(linha))) {
+    if (ESCRITAS.some((re) => re.test(linha)) || MUST_RESET.test(linha)) {
       atual.escritas.push({ linha: i + 1, texto: linha.trim() });
     }
   });
@@ -76,18 +86,24 @@ function metodos(texto: string): Metodo[] {
 const erros: string[] = [];
 let escritas = 0;
 let dispensadas = 0;
+let invalidam = 0;
 
 for (const caminho of arquivos(src)) {
   const texto = readFileSync(caminho, "utf8");
-  if (!ESCRITAS.some((re) => re.test(texto))) continue;
+  if (!ESCRITAS.some((re) => re.test(texto)) && !MUST_RESET.test(texto)) continue;
   const linhas = texto.split("\n");
   const relativo = caminho.slice(src.length + 1);
 
   for (const metodo of metodos(texto)) {
-    if (metodo.escritas.length === 0) continue;
+    const corpo = metodo.linhas.join("\n");
+    // escrita de mustResetPassword fora da tabela `users` não é do guard
+    const escritas_ = metodo.escritas.filter(
+      (e) => !MUST_RESET.test(e.texto) || TABELA_USERS.test(corpo) || ESCRITAS.some((re) => re.test(e.texto)),
+    );
+    if (escritas_.length === 0) continue;
     const apaga = metodo.linhas.some((l) => APAGA.test(l));
 
-    for (const escrita of metodo.escritas) {
+    for (const escrita of escritas_) {
       escritas++;
       // dispensa explícita: na própria linha ou nas três de cima (dá pra
       // escrever o motivo em duas linhas, e às vezes há um `.runWithContext(`
@@ -98,6 +114,7 @@ for (const caminho of arquivos(src)) {
         dispensadas++;
         continue;
       }
+      if (apaga) invalidam++;
       if (!apaga) {
         erros.push(
           `${relativo}:${escrita.linha} — \`${metodo.nome}()\` muda o contexto e não apaga o cache.\n` +
@@ -116,6 +133,6 @@ if (erros.length) {
   process.exit(1);
 }
 console.log(
-  `Cache de sessão OK — ${escritas} escritas que mexem no contexto, ` +
-    `${escritas - dispensadas} apagam o cache, ${dispensadas} dispensadas com motivo escrito.`,
+  `Cache de sessão OK — ${escritas} escritas que mexem no contexto: ` +
+    `${invalidam} apagam o cache, ${dispensadas} dispensadas com motivo escrito.`,
 );

@@ -30,7 +30,14 @@ import type { RequestContext } from "./session.middleware";
 /** O que vai pro cache: só o que o guard monta a partir do banco. */
 type ContextoUsuario = Pick<
   RequestContext,
-  "userId" | "membershipId" | "orgId" | "storeId" | "role" | "isOrgAdmin" | "permissions"
+  | "userId"
+  | "membershipId"
+  | "orgId"
+  | "storeId"
+  | "role"
+  | "isOrgAdmin"
+  | "permissions"
+  | "mustResetPassword"
 >;
 
 /** O que vai pro cache do master: a sessão dele e a empresa impersonada. */
@@ -48,11 +55,13 @@ const NONE_CONTEXT: RequestContext = {
   role: null,
   isOrgAdmin: false,
   permissions: {},
+  mustResetPassword: false,
   isPlatformAdmin: false,
   platformRole: null,
   techSpecsCategories: [],
   impersonating: false,
   impersonatingOrgId: null,
+  impersonatingOrgName: null,
   impersonatorPlatformUserId: null,
 };
 
@@ -302,6 +311,7 @@ export class AuthGuard implements CanActivate {
       isOrgAdmin: s.roleSlug === "owner" || s.roleSlug === "admin",
       // permissoes do papel + overrides por usuario (membership.permissions)
       permissions: mergePermissions(s.rolePermissions, s.membershipPermissions),
+      mustResetPassword: s.mustResetPassword ?? false,
     };
     Object.assign(ctx, resolvido);
     // indexado por usuário e por papel: é assim que uma troca de permissão
@@ -339,6 +349,7 @@ export class AuthGuard implements CanActivate {
       ctx.role = null;
       ctx.isOrgAdmin = false;
       ctx.permissions = {};
+      ctx.mustResetPassword = false;
       ctx.platformUserId = ps.platformUserId;
       ctx.isPlatformAdmin = true;
       ctx.platformRole = ps.platformUserRole === "support" ? "support" : "owner";
@@ -378,12 +389,18 @@ export class AuthGuard implements CanActivate {
   ): void {
     ctx.impersonating = true;
     ctx.impersonatingOrgId = orgId;
+    ctx.impersonatingOrgName = membership?.orgName ?? null;
     ctx.impersonatorPlatformUserId = impersonatorPlatformUserId;
     ctx.orgId = orgId;
     ctx.isPlatformAdmin = false;
     ctx.platformRole = null;
+    // o master não herda o "precisa trocar a senha" de quem ele está
+    // emprestando: a senha não é dele. Antes o valor vinha do usuário
+    // emprestado — o front já ignorava (`&& !session.impersonating`), mas o
+    // payload mentia.
+    ctx.mustResetPassword = false;
 
-    if (membership) {
+    if (membership?.membershipId && membership.userId) {
       ctx.userId = membership.userId;
       ctx.membershipId = membership.membershipId;
       ctx.storeId = membership.storeId ?? null;
@@ -391,7 +408,7 @@ export class AuthGuard implements CanActivate {
       ctx.isOrgAdmin = membership.roleSlug === "owner" || membership.roleSlug === "admin";
       ctx.permissions = mergePermissions(membership.rolePermissions, membership.membershipPermissions);
     } else {
-      // empresa sem usuários: ainda assim entra como admin da org
+      // empresa sem usuários ativos: ainda assim entra como admin da org
       ctx.isOrgAdmin = true;
       ctx.role = "owner";
     }

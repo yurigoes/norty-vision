@@ -14,21 +14,21 @@ import { CONTEXT_CTE, PROOF_CTE, PROOF_SELECT } from "../prisma/rls-context";
  *
  *   ctx  → seta os sete GUCs do RLS
  *   ↓ (LATERAL: avaliado por linha de ctx)
- *   org, org_flags, usr, st, sub, grants, ccs → leem com o contexto do usuário
+ *   org, org_flags, st, sub, grants, ccs → leem com o contexto do usuário
  *   ↓ (niche_row depende de org.niche)
  *   tenant → junta tudo numa linha
  *   ↓
  *   adm  → só então eleva pra platform admin
  *   ↓
- *   platform → plano, integrações globais, nome da empresa impersonada
+ *   plano, cw, glpi_i → plano da empresa e as integrações globais
  *
  * SOBRE A ELEVAÇÃO: três leituras precisam de platform admin e já precisavam
  * antes — o código chamava `getByProvider({ isPlatformAdmin: true })` e
  * `runWithContext({ isPlatformAdmin: true })` pra elas. São exatamente: o plano
  * da própria empresa (pode estar inativo, e aí a policy de `plans` esconderia),
- * as duas integrações globais (Chatwoot/GLPI, `organization_id IS NULL`) e o
- * nome da empresa que o master está impersonando. Nada além disso é lido depois
- * do `adm`, e o SET LOCAL morre no fim da instrução.
+ * e as duas integrações globais (Chatwoot/GLPI, `organization_id IS NULL`).
+ * Nada além disso é lido depois do `adm`, e o SET LOCAL morre no fim da
+ * instrução.
  */
 
 /**
@@ -127,7 +127,7 @@ const INTEGRATION_JSON = `jsonb_build_object(
                  'embedEnabled', i.embed_enabled
                )`;
 
-/** $8 = id da empresa impersonada (texto vazio quando não há). */
+/** Sem parâmetros próprios: só os sete do contexto. */
 export const SHELL_SQL = `WITH ${CONTEXT_CTE},
 
   ${PROOF_CTE},
@@ -149,15 +149,6 @@ export const SHELL_SQL = `WITH ${CONTEXT_CTE},
        WHERE id = nullif(ctx.org_id, '')::uuid AND deleted_at IS NULL
        OFFSET 0
     ) f
-  ),
-
-  usr AS MATERIALIZED (
-    SELECT u.* FROM ctx, LATERAL (
-      SELECT must_reset_password AS "mustResetPassword"
-        FROM users
-       WHERE id = nullif(ctx.user_id, '')::uuid
-       OFFSET 0
-    ) u
   ),
 
   st AS MATERIALIZED (
@@ -227,7 +218,6 @@ export const SHELL_SQL = `WITH ${CONTEXT_CTE},
       (SELECT items FROM grants)                     AS grants,
       (SELECT to_jsonb(c) FROM ccs c)                AS ccs,
       (SELECT hidden FROM niche_row)                 AS niche_hidden,
-      (SELECT "mustResetPassword" FROM usr)          AS must_reset_password,
       (SELECT "planCode" FROM org)                   AS plan_code
   ),
 
@@ -264,24 +254,13 @@ export const SHELL_SQL = `WITH ${CONTEXT_CTE},
          AND adm.escalado IS NOT NULL
        LIMIT 1 OFFSET 0
     ) x
-  ),
-
-  imperso AS MATERIALIZED (
-    SELECT x.* FROM adm, LATERAL (
-      SELECT o.name
-        FROM organizations o
-       WHERE o.id = nullif($8, '')::uuid
-         AND adm.escalado IS NOT NULL
-       LIMIT 1 OFFSET 0
-    ) x
   )
 
 SELECT t.organization, t.org_flags, t.store, t.subscription, t.grants, t.ccs,
-       t.niche_hidden, t.must_reset_password,
+       t.niche_hidden,
        (SELECT features FROM plano)   AS plan_features,
        (SELECT json FROM cw)          AS chatwoot,
        (SELECT json FROM glpi_i)      AS glpi,
-       (SELECT name FROM imperso)     AS impersonating_org_name,
        ${PROOF_SELECT}
   FROM tenant t`;
 
@@ -302,11 +281,9 @@ export interface ShellRow {
   grants: Array<{ moduleKey: string; blocked: boolean; paid: boolean; expiresAt: string | null }>;
   ccs: { submoduleFeatures: unknown; productionFeatures: unknown } | null;
   niche_hidden: unknown;
-  must_reset_password: boolean | null;
   plan_features: unknown;
   chatwoot: PlatformIntegrationRow | null;
   glpi: PlatformIntegrationRow | null;
-  impersonating_org_name: string | null;
   /** null = os GUCs do RLS não valiam quando a consulta rodou (ver `PROOF_CTE`) */
   guc_aplicado: string | null;
 }

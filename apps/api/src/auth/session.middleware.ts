@@ -19,6 +19,10 @@ export interface RequestContext {
   // permissoes do papel do membership ativo (configuravel pelo admin da org).
   // owner/admin tem acesso total e ignoram este mapa.
   permissions: Record<string, boolean>;
+  // "precisa trocar a senha no próximo acesso". Vem junto com a sessão desde
+  // que o guard passou a resolver tudo numa consulta só — antes o /auth/me
+  // buscava por conta própria.
+  mustResetPassword: boolean;
 
   // se logado como master
   isPlatformAdmin: boolean;
@@ -33,6 +37,8 @@ export interface RequestContext {
   // e exibir o banner / botão de sair.
   impersonating: boolean;
   impersonatingOrgId: string | null;
+  /** nome da empresa impersonada — pro banner, sem uma segunda consulta */
+  impersonatingOrgName: string | null;
   impersonatorPlatformUserId: string | null;
 }
 

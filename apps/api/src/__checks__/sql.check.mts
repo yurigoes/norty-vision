@@ -333,6 +333,39 @@ function confereLeiturasSoltas(arquivo: string, textoBruto: string) {
 confereLeiturasSoltas("shell.sql.ts", sql);
 confereLeiturasSoltas("guard.sql.ts", guard);
 
+
+/**
+ * Estrutura mínima do statement: parênteses fechados e o `WITH` sem vírgula
+ * sobrando antes do SELECT final.
+ *
+ * Parece bobagem até você remover um CTE, deixar a vírgula do anterior e só
+ * descobrir em produção — foi o que aconteceu aqui. O erro do Postgres é
+ * "syntax error at or near SELECT", 200 linhas depois de onde está a vírgula.
+ */
+function confereEstrutura(arquivo: string, textoBruto: string) {
+  const texto = semComentarios(textoBruto);
+  for (const m of texto.matchAll(/export const (\w+) = `([\s\S]*?)`;/g)) {
+    const [, nome, sqlBody] = m;
+    if (!sqlBody.includes("${CONTEXT_CTE}")) continue;
+
+    const abre = (sqlBody.match(/\(/g) ?? []).length;
+    const fecha = (sqlBody.match(/\)/g) ?? []).length;
+    if (abre !== fecha) {
+      erros.push(`${arquivo}: ${nome} com parênteses desbalanceados (${abre} abrem, ${fecha} fecham)`);
+    }
+    // o último CTE não pode terminar em vírgula
+    if (/\)\s*,\s*SELECT\b/.test(sqlBody)) {
+      erros.push(
+        `${arquivo}: ${nome} tem vírgula sobrando entre o último CTE e o SELECT final ` +
+          `— sintoma clássico de CTE removido pela metade`,
+      );
+    }
+  }
+}
+
+confereEstrutura("shell.sql.ts", sql);
+confereEstrutura("guard.sql.ts", guard);
+
 // ---------------------------------------------------------------------------
 
 if (erros.length) {

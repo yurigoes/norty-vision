@@ -56,11 +56,13 @@ export const CurrentContext = createParamDecorator(
       role: null,
       isOrgAdmin: false,
       permissions: {},
+      mustResetPassword: false,
       isPlatformAdmin: false,
       platformRole: null,
       techSpecsCategories: [],
       impersonating: false,
       impersonatingOrgId: null,
+      impersonatingOrgName: null,
       impersonatorPlatformUserId: null,
     };
   },

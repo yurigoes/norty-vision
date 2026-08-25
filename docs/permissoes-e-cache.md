@@ -46,8 +46,12 @@ membro que já expirou é um `DEL` inofensivo.
 | vínculo novo | as sessões dele |
 | **permissões de um papel** | as sessões de **todos** que usam o papel |
 | papel removido | as sessões de quem usava |
-| senha redefinida pelo próprio usuário | as sessões dele |
+| senha redefinida (pelo próprio, pelo admin, pelo suporte ou pelo portal) | as sessões dele |
 | logout | a sessão dele |
+
+O "precisa trocar a senha" entrou nessa lista quando virou parte do contexto —
+antes o `/auth/me` buscava esse valor no banco toda vez (ver
+[`guard-em-uma-consulta.md`](guard-em-uma-consulta.md)).
 
 E há escritas que **não** derrubam nada, porque não mexem no que o guard
 guarda: o apelido no inbox, a comissão do vendedor, o vínculo de um usuário
@@ -87,10 +91,11 @@ usuário, como master, com os dois cookies e com o master impersonando).
 ## O que confere isso
 
 `pnpm --filter @yugo/api check` roda `src/__checks__/cache.check.mts`: ele varre
-a API atrás de escritas em `memberships`, `roles`, `sessions` e
-`platform_sessions` e **reprova qualquer método que mexa nisso sem apagar o
-cache** — a não ser que a linha traga um `// cache-ok:` com o motivo. Hoje são
-28 escritas: 16 apagam, 12 dispensadas com motivo escrito.
+a API atrás de escritas em `memberships`, `roles`, `sessions`,
+`platform_sessions` e do `mustResetPassword` de `users`, e **reprova qualquer
+método que mexa nisso sem apagar o cache** — a não ser que a linha traga um
+`// cache-ok:` com o motivo. Hoje são 35 escritas: 22 apagam, 13 dispensadas
+com motivo escrito.
 
 É o que impede o problema de voltar por descuido: método novo que troca papel e
 esquece de invalidar não passa da conferência.

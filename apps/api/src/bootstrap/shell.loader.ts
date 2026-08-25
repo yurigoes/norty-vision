@@ -17,8 +17,6 @@ export interface Shell {
   subscription: Record<string, unknown> | null;
   shortcuts: OrgShortcut[];
   chatwoot: { baseUrl: string; websiteToken: string } | null;
-  mustResetPassword: boolean;
-  impersonatingOrgName: string | null;
 }
 
 const VAZIO: Shell = {
@@ -27,8 +25,6 @@ const VAZIO: Shell = {
   subscription: null,
   shortcuts: [],
   chatwoot: null,
-  mustResetPassword: false,
-  impersonatingOrgName: null,
 };
 
 /**
@@ -55,8 +51,6 @@ export class ShellLoader {
       subscription: row.subscription,
       shortcuts: this.shortcuts(ctx, row),
       chatwoot: this.chatwoot(ctx, row),
-      mustResetPassword: row.must_reset_password ?? false,
-      impersonatingOrgName: row.impersonating_org_name,
     };
   }
 
@@ -75,9 +69,8 @@ export class ShellLoader {
 
   private async query(ctx: RequestContext): Promise<ShellRow | null> {
     const rls = this.rls(ctx);
-    const impersonando = ctx.impersonatingOrgId ?? "";
 
-    const rows = await this.prisma.queryWithContext<ShellRow>(rls, SHELL_SQL, impersonando).catch((e) => {
+    const rows = await this.prisma.queryWithContext<ShellRow>(rls, SHELL_SQL).catch((e) => {
       this.logger.error(`consulta da casca falhou: ${e instanceof Error ? e.message : String(e)}`);
       return null;
     });
@@ -106,7 +99,7 @@ export class ShellLoader {
     }
 
     const seguro = await this.prisma
-      .queryWithContextInTransaction<ShellRow>(rls, SHELL_SQL, impersonando)
+      .queryWithContextInTransaction<ShellRow>(rls, SHELL_SQL)
       .catch(() => null);
     return seguro?.[0] ?? row;
   }

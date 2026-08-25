@@ -40,7 +40,7 @@ export class BootstrapService {
     // anônimo: nada a carregar além do "não autenticado"
     if (!ctx.userId && !ctx.platformUserId) {
       return {
-        session: this.snapshot.compose(ctx, { mustResetPassword: false, impersonatingOrgName: null }),
+        session: this.snapshot.build(ctx),
         organization: null,
         store: null,
         subscription: null,
@@ -50,10 +50,7 @@ export class BootstrapService {
     }
 
     const shell = await this.shell.load(ctx);
-    const session = this.snapshot.compose(ctx, {
-      mustResetPassword: shell.mustResetPassword,
-      impersonatingOrgName: shell.impersonatingOrgName,
-    });
+    const session = this.snapshot.build(ctx);
     const isMaster = session.master !== null;
 
     return {

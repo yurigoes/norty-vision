@@ -48,6 +48,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const resp = exception.getResponse();
       message = typeof resp === "string" ? resp : (resp as any)?.message ?? exception.message;
       code = mapHttpToCode(status);
+    } else if (ehPedidoMalFormado(exception)) {
+      // O Fastify recusa o pedido ANTES da rota: corpo vazio com
+      // `content-type: application/json`, JSON quebrado, corpo grande demais.
+      // Ele já carimba o status certo (4xx) — quem apagava isso era este
+      // filtro, que jogava tudo no `instanceof Error` lá embaixo e devolvia
+      // 500 "Erro interno". Pedido malfeito é 400, e o cliente tem que
+      // conseguir ler por quê.
+      status = (exception as { statusCode: number }).statusCode;
+      code = mapHttpToCode(status);
+      message = String((exception as { message?: unknown }).message ?? "Pedido inválido");
     } else if (ehIdMalFormado(exception)) {
       // um `:id` que não é uuid: `/api/credit/accounts/uma-conta-qualquer`.
       // O Prisma estoura, e isso virava 500 com o caminho do arquivo e a
@@ -107,6 +117,26 @@ function ehIdMalFormado(e: unknown): boolean {
   if (codigo === "P2023") return true;
   const msg = String((e as { message?: unknown }).message ?? "");
   return /invalid input syntax for type uuid|Malformed ObjectID|inconsistent column data/i.test(msg);
+}
+
+/**
+ * Erro que o Fastify levantou antes de chegar na rota, já com o status certo.
+ *
+ * Tem `name: "FastifyError"`, `code: "FST_ERR_..."` e um `statusCode` 4xx. A
+ * mensagem é do próprio framework, escrita pra quem chamou — não vaza caminho
+ * de arquivo nem trecho de consulta, então pode ir pro cliente.
+ */
+function ehPedidoMalFormado(e: unknown): boolean {
+  if (!e || typeof e !== "object") return false;
+  const codigo = (e as { code?: unknown }).code;
+  const status = (e as { statusCode?: unknown }).statusCode;
+  return (
+    typeof codigo === "string" &&
+    codigo.startsWith("FST_ERR_") &&
+    typeof status === "number" &&
+    status >= 400 &&
+    status < 500
+  );
 }
 
 function mapHttpToCode(status: number): string {

@@ -5,8 +5,7 @@ import {
   CurrentContext,
   Public,
   RequirePlatformAdmin,
-  RequirePlatformOwner,
-} from "../auth/decorators";
+  RequirePlatformOwner, SemEmpresa } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 
 @Controller("platform")
@@ -97,6 +96,7 @@ export class PlatformController {
   }
 
   // ---- acessos às Specs Técnicas (grants) — owner-only ----
+  @SemEmpresa()
   @Get("specs/categories")
   async specCategories() { return { items: await this.platform.specCategories() }; }
 

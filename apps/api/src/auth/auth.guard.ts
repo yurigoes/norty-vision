@@ -12,6 +12,7 @@ import {
   IS_PUBLIC_KEY,
   REQUIRE_PLATFORM_ADMIN_KEY,
   REQUIRE_PLATFORM_OWNER_KEY,
+  ALLOW_SEM_EMPRESA_KEY,
   REQUIRE_PERMISSION_KEY,
 } from "./decorators";
 import { PrismaService } from "../prisma/prisma.service";
@@ -142,6 +143,29 @@ export class AuthGuard implements CanActivate {
         ErrorCode.Unauthorized,
         "Autenticacao requerida",
         401,
+      );
+    }
+
+    // UMA EMPRESA, OU NENHUMA
+    // ------------------------------------------------------------------
+    // Master PURO (logado no painel do SaaS, sem ter entrado em empresa
+    // nenhuma) chegando numa rota de EMPRESA. Isso passava, e o RLS abre tudo
+    // pro platform admin — então `GET /api/customers` devolvia os clientes da
+    // Acme e os da Zito **na mesma lista**, sem impersonação e sem auditoria.
+    // Medido: 121 clientes de 2 empresas numa resposta só.
+    //
+    // Rota de empresa é o que sobrou aqui: `@Public()`, `@RequirePlatformOwner`
+    // e `@RequirePlatformAdmin` já responderam acima. Pra ver dado de empresa o
+    // master entra nela — que é o caminho que deixa rastro no `platform_audit`.
+    const atendeSemEmpresa = this.reflector.getAllAndOverride<boolean>(
+      ALLOW_SEM_EMPRESA_KEY,
+      [execCtx.getHandler(), execCtx.getClass()],
+    );
+    if (req.yugo.isPlatformAdmin && !req.yugo.orgId && !atendeSemEmpresa) {
+      throw new AppError(
+        ErrorCode.Forbidden,
+        "Entre na empresa para ver os dados dela (impersonar). O painel do SaaS não lista dado de cliente.",
+        403,
       );
     }
 

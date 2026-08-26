@@ -384,7 +384,7 @@ export default async function AppLayout({
           )}
         </Link>
         <CommandPaletteButton />
-        <SidebarCountsProvider>
+        <SidebarCountsProvider temEmpresa={opVisible}>
         <nav className="space-y-1 text-sm">
           {/* o que ESTA pessoa fixou vem antes de tudo */}
           <SidebarFavorites items={paletteItems} />
@@ -486,7 +486,7 @@ export default async function AppLayout({
               <strong>Modo somente-leitura.</strong> Sua assinatura foi cancelada — você pode consultar seus dados até <strong>{cancelUntil}</strong>, mas não movimentar (vendas, pedidos, estoque). <a href="/app/billing" className="underline">Reativar assinatura</a>.
             </div>
           )}
-          <InternalAlerts />
+          <InternalAlerts temEmpresa={opVisible} />
           <RouteFade>
             {bloqueio ? <RotaBloqueada {...explicacao(bloqueio)} /> : children}
           </RouteFade>

@@ -111,12 +111,24 @@ export class VaultService {
       throw new AppError(ErrorCode.Unauthorized, "Senha mestra invalida", 401);
     }
 
-    await this.redis.client.set(
-      this.redisKey(opts.platformUserId),
-      "1",
-      "EX",
-      UNLOCK_TTL_SECONDS,
-    );
+    // O DESTRAVE MORA NO REDIS, e aqui a direção segura é o CONTRÁRIO do resto
+    // do sistema: em todo lugar Redis fora significa "vai direto ao banco"; no
+    // cofre significa "continua trancado". Sem conseguir gravar o destrave,
+    // dizer "destravei" seria mentira — o próximo `isUnlocked` daria falso.
+    try {
+      await this.redis.client.set(
+        this.redisKey(opts.platformUserId),
+        "1",
+        "EX",
+        UNLOCK_TTL_SECONDS,
+      );
+    } catch {
+      throw new AppError(
+        ErrorCode.Internal,
+        "O cofre depende do cache, que está fora do ar. Tente de novo em instantes.",
+        503,
+      );
+    }
     return {
       ok: true,
       expiresAt: new Date(Date.now() + UNLOCK_TTL_SECONDS * 1000),
@@ -124,12 +136,18 @@ export class VaultService {
   }
 
   async lock(platformUserId: string): Promise<void> {
-    await this.redis.client.del(this.redisKey(platformUserId));
+    // sem Redis não há destrave gravado: já está trancado por definição
+    await this.redis.client.del(this.redisKey(platformUserId)).catch(() => undefined);
   }
 
   async isUnlocked(platformUserId: string): Promise<boolean> {
-    const v = await this.redis.client.get(this.redisKey(platformUserId));
-    return v === "1";
+    try {
+      return (await this.redis.client.get(this.redisKey(platformUserId))) === "1";
+    } catch {
+      // não deu pra saber = TRANCADO. Falhar aberto aqui entregaria senha de
+      // integração de graça toda vez que o cache piscasse.
+      return false;
+    }
   }
 
   private async requireUnlocked(platformUserId: string): Promise<void> {

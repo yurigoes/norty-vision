@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from "@nestjs/common";
 import { z } from "zod";
-import { CurrentContext } from "../auth/decorators";
+import { CurrentContext, SemEmpresa } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { PlatformSupportService } from "./platform-support.service";
 
@@ -59,12 +59,15 @@ export class PlatformSupportController {
   async noAccess(@CurrentContext() ctx: RequestContext, @Param("id") id: string) { return { ticket: await this.svc.escalateNoAccess(ctx, id) }; }
 
   // ---------- master ----------
+  @SemEmpresa()
   @Get("master/tickets")
   async masterList(@CurrentContext() ctx: RequestContext, @Query("status") status?: string) { return { items: await this.svc.masterList(ctx, { status }) }; }
 
+  @SemEmpresa()
   @Get("master/tickets/:id")
   async masterGet(@CurrentContext() ctx: RequestContext, @Param("id") id: string) { return { ticket: await this.svc.getTicket(ctx, id, { master: true }) }; }
 
+  @SemEmpresa()
   @Post("master/tickets/:id/reply")
   @HttpCode(200)
   async masterReply(@CurrentContext() ctx: RequestContext, @Param("id") id: string, @Body() body: unknown) {

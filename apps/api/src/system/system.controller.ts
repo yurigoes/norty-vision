@@ -1,8 +1,9 @@
 import { Controller, Get, HttpCode, Post } from "@nestjs/common";
-import { CurrentContext } from "../auth/decorators";
+import { CurrentContext, SemEmpresa } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { SystemService } from "./system.service";
 
+@SemEmpresa()
 @Controller("system")
 export class SystemController {
   constructor(private readonly svc: SystemService) {}

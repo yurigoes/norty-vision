@@ -1,8 +1,9 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
-import { CurrentContext } from "../auth/decorators";
+import { CurrentContext, SemEmpresa } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { SupportService } from "./support.service";
 
+@SemEmpresa()
 @Controller("support")
 export class SupportController {
   constructor(private readonly svc: SupportService) {}

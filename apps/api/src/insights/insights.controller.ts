@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from "@nestjs/common";
 import { z } from "zod";
-import { CurrentContext } from "../auth/decorators";
+import { CurrentContext, SemEmpresa } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { InsightsService } from "./insights.service";
 
@@ -28,20 +28,24 @@ export class InsightsController {
   }
 
   // ----- master / ecossistema (rotas literais antes de :id) -----
+  @SemEmpresa()
   @Get("ecosystem")
   ecosystem(@CurrentContext() ctx: RequestContext) {
     return this.svc.ecosystem(ctx);
   }
+  @SemEmpresa()
   @Get("master-questions")
   masterQuestions(@CurrentContext() ctx: RequestContext, @Query("status") status?: string) {
     return this.svc.listMasterQuestions(ctx, status || "open");
   }
+  @SemEmpresa()
   @Post("master-questions/:id/answer")
   @HttpCode(200)
   answerMasterQuestion(@CurrentContext() ctx: RequestContext, @Param("id") id: string, @Body() body: unknown) {
     const input = z.object({ answer: z.string().min(1).max(4000) }).parse(body);
     return this.svc.answerMasterQuestion(ctx, id, input.answer);
   }
+  @SemEmpresa()
   @Post("master-questions/:id/dismiss")
   @HttpCode(200)
   dismissMasterQuestion(@CurrentContext() ctx: RequestContext, @Param("id") id: string) {

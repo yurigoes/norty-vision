@@ -64,6 +64,31 @@ if (iId > -1 && iErro > -1 && iId > iErro) {
   falhas.push("o teste de id mal formado vem DEPOIS do ramo genérico — nunca vai rodar");
 }
 
+// 4. pedido que o Fastify recusa antes da rota sai com o status DELE, não 500.
+// Achado medindo o cofre: `POST /api/platform/vault/lock` com corpo vazio e
+// `content-type: application/json` devolvia 500 "Erro interno" — o Fastify já
+// tinha carimbado 400 e o filtro apagava.
+if (!/ehPedidoMalFormado/.test(filtro)) {
+  falhas.push(
+    "o filtro não respeita o status dos erros do Fastify: corpo vazio, JSON quebrado e corpo " +
+      "grande demais voltam a virar 500 \"Erro interno\"",
+  );
+}
+const fnFst = filtro.match(/function ehPedidoMalFormado[\s\S]*?\n\}/)?.[0] ?? "";
+if (!/FST_ERR_/.test(fnFst) || !/statusCode/.test(fnFst)) {
+  falhas.push("`ehPedidoMalFormado` perdeu o reconhecimento do `FST_ERR_` / do `statusCode` do Fastify");
+}
+if (/status\s*>=\s*400\s*&&/.test(fnFst) === false || /status\s*<\s*500/.test(fnFst) === false) {
+  falhas.push(
+    "`ehPedidoMalFormado` não está limitada a 4xx — assim um 5xx do próprio framework passaria " +
+      "a mensagem interna adiante",
+  );
+}
+const iFst = filtro.indexOf("ehPedidoMalFormado(exception)");
+if (iFst > -1 && iErro > -1 && iFst > iErro) {
+  falhas.push("o teste de pedido mal formado vem DEPOIS do ramo genérico — nunca vai rodar");
+}
+
 console.log("filtro de erros conferido");
 if (falhas.length) {
   console.log(`\nFALHA — ${falhas.length} problema(s):`);

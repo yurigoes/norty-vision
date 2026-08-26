@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Post, Req } from "@nestjs/common";
 import { z } from "zod";
+import { AppError, ErrorCode } from "@yugo/shared";
 import type { FastifyRequest } from "fastify";
 import { CurrentContext, Public } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
@@ -109,7 +110,7 @@ export class VoipController {
   async fsGateways(@Req() req: FastifyRequest) {
     const secret = String((req.query as any)?.secret ?? req.headers["x-voip-secret"] ?? "");
     // mesma proteção dos demais endpoints fs
-    if (secret !== (process.env.VOIP_FS_SECRET || "yugo-voip")) throw new Error("forbidden");
+    if (secret !== (process.env.VOIP_FS_SECRET || "yugo-voip")) throw new AppError(ErrorCode.Forbidden, "Segredo do VoIP inválido", 403);
     return { items: await this.svc.listAllGateways() };
   }
 
@@ -119,7 +120,7 @@ export class VoipController {
   @Get("asterisk/config")
   async asteriskConfig(@Req() req: FastifyRequest) {
     const secret = String((req.query as any)?.secret ?? req.headers["x-voip-secret"] ?? "");
-    if (secret !== (process.env.VOIP_FS_SECRET || "yugo-voip")) throw new Error("forbidden");
+    if (secret !== (process.env.VOIP_FS_SECRET || "yugo-voip")) throw new AppError(ErrorCode.Forbidden, "Segredo do VoIP inválido", 403);
     return this.svc.asteriskConfig();
   }
 }

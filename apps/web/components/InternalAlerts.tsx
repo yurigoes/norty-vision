@@ -16,11 +16,13 @@ interface Alert {
  * Banner de notificações internas do sistema. Hoje alerta WhatsApp
  * desconectado (vermelho). Faz poll periódico e some quando resolvido.
  */
-export function InternalAlerts() {
+export function InternalAlerts({ temEmpresa = true }: { temEmpresa?: boolean }) {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   useEffect(() => {
+    // alerta de integração é de UMA empresa; sem empresa a API responde 403
+    if (!temEmpresa) return;
     let active = true;
     async function load() {
       try {
@@ -38,7 +40,7 @@ export function InternalAlerts() {
     load();
     const t = setInterval(load, 60_000);
     return () => { active = false; clearInterval(t); };
-  }, []);
+  }, [temEmpresa]);
 
   const visible = alerts.filter((a) => !dismissed.has(a.id));
   if (visible.length === 0) return null;

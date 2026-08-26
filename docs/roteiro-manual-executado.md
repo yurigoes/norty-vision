@@ -20,12 +20,12 @@ um dono e duas balconistas no mesmo papel.
 | 10 | trocar permissão de UMA pessoa | ✅ vale no clique seguinte (403 → 200), e só pra ela |
 | 11 | editar o PAPEL | ✅ as duas balconistas mudaram juntas |
 | 12 | revogar acesso de quem está logado | ✅ a sessão morreu na hora (401); a colega seguiu em 200 |
-| 13 | Redis fora do ar | ✅ 4 requisições seguidas em 200, telas abrindo, e o aviso próprio no log |
+| 13 | Redis fora do ar | ✅ agora **com cronômetro**: 18 ms na pior espera (eram 24 s) — ver abaixo |
 | 14 | imprimir os dois relatórios | ✅ depois do conserto do menu no papel |
-| 15 | impersonar e voltar | ✅ banner com o nome da empresa, dados dela, e `stop` devolve o master puro |
+| 15 | impersonar e voltar | ✅ banner "Acme Óticas (modo master)", dados dela, e `stop` devolve o master puro — que **volta a não ver cliente nenhum** |
 | 16 | os dois cookies ao mesmo tempo | ✅ o guard reconhece o master e descarta o contexto da empresa |
 | 17 | inativar um master | ✅ HTTP 200 (era 500) com `inactive` e com `disabled`; a sessão dele morre na hora |
-| 18 | marcadores no log | ✅ zero em 844 requisições — e **provado que a linha funciona** |
+| 18 | marcadores no log | ✅ zero marcador e **zero 5xx** numa varredura de 278 rotas (eram 12 respostas 500) |
 
 ## O defeito que o roteiro achou (passo 14)
 
@@ -116,6 +116,116 @@ log.
 voltar a repassar `exception.message`, se parar de mandar o erro pro log, se
 perder o reconhecimento do id mal formado, ou se colocar esse teste **depois**
 do ramo genérico (onde ele nunca rodaria).
+
+## Terceira passada (a que achou as coisas grandes)
+
+Rodado de novo do zero, no mesmo Postgres 16 + Redis + API compilada + Next
+compilado. Os 18 passaram — e três defeitos apareceram, dois deles sérios.
+
+### 1. Com o Redis fora, tudo respondia 200… em 24 segundos
+
+O passo 13 dizia "o Redis cair não pode derrubar o sistema", e o sistema de
+fato respondia 200. Só que eu nunca tinha **cronometrado**. Cronometrando:
+
+| | 1ª | 2ª | 3ª | 4ª |
+| --- | --- | --- | --- | --- |
+| Redis de pé | 24 ms | 21 ms | 37 ms | — |
+| Redis fora | **7.533 ms** | **15.326 ms** | **22.220 ms** | **24.034 ms** |
+
+Crescendo a cada requisição. "Continua funcionando" na teoria; inutilizável na
+prática — ninguém espera 24 segundos, a pessoa recarrega, e a fila cresce.
+
+A culpa é do `enableOfflineQueue`, que vem **ligado por padrão** no ioredis:
+comando enviado com a conexão caída não falha, entra numa fila esperando a
+reconexão. Como o `retryStrategy` padrão espera cada vez mais entre tentativas,
+cada requisição esperava mais que a anterior.
+
+O cliente foi reconfigurado pra dizer "não deu" na hora — `enableOfflineQueue:
+false`, `commandTimeout: 250`, uma tentativa por comando, `retryStrategy` com
+teto — e todo lugar que fala com o Redis passou a tratar a queda indo direto ao
+banco, que era o plano desde sempre. Depois:
+
+```
+com Redis de pé:  15 ms · 10 ms · 12 ms
+com Redis fora:   18 ms · 13 ms · 13 ms · 13 ms · 15 ms · 15 ms
+```
+
+**24.034 ms → 18 ms.** A tela de clientes abriu em 2,1 s com o Redis no chão.
+
+E tem uma exceção que **precisa** continuar sendo exceção: o cofre. Em todo
+lugar "Redis fora" significa "vai ao banco"; no cofre significa **trancado**.
+Medido: com o Redis fora, `status` responde `unlocked=false`, e destravar com a
+senha certa devolve **503** em 45 ms — não "destravei" em cima de uma gravação
+que não aconteceu.
+
+`apps/api/src/__checks__/redis.check.mts` segura as duas pontas.
+
+### 2. O master lia cliente de todas as empresas sem entrar em nenhuma
+
+Esta é a maior. O master logado no painel do SaaS, **sem ter impersonado
+ninguém**, chamava `GET /api/customers` e recebia:
+
+```
+121 clientes de 2 empresas — Acme e Zito — na mesma lista
+```
+
+O RLS abre tudo pro platform admin (é o que faz o painel do SaaS funcionar),
+então sem `orgId` a consulta não tinha por onde filtrar. O efeito colateral é o
+que incomoda: a **impersonação**, que é o caminho que deixa rastro no
+`platform_audit`, virava opcional. Dava pra ler dado de cliente sem rastro
+nenhum.
+
+Varrendo as 278 rotas GET com o cookie do master puro: **160 respondiam 200**.
+
+O padrão foi invertido no `AuthGuard`: rota de empresa **exige** empresa.
+`@Public()`, `@RequirePlatformOwner()` e `@RequirePlatformAdmin()` já saem
+antes; o que sobra é rota de empresa, e sem `orgId` responde 403. As telas do
+painel do SaaS que realmente precisam foram marcadas uma a uma com o novo
+`@SemEmpresa()` — 29 rotas, cada uma conferida no navegador.
+
+Depois: **113 rotas deixaram de entregar dado de empresa** ao master puro, e as
+19 telas do painel do SaaS mais as 16 telas da empresa continuam abrindo — isso
+conferido no navegador de verdade, tela por tela, com o cronômetro dos 403 em
+cima de toda chamada de API que cada uma faz.
+
+Duas chamadas que a casca dispara em **toda** tela (`/api/sidebar/counts` e
+`/api/company-integrations/alerts`) passaram a 403 pro master puro, e com razão:
+contador de pendência é de uma empresa. Elas deixaram de ser feitas quando não
+há empresa, em vez de tomarem 403 a cada 60 segundos.
+
+`apps/api/src/__checks__/empresa.check.mts` segura: o porteiro tem que existir,
+tem que vir **depois** das três saídas de plataforma (senão barra o próprio
+painel), o `@SemEmpresa()` tem teto de 40 rotas (marcar por reflexo desfaz o
+porteiro), e nenhum controller de dado de cliente pode estar marcado.
+
+### 3. Dois 500 que eram 400 e 403
+
+Do mesmo tipo do 5xx da segunda passada, achados no log desta:
+
+- **`POST` com corpo vazio** e `content-type: application/json` devolvia 500
+  "Erro interno". O Fastify já tinha carimbado 400 (`FST_ERR_CTP_EMPTY_JSON_BODY`)
+  e o filtro global apagava, jogando tudo no ramo genérico. Hoje sai
+  400 com a mensagem do framework — que é legível e não vaza nada. JSON quebrado
+  idem.
+- **Segredo do VoIP errado** era `throw new Error("forbidden")` — 500 no log e
+  no monitoramento, quando a intenção era 403. Virou `AppError(..., 403)`.
+
+Resultado da varredura final das 278 rotas: **zero 5xx** (eram 12), 193 em 403,
+47 em 200, 37 em 401, 1 em 404.
+
+### O que a terceira passada mostrou sobre o próprio roteiro
+
+Três testes meus estavam passando por engano e foram consertados:
+
+- a caminhada pelas telas dava "abriu" pra **página em branco** (um `next start`
+  velho ainda servia a porta 3001 por cima do build novo). Hoje tela com menos
+  de 200 caracteres de texto reprova.
+- o passo 13 conferia o **código** da resposta e nunca o **tempo** — foi
+  exatamente por isso que os 24 segundos passaram despercebidos nas duas
+  primeiras passadas. Hoje tem teto de 1.500 ms e uma regra contra a espera
+  crescer a cada requisição.
+- o `/app/equipe` que eu testava não existe (é `/app/usuarios`): a tela de 404
+  passava como "abriu".
 
 ## O que ainda não dá pra marcar como feito
 

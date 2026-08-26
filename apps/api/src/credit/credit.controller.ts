@@ -7,6 +7,7 @@ import { CurrentContext, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { CreditService } from "./credit.service";
 import { limitePedido, offsetPedido } from "../common/pagina";
+import { RequireModule } from "../common/modulo.guard";
 
 const CreateAccountSchema = z.object({
   document: z.string().min(11).max(20),
@@ -32,6 +33,7 @@ const ConfigSchema = z.object({
 });
 
 @Controller("credit")
+@RequireModule("crediario")
 export class CreditController {
   constructor(private readonly svc: CreditService) {}
 

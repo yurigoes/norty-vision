@@ -4,6 +4,7 @@ import type { FastifyReply } from "fastify";
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { CommissionsService } from "./commissions.service";
+import { RequireModule } from "../common/modulo.guard";
 
 const CreateSchema = z.object({
   sellerUserId: z.string().uuid(),
@@ -23,6 +24,7 @@ const PaySchema = z.object({
 });
 
 @Controller("commissions")
+@RequireModule("comissoes")
 export class CommissionsController {
   constructor(private readonly svc: CommissionsService) {}
 

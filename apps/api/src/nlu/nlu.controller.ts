@@ -13,6 +13,7 @@ import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { PrismaService } from "../prisma/prisma.service";
 import { NluService } from "./nlu.service";
+import { RequireModule } from "../common/modulo.guard";
 
 const ClassifyTestSchema = z.object({
   text: z.string().min(1).max(2000),
@@ -41,6 +42,7 @@ const ResolveSchema = z.object({
 });
 
 @Controller("nlu")
+@RequireModule("agenda")
 export class NluController {
   constructor(
     private readonly nlu: NluService,

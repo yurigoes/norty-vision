@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Post, Query } from "@nestjs/com
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { InboxService } from "./inbox.service";
-import { RequireSubmodule } from "../common/submodulo.guard";
+import { RequireSubmodule } from "../common/modulo.guard";
 
 @Controller("inbox")
 export class InboxController {

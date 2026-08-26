@@ -4,8 +4,10 @@ import type { FastifyRequest } from "fastify";
 import { CurrentContext, Public } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { VoipService } from "./voip.service";
+import { RequireModule } from "../common/modulo.guard";
 
 @Controller("voip")
+@RequireModule("voip")
 export class VoipController {
   constructor(private readonly svc: VoipService) {}
 

@@ -6,6 +6,7 @@ import { CurrentContext, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { StorageService } from "../storage/storage.service";
 import { BroadcastService } from "./broadcast.service";
+import { RequireModule } from "../common/modulo.guard";
 
 const IMG_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 
@@ -18,6 +19,7 @@ const SendSchema = z.object({
 });
 
 @Controller("broadcast")
+@RequireModule("mala_direta")
 export class BroadcastController {
   constructor(
     private readonly svc: BroadcastService,

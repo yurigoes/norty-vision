@@ -2,8 +2,10 @@ import { Body, Controller, Get, HttpCode, Param, Post } from "@nestjs/common";
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { KbService } from "./kb.service";
+import { RequireModule } from "../common/modulo.guard";
 
 @Controller("kb")
+@RequireModule("atendimento")
 export class KbController {
   constructor(private readonly svc: KbService) {}
 

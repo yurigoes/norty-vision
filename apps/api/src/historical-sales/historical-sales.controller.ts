@@ -3,6 +3,7 @@ import { z } from "zod";
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { HistoricalSalesService } from "./historical-sales.service";
+import { RequireModule } from "../common/modulo.guard";
 
 const RowSchema = z.object({
   legacyCode: z.string().max(40).nullable().optional(),
@@ -15,6 +16,7 @@ const RowSchema = z.object({
 });
 
 @Controller("historical-sales")
+@RequireModule("vendas_historico")
 export class HistoricalSalesController {
   constructor(private readonly svc: HistoricalSalesService) {}
 

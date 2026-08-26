@@ -4,6 +4,7 @@ import { z } from "zod";
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { HrService } from "./hr.service";
+import { RequireModule } from "../common/modulo.guard";
 
 const EmployeeSchema = z.object({
   storeId: z.string().uuid().nullable().optional(),
@@ -102,6 +103,7 @@ const DocSchema = z.object({
 });
 
 @Controller("hr")
+@RequireModule("rh")
 export class HrController {
   constructor(private readonly svc: HrService) {}
 

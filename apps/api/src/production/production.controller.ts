@@ -9,7 +9,7 @@ import { ProductionService } from "./production.service";
 import { ProductionImportService } from "./production-import.service";
 import { ProductionWipeService, type WipeScope } from "./production-wipe.service";
 import { limitePedido, offsetPedido } from "../common/pagina";
-import { RequireSubmodule } from "../common/submodulo.guard";
+import { RequireModule, RequireSubmodule } from "../common/modulo.guard";
 
 const ItemSchema = z.object({ description: z.string().min(1).max(300), qty: z.number().int().min(1).max(100000), unitPriceCents: z.number().int().min(0) });
 const UpsertSchema = z.object({
@@ -37,6 +37,7 @@ const UpsertSchema = z.object({
 const FILE_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf", "application/postscript", "application/illustrator", "application/zip", "application/x-zip-compressed", "application/octet-stream"]);
 
 @Controller("production")
+@RequireModule("producao")
 export class ProductionController {
   constructor(private readonly svc: ProductionService, private readonly storage: StorageService, private readonly importSvc: ProductionImportService, private readonly wipeSvc: ProductionWipeService) {}
 

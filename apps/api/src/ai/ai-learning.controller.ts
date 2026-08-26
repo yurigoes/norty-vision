@@ -3,8 +3,10 @@ import { z } from "zod";
 import { CurrentContext, RequirePlatformAdmin } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { AiLearningService } from "./ai-learning.service";
+import { RequireModule } from "../common/modulo.guard";
 
 @Controller("ai-learning")
+@RequireModule("atendimento")
 export class AiLearningController {
   constructor(private readonly svc: AiLearningService) {}
 

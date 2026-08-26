@@ -4,9 +4,10 @@ import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { PayablesService } from "./payables.service";
 import { limitePedido, offsetPedido } from "../common/pagina";
-import { RequireSubmodule } from "../common/submodulo.guard";
+import { RequireModule, RequireSubmodule } from "../common/modulo.guard";
 
 @Controller("payables")
+@RequireModule("financeiro")
 @RequireSubmodule("financeiro.contas_pagar")
 export class PayablesController {
   constructor(private readonly svc: PayablesService) {}

@@ -3,8 +3,10 @@ import { z } from "zod";
 import { CurrentContext, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { CrmService } from "./crm.service";
+import { RequireModule } from "../common/modulo.guard";
 
 @Controller("crm")
+@RequireModule("crm")
 export class CrmController {
   constructor(private readonly svc: CrmService) {}
 

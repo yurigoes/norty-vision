@@ -50,14 +50,26 @@ Três coisas que precisavam ser verdade, e são:
 
 ### Na API
 
-`apps/api/src/common/submodulo.guard.ts` — `@RequireSubmodule("producao.costureiras")`
-no controller ou na rota. Aplicado nos sete sub-módulos que a tela sabe
-desligar.
+`apps/api/src/common/modulo.guard.ts` — dois decoradores, uma guarda:
+
+- `@RequireModule("crediario")` — o módulo precisa estar no **plano** da empresa
+  e não pode estar escondido pelo **nicho**;
+- `@RequireSubmodule("producao.costureiras")` — o master não pode ter desligado.
+
+A conta é a **mesma da tela**: `resolveOrgModules()` através do `ShellLoader` —
+plano + aditivos à la carte + deny-list do nicho + sub-módulos. Duas contas
+diferentes discordariam no primeiro módulo novo.
 
 Já existia um `assertSubmodule` dentro da Produção, chamado à mão em sete
 lugares — e **esquecido justamente nos das costureiras**, que eram os da tela
 que acabamos de fechar. Guarda que se aplica por decorador não tem como ser
 esquecida no meio de um controller.
+
+**Custo: praticamente zero.** A guarda lê do cache POR EMPRESA que o
+`/api/organizations/me` já mantém — dez pessoas na loja compartilham a mesma
+resposta. Medido: `/api/customers` (sem guarda) **19 ms**, `/api/credit/accounts`
+(com guarda) **20 ms**. A versão anterior, que fazia a própria consulta, custava
+3 ms; agora não custa ida nenhuma ao banco.
 
 Medido depois:
 
@@ -114,3 +126,56 @@ passar.
 
 Hoje: 44 telas cobertas pelo porteiro, 7 sub-módulos fechados dos dois lados.
 Cada regra foi testada quebrando o código de propósito.
+
+
+## O plano, cobrado no servidor
+
+O porteiro da tela mandava quem não tem o módulo pra página que **vende** o
+módulo. No servidor, nada: `GET /api/credit/accounts` respondia **200** para uma
+empresa cujo plano não inclui Crediário. A promessa comercial não tinha porteiro
+onde importa.
+
+Medido depois de `@RequireModule`:
+
+```
+plano sem restrição:                 credit 200 · quotes 200 · production 200 · hr 200 · surveys 200 · payables 200
+plano só com vendas+clientes:        403      · 403        · 403           · 403    · 403        · 403
+  {"error":{"code":"FORBIDDEN","message":"Este módulo não faz parte do plano da sua empresa"}}
+o que o plano inclui:                customers 200 · products 200
+
+nicho "gráfica" (esconde pedidos_lente):
+  /api/optical/orders → 403 {"message":"Este módulo não é do seu ramo"}
+  /api/quotes (não escondido) → 200
+
+master puro → 200 · master impersonando a Acme → 403 (vale a regra dela)
+```
+
+### Onde a guarda NÃO entra, e por quê
+
+Nem toda API pertence a um módulo só. `/api/customers` serve o PDV, a agenda, o
+crediário, o atendimento, os chamados e a produção — desligar a **tela** de
+Clientes não pode cegar o PDV. A conferência exige que cada um desses esteja
+declarado com **quem mais usa**, o que permite verificar se ainda é verdade:
+
+| situação | quantos | exemplo |
+| --- | ---: | --- |
+| fechado inteiro | 12 | `crediario` → `/api/credit` |
+| fechado em parte | 7 | `agenda` fecha `/api/exams`, `/api/nlu` e `/api/professionals`; `/api/appointments` fica aberto porque monta a agenda dentro do atendimento |
+| API compartilhada | 14 | `clientes`, `produtos`, `fornecedores`, `vendas`, `caixa`, `fiscal`… |
+| | **33/33** | todo módulo do menu está classificado |
+
+Onde o compartilhamento é **consumo deliberado** do módulo, a guarda entra
+mesmo assim: `/api/credit` é usado pelo PDV (crediário como forma de
+pagamento), e se o plano não inclui Crediário o PDV também não deve oferecer.
+
+## O que continua aberto, de propósito
+
+- **`/api/payments`** — é o meio de cobrança do PDV, do crediário e da produção.
+- **`/api/appointments` e `/api/schedule`** — a agenda também vive dentro do
+  atendimento.
+- **`/api/inbox`** — a produção usa pra avisar o cliente.
+- **`GET /api/inbox/macros`** — alimenta o seletor de macros dentro do
+  atendimento; o sub-módulo fecha a tela de administrar e as escritas.
+
+Nenhum deles é vazamento entre empresas: o RLS continua onde estava. São APIs
+que mais de um módulo consome, e fechá-las cegaria uma tela contratada.

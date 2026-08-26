@@ -16,7 +16,7 @@ import {
   type EvolutionPayload,
 } from "./evolution-webhook.service";
 import { MetaWebhookService } from "./meta-webhook.service";
-import { RequireSubmodule } from "../common/submodulo.guard";
+import { RequireSubmodule } from "../common/modulo.guard";
 
 @Controller("webhooks")
 @RequireSubmodule("atendimento.webhooks")

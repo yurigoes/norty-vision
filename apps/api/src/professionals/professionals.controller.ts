@@ -13,6 +13,7 @@ import { z } from "zod";
 import { CurrentContext, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { ProfessionalsService } from "./professionals.service";
+import { RequireModule } from "../common/modulo.guard";
 
 const UpsertProfessionalSchema = z.object({
   // aceita vazio/null (loja unica resolvida no service)
@@ -38,6 +39,7 @@ const UpsertProfessionalSchema = z.object({
 });
 
 @Controller("professionals")
+@RequireModule("agenda")
 export class ProfessionalsController {
   constructor(private readonly svc: ProfessionalsService) {}
 

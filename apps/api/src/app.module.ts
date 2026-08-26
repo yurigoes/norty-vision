@@ -76,7 +76,7 @@ import { VoipModule } from "./voip/voip.module";
 import { NortyLicenseModule } from "./norty-license/norty-license.module";
 import { BootstrapModule } from "./bootstrap/bootstrap.module";
 import { AuthGuard } from "./auth/auth.guard";
-import { SubmoduloGuard } from "./common/submodulo.guard";
+import { ModuloGuard } from "./common/modulo.guard";
 
 @Module({
   imports: [
@@ -159,7 +159,7 @@ import { SubmoduloGuard } from "./common/submodulo.guard";
   providers: [
     { provide: APP_GUARD, useClass: AuthGuard },
     // depois do AuthGuard: precisa do contexto da empresa já resolvido
-    { provide: APP_GUARD, useClass: SubmoduloGuard },
+    { provide: APP_GUARD, useClass: ModuloGuard },
   ],
 })
 export class AppModule {}

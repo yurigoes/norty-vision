@@ -5,6 +5,7 @@ import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { QuotesService } from "./quotes.service";
 import { limitePedido, offsetPedido } from "../common/pagina";
+import { RequireModule } from "../common/modulo.guard";
 
 const ItemSchema = z.object({ description: z.string().min(1).max(300), qty: z.number().int().min(1).max(100000), unitPriceCents: z.number().int().min(0) });
 const UpsertSchema = z.object({
@@ -20,6 +21,7 @@ const UpsertSchema = z.object({
 });
 
 @Controller("quotes")
+@RequireModule("orcamentos")
 export class QuotesController {
   constructor(private readonly svc: QuotesService) {}
 

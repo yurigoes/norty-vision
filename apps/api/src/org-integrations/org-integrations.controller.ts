@@ -3,6 +3,7 @@ import { z } from "zod";
 import { CurrentContext, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { OrgIntegrationsService } from "./org-integrations.service";
+import { RequireModule } from "../common/modulo.guard";
 
 const UpsertSchema = z.object({
   accessToken: z.string().min(10).max(500).nullable().optional(),
@@ -14,6 +15,7 @@ const UpsertSchema = z.object({
 });
 
 @Controller("org-integrations")
+@RequireModule("pagamentos")
 export class OrgIntegrationsController {
   constructor(private readonly svc: OrgIntegrationsService) {}
 

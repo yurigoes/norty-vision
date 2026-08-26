@@ -3,6 +3,7 @@ import { z } from "zod";
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { ExamsService } from "./exams.service";
+import { RequireModule } from "../common/modulo.guard";
 
 const LineSchema = z.object({
   method: z.enum(["cash", "pix", "card"]),
@@ -25,6 +26,7 @@ const RecordSchema = z.object({
 });
 
 @Controller("exams")
+@RequireModule("agenda")
 export class ExamsController {
   constructor(private readonly svc: ExamsService) {}
 

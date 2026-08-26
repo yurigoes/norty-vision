@@ -48,8 +48,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
       const resp = exception.getResponse();
       message = typeof resp === "string" ? resp : (resp as any)?.message ?? exception.message;
       code = mapHttpToCode(status);
+    } else if (ehIdMalFormado(exception)) {
+      // um `:id` que não é uuid: `/api/credit/accounts/uma-conta-qualquer`.
+      // O Prisma estoura, e isso virava 500 com o caminho do arquivo e a
+      // consulta dentro da resposta. É pedido malfeito, não erro do servidor.
+      status = HttpStatus.BAD_REQUEST;
+      code = "BAD_REQUEST";
+      message = "Identificador inválido";
     } else if (exception instanceof Error) {
-      message = exception.message;
+      // NUNCA repassa a mensagem de um erro inesperado: ela carrega caminho de
+      // arquivo, nome de tabela e trecho da consulta. Vai inteira pro log, e o
+      // cliente recebe só que deu errado.
+      message = "Erro interno";
     }
 
     if (status >= 500) {
@@ -58,8 +68,22 @@ export class AllExceptionsFilter implements ExceptionFilter {
         "request error",
       );
     } else {
+      // erro que NÓS traduzimos (não veio como AppError/Zod/HttpException) vai
+      // pro log com o original junto: esconder do cliente não é esconder de
+      // você. Se um dia `ehIdMalFormado` errar o alvo, o rastro está aqui.
+      const traduzido =
+        !(exception instanceof AppError) &&
+        !(exception instanceof ZodError) &&
+        !(exception instanceof HttpException);
       this.logger.warn(
-        { code, status, method: req?.method, url: req?.url, message },
+        {
+          ...(traduzido ? { err: exception } : {}),
+          code,
+          status,
+          method: req?.method,
+          url: req?.url,
+          message,
+        },
         "request rejected",
       );
     }
@@ -68,6 +92,21 @@ export class AllExceptionsFilter implements ExceptionFilter {
       error: { code, message, ...(details ? { details } : {}) },
     });
   }
+}
+
+/**
+ * O Prisma reclamando de um id que não é uuid.
+ *
+ * `P2023` é "Inconsistent column data"; a mensagem traz "invalid input syntax
+ * for type uuid" (ou "Malformed ObjectID"). Duck-typing de propósito: não vale
+ * acoplar o filtro global ao pacote do Prisma só por causa disto.
+ */
+function ehIdMalFormado(e: unknown): boolean {
+  if (!e || typeof e !== "object") return false;
+  const codigo = (e as { code?: unknown }).code;
+  if (codigo === "P2023") return true;
+  const msg = String((e as { message?: unknown }).message ?? "");
+  return /invalid input syntax for type uuid|Malformed ObjectID|inconsistent column data/i.test(msg);
 }
 
 function mapHttpToCode(status: number): string {

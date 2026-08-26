@@ -13,6 +13,9 @@ import { SidebarSection } from "../../components/SidebarSection";
 import { SidebarCountsProvider } from "../../components/SidebarCounts";
 import { LockedModules } from "../../components/LockedModules";
 import { moduleLabel, moduleAllowedForNiche } from "../../lib/modules";
+import { bloqueioDaRota, explicacao } from "../../lib/acesso";
+import { RotaBloqueada } from "../../components/RotaBloqueada";
+import { headers } from "next/headers";
 import {
   NAV_OPERACAO,
   NAV_ADMIN,
@@ -170,6 +173,32 @@ export default async function AppLayout({
         ...(opVisible ? [{ title: "Operação", items: operacaoItems }] : []),
         ...(opVisible ? adminCats : []),
       ];
+  // ------------------------------------------------------------------ //
+  // O PORTEIRO DA ROTA
+  //
+  // Esconder do menu não é barrar: `/app/producao/costureiras` abria pela URL
+  // mesmo com o sub-módulo desligado. A MESMA conta que monta o menu decide
+  // agora se a rota pode abrir — mesma tabela, mesmos quatro filtros.
+  //
+  // O master puro (sem impersonar) passa direto: o painel dele é outro.
+  // ------------------------------------------------------------------ //
+  const caminhoAtual = (await headers()).get("x-nv-path") ?? "";
+  const bloqueio = opVisible && caminhoAtual.startsWith("/app")
+    ? bloqueioDaRota(caminhoAtual, {
+        // a MESMA lista que monta o menu, logo acima
+        telas: [...NAV_OPERACAO, ...NAV_ADMIN.flatMap((c) => c.items)],
+        enabledModules,
+        nicheHidden,
+        submoduleFeatures,
+        temPermissao: (perm) => can(session, perm),
+        nichoPermite: (key) => moduleAllowedForNiche(key, orgNiche),
+      })
+    : null;
+  // sem o módulo no plano → a página que explica e vende
+  if (bloqueio?.motivo === "plano" && bloqueio.moduleKey) {
+    redirect(`/app/modulos/${bloqueio.moduleKey}`);
+  }
+
   // módulos bloqueados (deduplicados por chave) → seção "não liberados"
   const lockedKeys = new Set<string>();
   for (const cat of visibleCats) for (const it of cat.items) if (it.key && locked(it.key)) lockedKeys.add(it.key);
@@ -458,7 +487,9 @@ export default async function AppLayout({
             </div>
           )}
           <InternalAlerts />
-          <RouteFade>{children}</RouteFade>
+          <RouteFade>
+            {bloqueio ? <RotaBloqueada {...explicacao(bloqueio)} /> : children}
+          </RouteFade>
         </DialogProvider>
     </AppShell>
     </ViewerProvider>

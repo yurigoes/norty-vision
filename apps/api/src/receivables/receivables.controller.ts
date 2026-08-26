@@ -4,8 +4,10 @@ import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { ReceivablesService } from "./receivables.service";
 import { limitePedido, offsetPedido } from "../common/pagina";
+import { RequireSubmodule } from "../common/submodulo.guard";
 
 @Controller("receivables")
+@RequireSubmodule("financeiro.contas_receber")
 export class ReceivablesController {
   constructor(private readonly svc: ReceivablesService) {}
 

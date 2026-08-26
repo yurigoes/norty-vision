@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Post, Query } from "@nestjs/com
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { InboxService } from "./inbox.service";
+import { RequireSubmodule } from "../common/submodulo.guard";
 
 @Controller("inbox")
 export class InboxController {
@@ -253,7 +254,11 @@ export class InboxController {
   }
 
   /** Cria/edita macro. Admin only. */
+  // o GET fica de fora de propósito: ele alimenta o seletor de macros DENTRO
+  // do atendimento, que continua funcionando com o que já existe. Desligar o
+  // sub-módulo fecha a tela de administrar macros, não o uso das que há.
   @Post("macros")
+  @RequireSubmodule("atendimento.macros")
   @HttpCode(200)
   async upsertMacro(@CurrentContext() ctx: RequestContext, @Body() b: { id?: string; name: string; description?: string | null; actions: any[]; isActive?: boolean }) {
     return { macro: await this.svc.upsertMacro(ctx, b ?? ({} as any)) };
@@ -261,6 +266,7 @@ export class InboxController {
 
   /** Desativa macro. */
   @Post("macros/:id/delete")
+  @RequireSubmodule("atendimento.macros")
   @HttpCode(200)
   async deleteMacro(@CurrentContext() ctx: RequestContext, @Param("id") id: string) {
     return this.svc.deleteMacro(ctx, id);

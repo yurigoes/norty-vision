@@ -65,7 +65,7 @@ export function AppShell({
           type="button"
           aria-label="Fechar menu"
           onClick={() => setOpen(false)}
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-[2px] print:hidden lg:hidden"
         />
       )}
 
@@ -74,6 +74,9 @@ export function AppShell({
         id="app-sidebar"
         aria-hidden={!open ? undefined : false}
         className={[
+          // no PAPEL o menu não existe: imprimir um relatório gastava 240px de
+          // margem esquerda com a navegação, em toda folha
+          "print:hidden",
           "scroll-themed fixed inset-y-0 left-0 z-50 w-[min(86vw,300px)] overflow-y-auto",
           "border-r border-line bg-surface px-4 py-6 transition-transform duration-300 ease-out",
           open ? "translate-x-0 shadow-2xl" : "-translate-x-full",
@@ -109,7 +112,7 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         {/* barra superior — só celular/tablet */}
         <header
-          className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-surface/85 px-3 backdrop-blur-xl lg:hidden"
+          className="sticky top-0 z-30 flex items-center gap-3 border-b border-line bg-surface/85 px-3 backdrop-blur-xl print:hidden lg:hidden"
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
           <div className="flex h-14 w-full items-center gap-3">

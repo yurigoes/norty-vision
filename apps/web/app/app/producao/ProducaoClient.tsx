@@ -110,7 +110,7 @@ function OrderList({ orders, onOpen, rodape }: { orders: any[]; onOpen: (id: str
     <button key={o.id} onClick={() => onOpen(o.id)} className="card flex w-full flex-wrap items-center justify-between gap-3 p-4 text-left">
       <div>
         <p className="font-medium">{o.contactName} <span className="ml-1 text-xs text-muted">{o.shortCode}</span></p>
-        <p className="text-xs text-muted">{o.items?.length ?? 0} item(ns) · {brl(o.totalCents)}{o.dueDate ? ` · prazo ${new Date(o.dueDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })}` : ""}</p>
+        <p className="text-xs text-muted">{o._count?.items ?? o.items?.length ?? 0} item(ns) · {brl(o.totalCents)}{o.dueDate ? ` · prazo ${new Date(o.dueDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })}` : ""}</p>
       </div>
       <div className="flex items-center gap-2 text-[10px]">
         <span className={`rounded-full px-2 py-0.5 font-semibold uppercase ${o.status === "finalizado" ? "bg-green-500/15 text-green-300" : o.status === "cancelado" ? "bg-red-500/15 text-red-300" : "bg-brand/15 text-brand"}`}>{STATUS_LABEL[o.status] ?? o.status}</span>

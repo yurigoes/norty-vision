@@ -63,7 +63,8 @@ export class QuotesService {
   async list(ctx: RequestContext, opts?: { status?: string; limit?: number; offset?: number }) {
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      paginar(tx.quote, { where: { ...(opts?.status ? { status: opts.status } : {}) }, orderBy: { createdAt: "desc" }, include: { items: true } }, { limit: opts?.limit ?? 500, offset: opts?.offset ?? 0 }),
+      // a LISTAGEM só mostra "N item(ns)"; o PDF e o detalhe usam o getById
+      paginar(tx.quote, { where: { ...(opts?.status ? { status: opts.status } : {}) }, orderBy: { createdAt: "desc" }, include: { _count: { select: { items: true } } } }, { limit: opts?.limit ?? 500, offset: opts?.offset ?? 0 }),
     );
   }
 

@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePaginacao, Paginacao, PorPagina } from "../../../components/Paginacao";
+import { usePaginacao, Paginacao, PorPagina, useIrParaONovo } from "../../../components/Paginacao";
+import { useListaServidor } from "../../../lib/useListaServidor";
+import { CarregarMais } from "../../../components/CarregarMais";
 
 export interface Tx {
   kind: "sale" | "installment";
@@ -33,10 +35,21 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 
 const STATUS_LABEL: Record<string, string> = { paid: "Pago", approved: "Aprovado", pending: "Pendente", failed: "Falhou", rejected: "Recusado", canceled: "Cancelado", expired: "Expirado" };
 
-export function TransacoesClient({ initial }: { initial: Tx[] }) {
-  const [rows, setRows] = useState<Tx[]>(initial);
-  const [busy, setBusy] = useState<string | null>(null);
+export function TransacoesClient({ initial, total = 0 }: { initial: Tx[]; total?: number }) {
+  // o filtro vai ao servidor: antes ele cortava o que a tela tinha baixado, e
+  // o que a tela tinha baixado eram as 300 mais recentes DE CADA FONTE
   const [filter, setFilter] = useState<string>("all");
+  const lista = useListaServidor<Tx>({
+    rota: filter === "all" ? "/api/payments/transactions" : `/api/payments/transactions?status=${filter}`,
+    inicial: initial,
+    totalInicial: total,
+    passo: 50,
+    buscavel: false,
+    autoCarregar: filter !== "all",
+  });
+  const [ajustes, setAjustes] = useState<Record<string, string>>({});
+  const rows = lista.itens.map((r) => (ajustes[r.id] ? { ...r, status: ajustes[r.id]! } : r));
+  const [busy, setBusy] = useState<string | null>(null);
   const [org, setOrg] = useState<{ name: string; logoUrl: string | null } | null>(null);
 
   useEffect(() => {
@@ -52,15 +65,16 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
       const res = await fetch(url, { method: "POST", credentials: "include" });
       const d = await res.json().catch(() => null);
       if (res.ok && d?.status) {
-        setRows((r) => r.map((x) => (x.id === t.id ? { ...x, status: d.status } : x)));
+        setAjustes((a) => ({ ...a, [t.id]: d.status }));
       }
     } finally { setBusy(null); }
   }
 
-  const shown = filter === "all" ? rows : rows.filter((r) => [r.status].includes(filter));
-  // a tela montava TODAS as transações de uma vez; agora corta em páginas.
-  // O relatório impresso continua com tudo — papel não rola.
+  // o servidor já filtrou; aqui só o corte em páginas do que está carregado.
+  // O relatório impresso continua com tudo o que foi carregado — papel não rola.
+  const shown = rows;
   const pag = usePaginacao(shown, 50);
+  useIrParaONovo(pag, lista.itens.length); // o pedaço novo entra na página seguinte
   const totalShown = shown.reduce((s, r) => s + r.amountCents, 0);
   const totalPaid = shown.filter((r) => ["paid", "approved"].includes(r.status)).reduce((s, r) => s + r.amountCents, 0);
   const FILTER_LABEL: Record<string, string> = { all: "Todas", pending: "Pendentes", paid: "Pagas", failed: "Falhas" };
@@ -164,6 +178,17 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
           </table>
         </div>
         <div className="no-print"><Paginacao p={pag} /></div>
+        <div className="no-print">
+          <CarregarMais
+            mostrando={lista.itens.length}
+            total={lista.total}
+            temMais={lista.temMais}
+            carregando={lista.carregando}
+            aoCarregar={lista.carregarMais}
+            substantivo="transação"
+            plural="transações"
+          />
+        </div>
         </>
       )}
     </div>

@@ -128,7 +128,9 @@ export class ProductionService {
   async list(ctx: RequestContext, opts?: { status?: string; limit?: number; offset?: number }) {
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      paginar(tx.productionOrder, { where: { ...(opts?.status ? { status: opts.status } : {}) }, orderBy: { createdAt: "desc" }, include: { items: true, files: true } }, { limit: opts?.limit ?? 500, offset: opts?.offset ?? 0 }),
+      // a LISTAGEM só mostra "N item(ns)" — mandava as linhas de cada pedido E
+      // todos os anexos pra isso. O detalhe (`getById`) continua trazendo tudo.
+      paginar(tx.productionOrder, { where: { ...(opts?.status ? { status: opts.status } : {}) }, orderBy: { createdAt: "desc" }, include: { _count: { select: { items: true } } } }, { limit: opts?.limit ?? 500, offset: opts?.offset ?? 0 }),
     );
   }
 

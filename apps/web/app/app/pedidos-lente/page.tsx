@@ -20,10 +20,11 @@ export default async function PedidosLentePage() {
     );
   }
 
-  const [ordersRes, supRes, custRes, batchRes, prodRes] = await Promise.all([
+  // a tela não carrega mais cliente nenhum (eram 300 de 3.000, só pro seletor):
+  // o seletor pergunta ao servidor conforme se digita
+  const [ordersRes, supRes, batchRes, prodRes] = await Promise.all([
     apiFetch<{ items: any[] }>("/api/optical/orders"),
     apiFetch<{ items: any[] }>("/api/suppliers?activeOnly=true"),
-    apiFetch<{ items: any[] }>("/api/customers?limit=300"),
     apiFetch<{ items: any[] }>("/api/optical/batches"),
     apiFetch<{ items: any[] }>("/api/products?activeOnly=true"),
   ]);
@@ -43,7 +44,6 @@ export default async function PedidosLentePage() {
         initialBatches={batchRes.data?.items ?? []}
         doctors={suppliers.filter((s) => s.type === "medico")}
         labs={suppliers.filter((s) => s.type === "laboratorio")}
-        customers={custRes.data?.items ?? []}
         products={prodRes.data?.items ?? []}
       />
     </div>

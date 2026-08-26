@@ -79,7 +79,10 @@ export class SalesService {
           ...(from && to ? { createdAt: { gte: from, lte: to } } : {}),
         },
         orderBy: { createdAt: "desc" },
-        include: { items: true },
+        // a LISTAGEM só mostra "N item(ns)" — mandava as linhas inteiras de cada
+        // venda pra isso. `_count` devolve o número, que é tudo o que a tela lê.
+        // Quem precisa dos itens (o detalhe, o cancelamento) usa o getById.
+        include: { _count: { select: { items: true } } },
       }, { limit: opts?.limit ?? 500, offset: opts?.offset ?? 0 }),
     );
   }

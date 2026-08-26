@@ -1,5 +1,6 @@
 // ============================================================================
-// Conferência das consultas escritas à mão (`shell.sql.ts`, `guard.sql.ts`).
+// Conferência das consultas escritas à mão (`shell.sql.ts`, `guard.sql.ts`,
+// `transactions.sql.ts`).
 //
 // Rodar:  node --experimental-strip-types apps/api/src/__checks__/sql.check.mts
 //
@@ -27,6 +28,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const api = join(here, "..", "..");
 const sql = readFileSync(join(api, "src", "bootstrap", "shell.sql.ts"), "utf8");
 const guard = readFileSync(join(api, "src", "auth", "guard.sql.ts"), "utf8");
+const transacoes = readFileSync(join(api, "src", "payments", "transactions.sql.ts"), "utf8");
 const schema = readFileSync(join(api, "prisma", "schema.prisma"), "utf8");
 
 const erros: string[] = [];
@@ -243,6 +245,7 @@ function confereCanario(arquivo: string, texto: string) {
 
 confereCanario("shell.sql.ts", sql);
 confereCanario("guard.sql.ts", guard);
+confereCanario("transactions.sql.ts", transacoes);
 confereQualificado("guard.sql.ts", guard);
 
 // as consultas do guard tambem penduram tudo em ctx
@@ -259,6 +262,11 @@ for (const m of guard.matchAll(/(\w+) AS MATERIALIZED \(([\s\S]*?)\n  \)/g)) {
 // o guard nunca eleva no meio: ele já roda inteiro como platform admin
 if (/set_config\('app\./.test(guard)) {
   erros.push("guard.sql.ts: não pode chamar set_config por fora do CTE de contexto");
+}
+
+// transações roda no contexto da própria empresa, sem elevação nenhuma
+if (/set_config\('app\./.test(transacoes)) {
+  erros.push("transactions.sql.ts: não pode chamar set_config por fora do CTE de contexto");
 }
 
 
@@ -311,27 +319,55 @@ function confereLaterais(arquivo: string, textoBruto: string) {
 
 confereLaterais("shell.sql.ts", sql);
 confereLaterais("guard.sql.ts", guard);
+confereLaterais("transactions.sql.ts", transacoes);
 confereLaterais("rls-context.ts", readFileSync(join(api, "src", "prisma", "rls-context.ts"), "utf8"));
 
-/** Nenhuma tabela pode ser lida fora de um LATERAL travado. */
+/**
+ * Nenhuma tabela pode ser lida fora de um LATERAL travado.
+ *
+ * A primeira versão desta regra não valia nada: ela procurava o `LATERAL (`
+ * mais próximo ANTES da leitura e um `OFFSET 0` qualquer depois dele, então
+ * qualquer leitura solta no fim do arquivo "achava" o LATERAL anterior e
+ * passava. As duas condições aninhadas ainda se contradiziam
+ * (`fecha < m.index === false` por fora, `fecha < m.index` por dentro), de
+ * modo que o corpo só rodava quando não havia LATERAL nenhum no arquivo.
+ *
+ * Agora os LATERAIS são delimitados de verdade, por contagem de parênteses, e
+ * a leitura precisa cair DENTRO de um deles.
+ */
 function confereLeiturasSoltas(arquivo: string, textoBruto: string) {
   const texto = semComentarios(textoBruto);
   const porTabela = tabelas();
+
+  // todos os trechos `LATERAL ( ... )`, com início e fim de verdade
+  const travados: Array<[number, number]> = [];
+  const re = /LATERAL \(/g;
+  for (let m = re.exec(texto); m; m = re.exec(texto)) {
+    const inicio = m.index + m[0].length;
+    let i = inicio;
+    let nivel = 1;
+    while (i < texto.length && nivel > 0) {
+      if (texto[i] === "(") nivel++;
+      else if (texto[i] === ")") nivel--;
+      i++;
+    }
+    const corpo = texto.slice(inicio, i - 1);
+    // só conta como travado se terminar em OFFSET 0 — é o que segura a ordem
+    if (/OFFSET 0\s*$/.test(corpo.trimEnd())) travados.push([inicio, i - 1]);
+  }
+
   for (const m of texto.matchAll(/\bFROM\s+(\w+)/g)) {
     if (!porTabela[m[1]]) continue;
-    const antes = texto.lastIndexOf("LATERAL (", m.index);
-    const fecha = antes === -1 ? -1 : texto.indexOf("OFFSET 0", antes);
-    if (antes === -1 || fecha === -1 || fecha < m.index === false) {
-      // a leitura tem que estar entre um "LATERAL (" e o "OFFSET 0" dele
-      if (antes === -1 || fecha === -1 || fecha < m.index) {
-        erros.push(`${arquivo}: \`FROM ${m[1]}\` fora de um LATERAL travado`);
-      }
+    const dentro = travados.some(([a, b]) => m.index! > a && m.index! < b);
+    if (!dentro) {
+      erros.push(`${arquivo}: \`FROM ${m[1]}\` fora de um LATERAL travado`);
     }
   }
 }
 
 confereLeiturasSoltas("shell.sql.ts", sql);
 confereLeiturasSoltas("guard.sql.ts", guard);
+confereLeiturasSoltas("transactions.sql.ts", transacoes);
 
 
 /**
@@ -365,6 +401,7 @@ function confereEstrutura(arquivo: string, textoBruto: string) {
 
 confereEstrutura("shell.sql.ts", sql);
 confereEstrutura("guard.sql.ts", guard);
+confereEstrutura("transactions.sql.ts", transacoes);
 
 // ---------------------------------------------------------------------------
 

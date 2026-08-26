@@ -27,12 +27,6 @@ const ISENTAS: Record<string, string> = {
     "lista de funcionários da empresa, vem inteira de /api/ponto/employees — não há pedaço pra ficar de fora",
   "voip/VoipClient.tsx":
     "ramais do PABX, uma dúzia de linhas carregadas inteiras",
-  "vendas/SalesClient.tsx":
-    "fila do PDV: produtos e clientes (limit=300) ainda são filtrados na memória — dívida conhecida, entra na paginação de verdade",
-  "atendimento/AtendimentoClient.tsx":
-    "mesmo caso do PDV: o seletor de produtos filtra o que a tela já baixou — dívida conhecida",
-  "pedidos-lente/LensOrdersClient.tsx":
-    "mesmo caso do PDV: clientes (limit=300) filtrados na memória — dívida conhecida",
 };
 
 function walk(dir: string): string[] {

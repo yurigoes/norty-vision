@@ -17,6 +17,7 @@
 // ============================================================================
 
 import { readFileSync, existsSync } from "node:fs";
+import { todasAsPaginas } from "../common/pagina.ts";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -32,6 +33,17 @@ const ROTAS: Record<string, [string, string, string]> = {
   "/api/production": ["production/production.service.ts", "list", "production/production.controller.ts"],
   "/api/payables": ["payables/payables.service.ts", "list", "payables/payables.controller.ts"],
   "/api/receivables": ["receivables/receivables.service.ts", "list", "receivables/receivables.controller.ts"],
+};
+
+/**
+ * Transações é a exceção que confirma a regra: as três fontes (PDV, crediário e
+ * links da InfinitePay) não são uma tabela, então não dá pra usar `paginar()`.
+ * A paginação vem do `UNION ALL` em `transactions.sql.ts` — que a conferência
+ * de SQL segura pelas mesmas travas do resto. Aqui só se garante que a rota
+ * aceita `limit`/`offset` e devolve a mesma forma de resposta.
+ */
+const UNIAO: Record<string, [string, string, string]> = {
+  "/api/payments/transactions": ["payments/payments.service.ts", "listTransactions", "payments/payments.controller.ts"],
 };
 
 /** o corpo do método, do `async nome(` até a chave que o fecha */
@@ -52,7 +64,18 @@ function corpo(texto: string, metodo: string): string | null {
     }
   }
   if (fimParams === -1) return null;
-  const abre = texto.indexOf("{", fimParams);
+  // o corpo NÃO começa no primeiro `{` depois dos parâmetros: o tipo de retorno
+  // pode trazer o seu (`): Promise<{ buffer: Buffer }> {`). O `{` do corpo é o
+  // primeiro que aparece fora de `<...>`.
+  let angulo = 0;
+  let abre = -1;
+  for (let k = fimParams; k < texto.length; k++) {
+    const c = texto[k];
+    if (c === "<") angulo++;
+    else if (c === ">") angulo = Math.max(0, angulo - 1);
+    else if (c === "{" && angulo === 0) { abre = k; break; }
+  }
+  if (abre === -1) return null;
   let nivel = 0;
   for (let j = abre; j < texto.length; j++) {
     if (texto[j] === "{") nivel++;
@@ -89,6 +112,64 @@ for (const [rota, [svcRel, metodo, ctrlRel]] of Object.entries(ROTAS)) {
   ok++;
 }
 
+for (const [rota, [svcRel, metodo, ctrlRel]] of Object.entries(UNIAO)) {
+  const svcPath = join(src, svcRel);
+  const ctrlPath = join(src, ctrlRel);
+  const c = existsSync(svcPath) ? corpo(readFileSync(svcPath, "utf8"), metodo) : null;
+  if (!c) {
+    falhas.push(`${rota} — não achei \`async ${metodo}(\` em ${svcRel}`);
+  } else {
+    if (!/hasMore:/.test(c)) falhas.push(`${rota} — ${svcRel}#${metodo} não devolve \`hasMore\``);
+    if (!/\btotal\b/.test(c)) falhas.push(`${rota} — ${svcRel}#${metodo} não devolve \`total\``);
+    if (/\.findMany\(/.test(c)) falhas.push(`${rota} — ${svcRel}#${metodo} voltou a ler com findMany: o teto por fonte está de volta`);
+  }
+  const ctrl = existsSync(ctrlPath) ? readFileSync(ctrlPath, "utf8") : "";
+  if (!/limitePedido\s*\(/.test(ctrl)) falhas.push(`${rota} — ${ctrlRel} não aceita \`?limit=\``);
+  if (!/offsetPedido\s*\(/.test(ctrl)) falhas.push(`${rota} — ${ctrlRel} não aceita \`?offset=\``);
+  ok++;
+}
+
+/**
+ * `todasAsPaginas` percorrendo de verdade — é ela que segura o CSV e o PDF de
+ * contas a pagar/receber, que antes recebiam a primeira página e chamavam de
+ * arquivo completo. Testada contra uma fonte que respeita `limit`/`offset`
+ * como o banco faz.
+ */
+{
+  const TODOS = [1, 2, 3, 4, 5, 6, 7];
+  const fonte = (limit: number, offset: number) => {
+    const items = TODOS.slice(offset, offset + limit);
+    return Promise.resolve({ items, total: TODOS.length, limit, offset, hasMore: offset + items.length < TODOS.length });
+  };
+  const tudo = await todasAsPaginas(fonte, { pedaco: 3 });
+  if (tudo.items.length !== 7 || tudo.truncado) {
+    falhas.push(`todasAsPaginas: em pedaços de 3 devia trazer as 7 linhas sem truncar — trouxe ${tudo.items.length}, truncado=${tudo.truncado}`);
+  }
+  const cortado = await todasAsPaginas(fonte, { pedaco: 3, teto: 4 });
+  if (cortado.items.length !== 4 || !cortado.truncado) {
+    falhas.push(`todasAsPaginas: com teto 4 devia parar em 4 e AVISAR — parou em ${cortado.items.length}, truncado=${cortado.truncado}`);
+  }
+  const inteiro = await todasAsPaginas(fonte, { pedaco: 100 });
+  if (inteiro.items.length !== 7) {
+    falhas.push(`todasAsPaginas: pedaço maior que a lista devia trazer tudo numa ida — trouxe ${inteiro.items.length}`);
+  }
+}
+
+// quem exporta não pode chamar a listagem direto: pega só a primeira página
+for (const arq of ["payables/payables.service.ts", "receivables/receivables.service.ts"]) {
+  const texto = readFileSync(join(src, arq), "utf8");
+  for (const metodo of ["exportCsv", "reportPdf"]) {
+    const c = corpo(texto, metodo);
+    if (!c) { falhas.push(`${arq}#${metodo} sumiu; atualize esta conferência`); continue; }
+    if (!/todasAsPaginas\s*\(/.test(c)) {
+      falhas.push(`${arq}#${metodo} não usa \`todasAsPaginas\`: o arquivo sai cortado na primeira página`);
+    }
+    if (!/truncado/.test(c)) {
+      falhas.push(`${arq}#${metodo} não avisa quando o arquivo sai cortado`);
+    }
+  }
+}
+
 // o desempate: sem ele, `offset` mente
 const helper = readFileSync(join(src, "common/pagina.ts"), "utf8");
 if (!/comDesempate/.test(helper) || !/\{ id: "asc" \}/.test(helper)) {
@@ -98,10 +179,10 @@ if (!/orderBy: comDesempate\(args\.orderBy\)/.test(helper)) {
   falhas.push("common/pagina.ts — o desempate existe mas não está sendo aplicado no findMany");
 }
 
-console.log(`rotas de listagem paginadas: ${ok}/${Object.keys(ROTAS).length}`);
+console.log(`rotas de listagem paginadas: ${ok}/${Object.keys(ROTAS).length + Object.keys(UNIAO).length}`);
 if (falhas.length) {
   console.log(`\nFALHA — ${falhas.length} problema(s):`);
   falhas.forEach((f) => console.log("  " + f));
   process.exit(1);
 }
-console.log("\nAS OITO ROTAS DIZEM QUANTOS SÃO, E PAGINAM NA MESMA ORDEM");
+console.log("\nAS ROTAS DE LISTAGEM DIZEM QUANTOS SÃO, E PAGINAM NA MESMA ORDEM");

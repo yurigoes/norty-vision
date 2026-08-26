@@ -10,7 +10,8 @@ export const dynamic = "force-dynamic";
 export default async function TransacoesPage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
-  const res = await apiFetch<{ items: Tx[] }>("/api/payments/transactions");
+  // primeiro pedaço pequeno; o resto vem no "carregar mais"
+  const res = await apiFetch<{ items: Tx[]; total?: number }>("/api/payments/transactions?limit=50");
   return (
     <div className="max-w-5xl">
       <PageHeader
@@ -18,7 +19,7 @@ export default async function TransacoesPage() {
         title="Transações"
         description={<>Pagamentos Pix/cartão (Mercado Pago e InfinitePay) — do PDV e do crediário. Use "forçar/verificar" para consultar o status e dar baixa quando travar.</>}
       />
-      <TransacoesClient initial={res.data?.items ?? []} />
+      <TransacoesClient initial={res.data?.items ?? []} total={res.data?.total ?? 0} />
     </div>
   );
 }

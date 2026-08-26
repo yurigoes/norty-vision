@@ -14,6 +14,7 @@ export function CarregarMais({
   carregando,
   aoCarregar,
   substantivo,
+  plural,
 }: {
   mostrando: number;
   total: number;
@@ -22,14 +23,17 @@ export function CarregarMais({
   aoCarregar: () => void;
   /** ex.: "cliente" — vira "cliente(s)" no texto */
   substantivo: string;
+  /** quando o plural não é só + "s": "transação" → "transações" */
+  plural?: string;
 }) {
+  const muitos = plural ?? `${substantivo}(s)`;
   const n = (x: number) => x.toLocaleString("pt-BR");
   return (
     <div className="flex flex-col items-center gap-2 py-2">
       <p className="text-[11px] text-muted">
         {temMais || mostrando < total
-          ? `Mostrando ${n(mostrando)} de ${n(total)} ${substantivo}(s)`
-          : `${n(total)} ${substantivo}(s) — é tudo`}
+          ? `Mostrando ${n(mostrando)} de ${n(total)} ${muitos}`
+          : `${n(total)} ${muitos} — é tudo`}
       </p>
       {temMais && (
         <button

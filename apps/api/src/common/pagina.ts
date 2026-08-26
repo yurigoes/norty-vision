@@ -95,3 +95,36 @@ export function paginaDeMemoria<T>(todos: T[], opts: { limit: number; offset: nu
   const items = todos.slice(offset, offset + limit);
   return { items, total: todos.length, limit, offset, hasMore: offset + items.length < todos.length };
 }
+
+/**
+ * TODAS AS LINHAS, EM PEDAÇOS — pra exportar sem teto silencioso.
+ * ============================================================================
+ * O CSV e o PDF de contas a pagar/receber chamavam a listagem e recebiam o
+ * teto dela: 1.000 parcelas. Quem exportava um ano de contas recebia um
+ * arquivo truncado **sem nenhum aviso** — e ia conferir contra o contador com
+ * um número errado.
+ *
+ * Aqui a lista é percorrida em pedaços até acabar. O `teto` existe pra que uma
+ * empresa com meio milhão de parcelas não derrube a API: quando ele é
+ * alcançado, `truncado` volta `true` e quem chamou É OBRIGADO a dizer isso no
+ * arquivo. Truncar acontece; truncar calado é que não pode.
+ */
+export async function todasAsPaginas<T>(
+  buscar: (limit: number, offset: number) => Promise<Pagina<T>>,
+  opts?: { pedaco?: number; teto?: number },
+): Promise<{ items: T[]; total: number; truncado: boolean }> {
+  const pedaco = opts?.pedaco ?? 1000;
+  const teto = opts?.teto ?? 50_000;
+  const items: T[] = [];
+  let offset = 0;
+  let total = 0;
+
+  for (;;) {
+    const p = await buscar(Math.min(pedaco, teto - items.length), offset);
+    total = p.total;
+    items.push(...p.items);
+    if (!p.hasMore || p.items.length === 0 || items.length >= teto) break;
+    offset += p.items.length;
+  }
+  return { items, total, truncado: items.length < total };
+}

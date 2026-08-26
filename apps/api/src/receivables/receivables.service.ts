@@ -5,7 +5,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
 import { OrgAiService } from "../ai/org-ai.service";
 import type { RequestContext } from "../auth/session.middleware";
-import { paginar } from "../common/pagina";
+import { paginar, todasAsPaginas } from "../common/pagina";
 
 interface InstallmentInput { number?: number; dueDate: string; amountCents: number }
 interface CreateReceivableInput {
@@ -202,7 +202,10 @@ export class ReceivablesService {
 
   /** Export CSV da lista (mesmos filtros da tela). */
   async exportCsv(ctx: RequestContext, opts: { status?: string; from?: string; to?: string; search?: string }): Promise<{ buffer: Buffer; filename: string }> {
-    const { items } = await this.list(ctx, opts);
+    // exportar é o caso em que a página não serve: percorre tudo, em pedaços
+    const { items, total, truncado } = await todasAsPaginas((limit, offset) =>
+      this.list(ctx, { ...opts, limit, offset }),
+    );
     const money = (c: number) => (c / 100).toFixed(2).replace(".", ",");
     const rows: string[] = ["Pagador;Descricao;Categoria;Documento;Parcela;Vencimento;Valor;Status;Recebido em;Meio;Valor recebido"];
     for (const it of items as any[]) {
@@ -213,14 +216,17 @@ export class ReceivablesService {
         it.paidAt ? String(it.paidAt).slice(0, 10) : "", it.paymentMethod ?? "", it.paidCents != null ? money(Number(it.paidCents)) : "",
       ].map((c) => String(c).replace(/;/g, ",")).join(";"));
     }
+    // truncar acontece; truncar calado é que não pode
+    if (truncado) rows.push(`;;;;;;;;;;ATENCAO: arquivo cortado em ${items.length} de ${total} parcelas`);
     const buffer = Buffer.from("﻿" + rows.join("\r\n"), "utf8");
     return { buffer, filename: `contas-a-receber-${opts.status ?? "todas"}-${new Date().toISOString().slice(0, 10)}.csv` };
   }
 
   /** Relatório PDF (resumo + lista) das contas a receber. */
   async reportPdf(ctx: RequestContext, opts: { status?: string; from?: string; to?: string; search?: string }): Promise<{ buffer: Buffer; filename: string }> {
-    const [{ items }, sum, org] = await Promise.all([
-      this.list(ctx, opts),
+    const [{ items, total, truncado }, sum, org] = await Promise.all([
+      // relatório também precisa da lista inteira, não da primeira página
+      todasAsPaginas((limit, offset) => this.list(ctx, { ...opts, limit, offset })),
       this.summary(ctx, { from: opts.from, to: opts.to }),
       this.prisma.runWithContext(this.rls(ctx), (tx) => tx.organization.findFirst({ where: {}, select: { name: true } })).catch(() => null),
     ]);
@@ -252,6 +258,13 @@ export class ReceivablesService {
         pdf.text(money(Number(it.amountCents)), cx, y, { width: cols[2]!.w, lineBreak: false }); cx += cols[2]!.w;
         pdf.fillColor(st === "atrasado" ? "#b00" : st === "recebido" ? "#0a0" : "#333").text(st, cx, y, { width: cols[3]!.w, lineBreak: false }); pdf.fillColor("#333");
         pdf.moveDown(0.4);
+      }
+      // truncar acontece; truncar calado é que não pode
+      if (truncado) {
+        pdf.moveDown(0.6);
+        pdf.font("Helvetica-Bold").fillColor("#b00")
+          .text(`ATENCAO: relatorio cortado em ${items.length} de ${total} parcelas.`);
+        pdf.fillColor("#333");
       }
       pdf.end();
     });

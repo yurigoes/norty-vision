@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useDialog } from "../../../components/SystemDialog";
+import { useListaServidor } from "../../../lib/useListaServidor";
+import { CarregarMais } from "../../../components/CarregarMais";
 
 type Conv = {
   id: string; channel: string; status: string; priority: string; subject: string | null;
@@ -856,15 +858,18 @@ type Prod = { id: string; name: string; sku?: string | null; priceCashCents: num
 function SellModal({ conversationId, onClose, onSent }: { conversationId: string; onClose: () => void; onSent: () => void }) {
   const dialog = useDialog();
   const [prods, setProds] = useState<Prod[]>([]);
-  const [q, setQ] = useState("");
   const [cart, setCart] = useState<Array<{ name: string; qty: number; unitCents: number }>>([]);
   const [method, setMethod] = useState<"pix" | "card">("pix");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    fetch("/api/products?activeOnly=true", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).then((d) => d && setProds(d.items ?? [])).catch(() => {});
+    fetch("/api/products?activeOnly=true&limit=30", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)).then((d) => d && setProds(d.items ?? [])).catch(() => {});
   }, []);
-  const filtered = q.trim() ? prods.filter((p) => p.name.toLowerCase().includes(q.toLowerCase()) || (p.sku ?? "").toLowerCase().includes(q.toLowerCase())) : prods.slice(0, 30);
+  // a busca ia ao pedaço que o modal tinha baixado; agora vai ao banco inteiro
+  const busca = useListaServidor<Prod>({ rota: "/api/products?activeOnly=true", inicial: prods, totalInicial: 0, passo: 30 });
+  const q = busca.q;
+  const setQ = busca.setQ;
+  const filtered = busca.itens;
   const total = cart.reduce((s, i) => s + i.qty * i.unitCents, 0);
   const brl = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -891,13 +896,27 @@ function SellModal({ conversationId, onClose, onSent }: { conversationId: string
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
       <div className="flex max-h-[88vh] w-full max-w-lg flex-col rounded-2xl border border-line bg-surface p-5 shadow-lg" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-base font-semibold">Vender pelo chat</h3>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar produto (nome/SKU)" className="input-base mt-3" />
+        <div className="relative mt-3">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar produto (nome, SKU ou categoria)" className="input-base w-full" aria-label="Buscar produto" />
+          {busca.buscando && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-muted">buscando…</span>}
+        </div>
+        {busca.doServidor && filtered.length === 0 && !busca.buscando && (
+          <p className="mt-2 text-[11px] text-muted">Nenhum produto com "{q.trim()}" — procurado em todos, não só nos que a tela carregou.</p>
+        )}
         <div className="mt-2 max-h-40 space-y-1 overflow-y-auto">
           {filtered.map((p) => (
             <button key={p.id} onClick={() => add(p)} className="flex w-full items-center justify-between rounded-xl border border-line bg-surface-2 px-3 py-1.5 text-left text-sm transition hover:border-brand">
               <span className="truncate">{p.name}</span><span className="text-xs text-muted">{brl(p.priceCashCents ?? 0)}</span>
             </button>
           ))}
+          <CarregarMais
+            mostrando={filtered.length}
+            total={busca.total}
+            temMais={busca.temMais}
+            carregando={busca.carregando}
+            aoCarregar={busca.carregarMais}
+            substantivo="produto"
+          />
         </div>
         {cart.length > 0 && (
           <div className="mt-3 rounded-xl border border-line bg-surface-2 p-2">

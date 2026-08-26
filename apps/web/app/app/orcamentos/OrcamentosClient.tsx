@@ -12,7 +12,9 @@ interface Quote {
   id: string; shortCode: string | null; contactName: string; contactPhone: string | null; contactEmail: string | null;
   status: string; totalCents: string | number; discountCents: number; validUntil: string | null; createdAt: string;
   createdByUserId: string | null;
-  items: Array<{ id: string; description: string; qty: number; unitPriceCents: string | number; lineTotalCents: string | number }>;
+  // a listagem recebe só a contagem; os itens vêm no detalhe/PDF
+  items?: Array<{ id: string; description: string; qty: number; unitPriceCents: string | number; lineTotalCents: string | number }>;
+  _count?: { items: number };
 }
 
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -82,7 +84,7 @@ export function OrcamentosClient({ initial, total = 0 }: { initial: Quote[]; tot
             <div key={q.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
               <div className="min-w-0">
                 <p className="font-medium">{q.contactName} <span className="ml-1 text-xs text-muted">{q.shortCode}</span>{!q.createdByUserId && <span className="ml-1 rounded-full bg-brand/15 px-2 py-0.5 text-[9px] font-semibold uppercase text-brand">via IA</span>}</p>
-                <p className="text-xs text-muted">{new Date(q.createdAt).toLocaleDateString("pt-BR")} · {q.items.length} item(ns) · <b>{brl(q.totalCents)}</b></p>
+                <p className="text-xs text-muted">{new Date(q.createdAt).toLocaleDateString("pt-BR")} · {q._count?.items ?? q.items?.length ?? 0} item(ns) · <b>{brl(q.totalCents)}</b></p>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${STATUS[q.status]?.cls ?? "bg-line text-muted"}`}>{STATUS[q.status]?.label ?? q.status}</span>

@@ -73,8 +73,8 @@ function priceFor(p: Product, method: PayMethod): number {
 
 export function SalesClient({
   products,
+  totalProducts = 0,
   stores,
-  customers,
   accounts,
   recentSales,
   totalSales = 0,
@@ -82,8 +82,8 @@ export function SalesClient({
   sellers = [],
 }: {
   products: Product[];
+  totalProducts?: number;
   stores: Store[];
-  customers: Customer[];
   accounts: Account[];
   recentSales: any[];
   totalSales?: number;
@@ -94,7 +94,6 @@ export function SalesClient({
   const [isPending, startTransition] = useTransition();
   const [storeId, setStoreId] = useState(stores[0]?.id ?? "");
   const [sellerId, setSellerId] = useState("");
-  const [prodQ, setProdQ] = useState("");
   // saldo por LOJA (atualiza ao trocar de loja) → aviso de estoque por loja
   const [storeStock, setStoreStock] = useState<Record<string, number>>({});
   useEffect(() => {
@@ -110,16 +109,21 @@ export function SalesClient({
   }, [storeId]);
   const stockOf = (p: { id: string; stockQty?: number | null }) => (p.id in storeStock ? storeStock[p.id] : (p.stockQty ?? 0));
 
-  // filtra por nome/SKU/valor e agrupa por categoria
+  // BUSCA DE PRODUTO: ia ao pedaço que a página baixou; agora vai ao banco.
+  // Vender um produto fora daquele pedaço devolvia "não achei" — com o produto
+  // cadastrado, em estoque, na frente do cliente.
+  const buscaProd = useListaServidor<Product>({
+    rota: storeId ? `/api/products?activeOnly=true&storeId=${storeId}` : "/api/products?activeOnly=true",
+    inicial: products,
+    totalInicial: totalProducts,
+    passo: 50,
+  });
+  const prodQ = buscaProd.q;
+  const setProdQ = buscaProd.setQ;
+
+  // agrupa por categoria
   const filteredProductGroups = (() => {
-    const s = prodQ.trim().toLowerCase();
-    const digits = s.replace(/\D/g, "");
-    const filtered = !s ? products : products.filter((p) => {
-      const inName = p.name.toLowerCase().includes(s);
-      const inSku = (p.sku ?? "").toLowerCase().includes(s);
-      const inPrice = digits.length > 0 && [p.priceCashCents, p.priceCardInstallmentsCents, p.priceCreditCents].some((c) => c != null && String(c).includes(digits));
-      return inName || inSku || inPrice;
-    });
+    const filtered = buscaProd.itens;
     const groups = new Map<string, Product[]>();
     for (const p of filtered) {
       const cat = (p.category ?? "").trim() || "Outros";
@@ -129,7 +133,6 @@ export function SalesClient({
     return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
   })();
   // busca unica de cliente (nome / cpf / nascimento) + selecao
-  const [custQuery, setCustQuery] = useState("");
   const [custOpen, setCustOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   // cadastro de cliente novo (walk-in) — colapsado
@@ -217,20 +220,12 @@ export function SalesClient({
   const creditSplitCents = split ? Math.max(0, Math.round(Number(creditSplitAmount.replace(",", ".")) * 100)) : 0;
   const remaining = total - tendersTotal - creditSplitCents;
 
-  // busca clientes por nome, CPF (digitos) ou data de nascimento
-  const custMatches = useMemo(() => {
-    const q = custQuery.trim().toLowerCase();
-    if (q.length < 2) return [];
-    const digits = q.replace(/\D/g, "");
-    return customers
-      .filter((c) => {
-        const byName = c.name.toLowerCase().includes(q);
-        const byDoc = digits.length >= 3 && (c.document ?? "").replace(/\D/g, "").includes(digits);
-        const byBirth = digits.length >= 3 && (c.birthDate ?? "").replace(/\D/g, "").includes(digits);
-        return byName || byDoc || byBirth;
-      })
-      .slice(0, 8);
-  }, [custQuery, customers]);
+  // BUSCA DE CLIENTE: mesma história — filtrava os 300 que a página baixou.
+  // Atender alguém cadastrado e ouvir "nenhum cliente encontrado" era rotina.
+  const buscaCust = useListaServidor<Customer>({ rota: "/api/customers", inicial: [], totalInicial: 0, passo: 8 });
+  const custQuery = buscaCust.q;
+  const setCustQuery = buscaCust.setQ;
+  const custMatches = buscaCust.itens.slice(0, 8);
 
   function pickCustomer(c: Customer) {
     setSelectedCustomer(c);
@@ -489,14 +484,31 @@ export function SalesClient({
             <button onClick={() => setStockWarn(null)} className="shrink-0 text-amber-200/70 hover:text-amber-100">✕</button>
           </div>
         )}
-        <input
-          value={prodQ}
-          onChange={(e) => setProdQ(e.target.value)}
-          placeholder="Buscar por nome, SKU ou valor"
-          className="input-base mb-3"
-        />
+        <div className="relative mb-3">
+          <input
+            value={prodQ}
+            onChange={(e) => setProdQ(e.target.value)}
+            placeholder="Buscar por nome, SKU ou categoria"
+            className="input-base w-full"
+            aria-label="Buscar produto"
+          />
+          {buscaProd.buscando && (
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-muted">buscando…</span>
+          )}
+        </div>
+        {buscaProd.doServidor && (
+          <p className="mb-2 text-[11px] text-muted">
+            {buscaProd.total} resultado(s) para "{prodQ.trim()}" · procurado em todos os produtos
+          </p>
+        )}
         {filteredProductGroups.length === 0 ? (
-          <p className="text-sm text-muted">{products.length === 0 ? "Nenhum produto ativo. Cadastre em Produtos." : "Nenhum produto encontrado."}</p>
+          <p className="text-sm text-muted">
+            {buscaProd.buscando
+              ? "procurando…"
+              : buscaProd.doServidor
+                ? `Nenhum produto com "${prodQ.trim()}" — procurado em todos, não só nos que a tela carregou.`
+                : "Nenhum produto ativo. Cadastre em Produtos."}
+          </p>
         ) : filteredProductGroups.map(([cat, items]) => (
           <div key={cat} className="mb-4">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-brand">{cat} <span className="text-muted">({items.length})</span></p>
@@ -607,8 +619,13 @@ export function SalesClient({
                   ))}
                 </ul>
               )}
-              {custQuery.trim().length >= 2 && custMatches.length === 0 && (
-                <p className="mt-1 text-[11px] text-muted">Nenhum cliente encontrado.</p>
+              {buscaCust.buscando && (
+                <span className="pointer-events-none absolute right-2 top-1.5 text-[11px] text-muted">buscando…</span>
+              )}
+              {buscaCust.doServidor && custMatches.length === 0 && !buscaCust.buscando && (
+                <p className="mt-1 text-[11px] text-muted">
+                  Nenhum cliente com "{custQuery.trim()}" — procurado em todos, não só nos que a tela carregou.
+                </p>
               )}
               <button
                 onClick={() => { setShowNewCust(true); setCustOpen(false); }}
@@ -1025,7 +1042,7 @@ function RecentSalesModal({ sales, total = 0, onClose, onChanged }: { sales: any
                 <div className="min-w-0">
                   <span className="font-medium">{brl(Number(s.totalCents))}</span>
                   <span className="ml-2 text-xs text-muted">{s.paymentMethod}{s.shortCode ? ` · ${s.shortCode}` : ""}</span>
-                  <span className="block text-[10px] text-muted">{new Date(s.createdAt).toLocaleString("pt-BR")} · {(s.items?.length ?? 0)} item(ns)</span>
+                  <span className="block text-[10px] text-muted">{new Date(s.createdAt).toLocaleString("pt-BR")} · {(s._count?.items ?? s.items?.length ?? 0)} item(ns)</span>
                 </div>
                 {s.status === "canceled" ? (
                   <span className="shrink-0 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase text-red-300">cancelada</span>

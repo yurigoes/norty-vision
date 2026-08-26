@@ -25,10 +25,11 @@ export default async function VendasPage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
 
-  const [prodRes, storesRes, custRes, accRes, salesRes, cfgRes, sellersRes] = await Promise.all([
-    apiFetch<{ items: Product[] }>("/api/products?activeOnly=true"),
+  // o PDV não carrega mais cliente nenhum (eram 300 de 3.000, só pro seletor)
+  // e o catálogo virou um pedaço: os dois seletores perguntam ao servidor
+  const [prodRes, storesRes, accRes, salesRes, cfgRes, sellersRes] = await Promise.all([
+    apiFetch<{ items: Product[]; total?: number }>("/api/products?activeOnly=true&limit=100"),
     apiFetch<{ items: Store[] }>("/api/stores"),
-    apiFetch<{ items: Customer[] }>("/api/customers?limit=300"),
     apiFetch<{ items: Account[] }>("/api/credit/accounts"),
     // o PDV carregava 500 vendas só pro modal de notas/devolução; agora traz 50
     // e o modal pede o resto quando o usuário quiser
@@ -47,8 +48,8 @@ export default async function VendasPage() {
 
       <SalesClient
         products={prodRes.data?.items ?? []}
+        totalProducts={prodRes.data?.total ?? 0}
         stores={storesRes.data?.items ?? []}
-        customers={custRes.data?.items ?? []}
         accounts={accRes.data?.items ?? []}
         recentSales={salesRes.data?.items ?? []}
         totalSales={salesRes.data?.total ?? 0}

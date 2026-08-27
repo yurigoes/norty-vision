@@ -45,8 +45,16 @@ command -v tailscaled >/dev/null 2>&1 || {
 }
 
 # --- daemon ------------------------------------------------------------------
-if tailscale status >/dev/null 2>&1; then
-  log "daemon já de pé."
+#
+# CUIDADO com o teste de "está de pé": `tailscale status` SAI COM 1 enquanto o
+# nó não entrou no tailnet (estado NeedsLogin) — que é exatamente a situação em
+# que estamos aqui. Usar ele pra esperar o daemon faz a espera nunca terminar,
+# com o daemon já rodando do lado. `status --json` sai com 0 em qualquer estado
+# e diz qual é o estado no BackendState; é esse que serve pra esperar.
+estado() { tailscale status --json 2>/dev/null | sed -n 's/.*"BackendState": *"\([^"]*\)".*/\1/p' | head -1; }
+
+if [[ -n "$(estado)" ]]; then
+  log "daemon já de pé (estado: $(estado))."
 else
   log "subindo o tailscaled (userspace, SOCKS5 em localhost:${PORTA_SOCKS})..."
   mkdir -p "$ESTADO"
@@ -57,10 +65,10 @@ else
     --state="${ESTADO}/tailscaled.state" \
     >/var/log/tailscaled.log 2>&1 &
 
-  # espera o socket responder, em vez de dormir um número mágico
+  # espera o daemon responder, em vez de dormir um número mágico
   pronto=0
   for _ in $(seq 1 30); do
-    if tailscale status >/dev/null 2>&1; then pronto=1; break; fi
+    if [[ -n "$(estado)" ]]; then pronto=1; break; fi
     sleep 1
   done
   [[ "$pronto" == "1" ]] || {

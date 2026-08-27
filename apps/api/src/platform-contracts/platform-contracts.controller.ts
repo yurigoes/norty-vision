@@ -1,7 +1,7 @@
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req, Res } from "@nestjs/common";
 import { z } from "zod";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { CurrentContext } from "../auth/decorators";
+import { CurrentContext, SemEmpresa } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { PlatformContractsService } from "./platform-contracts.service";
 
@@ -23,30 +23,36 @@ export class PlatformContractsController {
   constructor(private readonly svc: PlatformContractsService) {}
 
   // ===== MASTER =====
+  @SemEmpresa()
   @Get("platform/contract-templates")
   async listTemplates(@CurrentContext() ctx: RequestContext) {
     return { items: await this.svc.listTemplates(ctx) };
   }
+  @SemEmpresa()
   @Post("platform/contract-templates")
   @HttpCode(201)
   async createTemplate(@CurrentContext() ctx: RequestContext, @Body() body: unknown) {
     return { template: await this.svc.createTemplate(ctx, TemplateSchema.parse(body)) };
   }
+  @SemEmpresa()
   @Patch("platform/contract-templates/:id")
   async updateTemplate(@CurrentContext() ctx: RequestContext, @Param("id") id: string, @Body() body: unknown) {
     return { template: await this.svc.updateTemplate(ctx, id, TemplateSchema.partial().parse(body)) };
   }
 
+  @SemEmpresa()
   @Get("platform/contracts")
   async listContracts(@CurrentContext() ctx: RequestContext, @Query("organizationId") organizationId?: string, @Query("status") status?: string) {
     return { items: await this.svc.listContracts(ctx, { organizationId, status }) };
   }
+  @SemEmpresa()
   @Post("platform/contracts")
   @HttpCode(201)
   async assign(@CurrentContext() ctx: RequestContext, @Body() body: unknown) {
     const input = z.object({ organizationId: z.string().uuid(), templateId: z.string().uuid(), moduleKey: z.string().max(40).nullable().optional() }).parse(body);
     return { contract: await this.svc.assign(ctx, input) };
   }
+  @SemEmpresa()
   @Patch("platform/contracts/:id/cancel")
   async cancel(@CurrentContext() ctx: RequestContext, @Param("id") id: string) {
     return { contract: await this.svc.cancel(ctx, id) };
@@ -70,6 +76,7 @@ export class PlatformContractsController {
   }
 
   // master também visualiza o HTML do contrato pela mesma rota? usa /org-contracts? não.
+  @SemEmpresa()
   @Get("platform/contracts/:id/html")
   async masterHtml(@CurrentContext() ctx: RequestContext, @Param("id") id: string, @Res() reply: FastifyReply) {
     const html = await this.svc.html(ctx, id);

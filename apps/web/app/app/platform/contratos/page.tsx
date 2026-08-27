@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
 import { PlatformContractsClient } from "./PlatformContractsClient";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -17,14 +18,11 @@ export default async function PlatformContratosPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Master</p>
-        <h1 className="mt-1 text-3xl font-semibold">Contratos com empresas</h1>
-        <p className="mt-2 text-muted">
-          Modelos de contrato (onboarding, aditivos, serviço extra), envio para as
-          empresas e acompanhamento dos aceites (clickwrap com IP + hash).
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Master"
+        title="Contratos com empresas"
+        description="Modelos de contrato (onboarding, aditivos, serviço extra), envio para as empresas e acompanhamento dos aceites (clickwrap com IP + hash)."
+      />
 
       <PlatformContractsClient
         initialTemplates={tplRes.data?.items ?? []}

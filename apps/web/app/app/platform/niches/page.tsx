@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
 import { NichesAdminClient } from "./NichesAdminClient";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -22,15 +23,11 @@ export default async function PlatformNichesPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Master · Nichos</p>
-        <h1 className="mt-1 text-3xl font-semibold">Nichos de mercado</h1>
-        <p className="mt-2 text-muted">
-          Crie os nichos (ótica, gráfica, joalheria, barbearia…) e defina, em cada um,
-          quais módulos NÃO aparecem pras empresas dele. Módulo desmarcado some da sidebar
-          das empresas desse nicho. Módulo novo aparece pra todos por padrão.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Master · Nichos"
+        title="Nichos de mercado"
+        description="Crie os nichos (ótica, gráfica, joalheria, barbearia…) e defina, em cada um, quais módulos NÃO aparecem pras empresas dele. Módulo desmarcado some da sidebar das empresas desse nicho. Módulo novo aparece pra todos por padrão."
+      />
 
       <NichesAdminClient initial={data?.items ?? []} />
     </div>

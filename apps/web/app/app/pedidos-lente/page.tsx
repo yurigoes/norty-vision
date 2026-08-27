@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { LensOrdersClient } from "./LensOrdersClient";
+import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
 export default async function PedidosLentePage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
@@ -18,10 +20,11 @@ export default async function PedidosLentePage() {
     );
   }
 
-  const [ordersRes, supRes, custRes, batchRes, prodRes] = await Promise.all([
+  // a tela não carrega mais cliente nenhum (eram 300 de 3.000, só pro seletor):
+  // o seletor pergunta ao servidor conforme se digita
+  const [ordersRes, supRes, batchRes, prodRes] = await Promise.all([
     apiFetch<{ items: any[] }>("/api/optical/orders"),
     apiFetch<{ items: any[] }>("/api/suppliers?activeOnly=true"),
-    apiFetch<{ items: any[] }>("/api/customers?limit=300"),
     apiFetch<{ items: any[] }>("/api/optical/batches"),
     apiFetch<{ items: any[] }>("/api/products?activeOnly=true"),
   ]);
@@ -30,21 +33,17 @@ export default async function PedidosLentePage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Ótica</p>
-        <h1 className="mt-1 text-3xl font-semibold">Pedidos de lente</h1>
-        <p className="mt-2 text-muted">
-          Medidas, anexo do exame e acompanhamento do status (medido →
-          solicitado → chegou → avisado → entregue) com lotes pro laboratório.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Ótica"
+        title="Pedidos de lente"
+        description="Medidas, anexo do exame e acompanhamento do status (medido → solicitado → chegou → avisado → entregue) com lotes pro laboratório."
+      />
 
       <LensOrdersClient
         initialOrders={ordersRes.data?.items ?? []}
         initialBatches={batchRes.data?.items ?? []}
         doctors={suppliers.filter((s) => s.type === "medico")}
         labs={suppliers.filter((s) => s.type === "laboratorio")}
-        customers={custRes.data?.items ?? []}
         products={prodRes.data?.items ?? []}
       />
     </div>

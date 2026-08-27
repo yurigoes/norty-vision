@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { headers } from "next/headers";
+import { PRODUCT_NAME, ROOT_DOMAIN as BRAND_ROOT_DOMAIN } from "./brand";
 
 export interface OrgBranding {
   /** Slug da org, se estamos num subdomínio dela. null = apex (sem org). */
@@ -14,7 +15,7 @@ export interface OrgBranding {
   primaryColor: string | null;
 }
 
-const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "yugochat.com.br").toLowerCase();
+const ROOT = BRAND_ROOT_DOMAIN.toLowerCase();
 const RESERVED = new Set([
   "www", "app", "api", "admin", "painel", "mail", "static", "cdn", "assets", "n8n",
   "chat", "chatwoot", "glpi", "evolution", "minio", "s3",
@@ -22,15 +23,15 @@ const RESERVED = new Set([
 
 /**
  * Detecta o slug da org pelo host da request (server-side).
- * `zito-oticas.yugochat.com.br` → "zito-oticas".
+ * `zito-oticas.vision.norty.com.br` → "zito-oticas".
  * Apex / reservado / qualquer fallback → null.
  */
 export async function orgSlugFromRequest(): Promise<string | null> {
   try {
     const h = await headers();
     const host = (h.get("host") ?? "").split(":")[0]?.toLowerCase() ?? "";
-    if (!host.endsWith(ROOT_DOMAIN)) return null;
-    const sub = host.slice(0, host.length - ROOT_DOMAIN.length).replace(/\.$/, "");
+    if (!host.endsWith(ROOT)) return null;
+    const sub = host.slice(0, host.length - ROOT.length).replace(/\.$/, "");
     if (!sub || sub.includes(".") || RESERVED.has(sub)) return null;
     return sub;
   } catch {
@@ -49,7 +50,7 @@ export async function orgSlugFromRequest(): Promise<string | null> {
 export const getOrgBrandingFromHost = cache(async (): Promise<OrgBranding> => {
   const slug = await orgSlugFromRequest();
   if (!slug) {
-    return { slug: null, name: "yugochat", logoUrl: null, faviconUrl: null, primaryColor: null };
+    return { slug: null, name: PRODUCT_NAME, logoUrl: null, faviconUrl: null, primaryColor: null };
   }
   const apiBase = process.env.API_INTERNAL_URL ?? "http://api:3001";
   try {
@@ -74,3 +75,34 @@ export const getOrgBrandingFromHost = cache(async (): Promise<OrgBranding> => {
     return { slug, name: slug, logoUrl: null, faviconUrl: null, primaryColor: null };
   }
 });
+
+/**
+ * Identidade pública de uma empresa pelo SLUG (server-side), sem depender do
+ * host. É o que o hub `/e/<slug>` e as páginas de entrada usam pra já
+ * renderizar com a marca da empresa — sem piscar o branding genérico.
+ */
+export const getPublicOrgBySlug = cache(
+  async (slug: string): Promise<OrgBranding | null> => {
+    if (!/^[a-z0-9][a-z0-9-]{1,49}$/.test(slug)) return null;
+    const apiBase = process.env.API_INTERNAL_URL ?? "http://api:3001";
+    try {
+      const res = await fetch(`${apiBase}/api/organizations/public/by-slug/${slug}`, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(5000),
+      });
+      if (!res.ok) return null;
+      const d = (await res.json()) as any;
+      const o = d?.organization;
+      if (!o) return null;
+      return {
+        slug,
+        name: o.name ?? slug,
+        logoUrl: o.logoUrl ?? null,
+        faviconUrl: o.faviconUrl ?? o.logoUrl ?? null,
+        primaryColor: o.primaryColor ?? null,
+      };
+    } catch {
+      return null;
+    }
+  },
+);

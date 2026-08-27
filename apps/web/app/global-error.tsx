@@ -11,7 +11,9 @@ import { useEffect, useState } from "react";
 
 interface OrgInfo { name: string; logoUrl: string | null; primaryColor: string | null }
 
-const ROOT_DOMAIN = "yugochat.com.br";
+// não importa de lib/brand: o global-error precisa funcionar mesmo se o
+// bundle da app quebrar, então fica sem dependência
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "vision.norty.com.br";
 const RESERVED = new Set(["www", "app", "api", "admin", "painel", "mail", "static", "cdn", "assets", "n8n", "chat", "chatwoot", "glpi", "evolution", "minio", "s3"]);
 
 function slugFromHost(): string | null {

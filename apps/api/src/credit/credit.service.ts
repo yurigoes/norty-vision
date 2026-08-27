@@ -4,6 +4,7 @@ import type { PrismaClient } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
 import type { RequestContext } from "../auth/session.middleware";
+import { paginar } from "../common/pagina";
 
 interface CreateAccountInput {
   document: string;
@@ -62,12 +63,12 @@ export class CreditService {
   }
 
   // ============================== ACCOUNTS ==============================
-  async listAccounts(ctx: RequestContext, opts?: { search?: string; status?: string }) {
+  async listAccounts(ctx: RequestContext, opts?: { search?: string; status?: string; limit?: number; offset?: number }) {
     if (!ctx.orgId && !ctx.isPlatformAdmin) {
       throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
     }
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.creditAccount.findMany({
+      paginar(tx.creditAccount, {
         where: {
           ...(opts?.status ? { status: opts.status } : {}),
           ...(opts?.search
@@ -80,8 +81,7 @@ export class CreditService {
             : {}),
         },
         orderBy: { holderName: "asc" },
-        take: 500,
-      }),
+      }, { limit: opts?.limit ?? 500, offset: opts?.offset ?? 0 }),
     );
   }
 

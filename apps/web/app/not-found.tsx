@@ -3,11 +3,12 @@
 
 import Link from "next/link";
 import { getOrgBrandingFromHost } from "../lib/orgBranding";
+import { PRODUCT_NAME } from "../lib/brand";
 
 export default async function NotFound() {
   const org = await getOrgBrandingFromHost();
   const isOrgHost = !!org.slug;
-  const name = isOrgHost ? org.name : "yugochat";
+  const name = isOrgHost ? org.name : PRODUCT_NAME;
   const brand = org.primaryColor ?? "#7c3aed";
 
   return (

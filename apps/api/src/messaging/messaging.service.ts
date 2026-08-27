@@ -1,3 +1,4 @@
+import { loadEnv } from "../config";
 import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
@@ -351,7 +352,7 @@ export class MessagingService {
   async testEmail(ctx: RequestContext, opts: { to: string; templateId?: string }) {
     this.requireAdmin(ctx);
     const orgId = this.requireOrg(ctx);
-    let subject = "Teste de email — yugochat";
+    let subject = `Teste de email — ${loadEnv().NORTY_SYSTEM_NAME}`;
     let body = "Este é um email de teste do seu sistema. Se você recebeu, o SMTP está funcionando.";
     let category: Category = "info";
     if (opts.templateId) {

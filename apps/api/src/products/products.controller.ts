@@ -8,6 +8,7 @@ import { CurrentContext, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { StorageService } from "../storage/storage.service";
 import { ProductsService } from "./products.service";
+import { limitePedido, offsetPedido } from "../common/pagina";
 
 const IMG_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 
@@ -56,8 +57,16 @@ export class ProductsController {
     @Query("q") search?: string,
     @Query("activeOnly") activeOnly?: string,
     @Query("storeId") storeId?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
   ) {
-    return { items: await this.svc.list(ctx, { search, activeOnly: activeOnly === "true", storeId: storeId || undefined }) };
+    return this.svc.list(ctx, {
+      search,
+      activeOnly: activeOnly === "true",
+      storeId: storeId || undefined,
+      limit: limitePedido(limit, 500, 500),
+      offset: offsetPedido(offset),
+    });
   }
 
   // ---- relatórios de estoque (rotas literais antes de :id) ----

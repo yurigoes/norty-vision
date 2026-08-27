@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { RhClient } from "./RhClient";
+import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
 export default async function RhPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
@@ -25,14 +27,11 @@ export default async function RhPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Pessoas</p>
-        <h1 className="mt-1 text-3xl font-semibold">RH & Funcionários</h1>
-        <p className="mt-2 text-muted">
-          Ficha dos funcionários, holerite, ponto eletrônico, solicitações
-          (férias, vale, troca de horário), escala e mural de avisos.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Pessoas"
+        title={<>RH & Funcionários</>}
+        description="Ficha dos funcionários, holerite, ponto eletrônico, solicitações (férias, vale, troca de horário), escala e mural de avisos."
+      />
 
       <RhClient
         initialEmployees={empRes.data?.items ?? []}

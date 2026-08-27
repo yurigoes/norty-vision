@@ -16,6 +16,7 @@ import { CurrentContext, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { StorageService } from "../storage/storage.service";
 import { CustomersService } from "./customers.service";
+import { limitePedido, offsetPedido } from "../common/pagina";
 
 // Coerce STRING VAZIA → null antes da validação. Sem isso, campos como `email`,
 // `state`, `avatarUrl` e `storeId` (que têm validador estrito) rejeitam o form
@@ -96,14 +97,16 @@ export class CustomersController {
     @Query("storeId") storeId?: string,
     @Query("q") search?: string,
     @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
   ) {
-    return {
-      items: await this.svc.list(ctx, {
-        storeId,
-        search,
-        limit: limit ? parseInt(limit) : undefined,
-      }),
-    };
+    // devolve { items, total, limit, offset, hasMore }: quem não pede `limit`
+    // recebe o mesmo pedaço de antes, agora sabendo quantos existem no total
+    return this.svc.list(ctx, {
+      storeId,
+      search,
+      limit: limitePedido(limit, 50, 500),
+      offset: offsetPedido(offset),
+    });
   }
 
   @Get(":id")

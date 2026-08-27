@@ -1,10 +1,13 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query } from "@nestjs/common";
 import { z } from "zod";
-import { CurrentContext, RequirePlatformAdmin } from "../auth/decorators";
+import { CurrentContext, RequirePlatformAdmin, SemEmpresa } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { AiLearningService } from "./ai-learning.service";
+import { RequireModule } from "../common/modulo.guard";
 
+@SemEmpresa()
 @Controller("ai-learning")
+@RequireModule("atendimento")
 export class AiLearningController {
   constructor(private readonly svc: AiLearningService) {}
 

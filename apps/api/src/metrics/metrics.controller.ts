@@ -2,8 +2,10 @@ import { Controller, Get, Query } from "@nestjs/common";
 import { CurrentContext, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { MetricsService } from "./metrics.service";
+import { RequireModule } from "../common/modulo.guard";
 
 @Controller("metrics")
+@RequireModule("bi")
 export class MetricsController {
   constructor(private readonly svc: MetricsService) {}
 

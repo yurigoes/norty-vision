@@ -1,5 +1,6 @@
 import { apiFetch } from "../../../../lib/api";
 import { NluClient } from "./NluClient";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -31,17 +32,11 @@ export default async function NluPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Agenda · NLU
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Revisão de respostas</h1>
-        <p className="mt-2 text-muted">
-          Quando o sistema não classifica uma resposta com confiança, ela
-          aparece aqui pra você decidir. Ao resolver, dá pra promover a
-          palavra como nova regra automática.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Agenda · NLU"
+        title="Revisão de respostas"
+        description="Quando o sistema não classifica uma resposta com confiança, ela aparece aqui pra você decidir. Ao resolver, dá pra promover a palavra como nova regra automática."
+      />
 
       <NluClient
         initialUnresolved={unresRes.data?.items ?? []}

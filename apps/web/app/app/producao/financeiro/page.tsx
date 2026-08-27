@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { PageHeader } from "../../../../components/PageHeader";
 
 function brl(c: number | string): string { return (Number(c) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
 function todayMinus(days: number) { const d = new Date(); d.setDate(d.getDate() - days); return d.toISOString().slice(0, 10); }
@@ -28,21 +29,21 @@ export default function ProducaoFinanceiro() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <Link href="/app/producao" className="text-sm text-brand hover:underline">← Produção</Link>
-          <h1 className="mt-1 text-2xl font-semibold">Financeiro da gráfica</h1>
-          <p className="text-sm text-muted">Faturamento, recebido e a receber dos pedidos de produção no período.</p>
-        </div>
-        <div className="flex flex-wrap items-end gap-2 text-sm">
+      <PageHeader
+        back={{ href: "/app/producao", label: "Produção" }}
+        title="Financeiro da gráfica"
+        description="Faturamento, recebido e a receber dos pedidos de produção no período."
+        actions={
+          <div className="flex flex-wrap items-end gap-2 text-sm">
           <label className="block"><span className="block text-[10px] uppercase text-muted">De</span>
             <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input-base" /></label>
           <label className="block"><span className="block text-[10px] uppercase text-muted">Até</span>
             <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input-base" /></label>
           <a href={`/api/production/financeiro/export?format=pdf&start=${from}&end=${to}`} target="_blank" rel="noreferrer" className="rounded-xl border border-line px-3 py-2 transition hover:border-brand/60 hover:text-brand">PDF</a>
           <a href={`/api/production/financeiro/export?format=csv&start=${from}&end=${to}`} className="rounded-xl border border-line px-3 py-2 transition hover:border-brand/60 hover:text-brand">CSV</a>
-        </div>
-      </header>
+          </div>
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-4">
         <Card label="Faturamento" value={brl(p?.faturamentoCents ?? 0)} hint={`${p?.pedidos ?? 0} pedido(s)`} />

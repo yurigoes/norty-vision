@@ -5,6 +5,7 @@ import { z } from "zod";
 import { CurrentContext, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { SalesService } from "./sales.service";
+import { limitePedido, offsetPedido } from "../common/pagina";
 
 const ItemSchema = z.object({
   productId: z.string().uuid().nullable().optional(),
@@ -54,8 +55,14 @@ export class SalesController {
     @Query("storeId") storeId?: string,
     @Query("startDate") startDate?: string,
     @Query("endDate") endDate?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
   ) {
-    return { items: await this.svc.list(ctx, { storeId, startDate, endDate }) };
+    return this.svc.list(ctx, {
+      storeId, startDate, endDate,
+      limit: limitePedido(limit, 500, 500),
+      offset: offsetPedido(offset),
+    });
   }
 
   /** Dashboard de vendas por vendedor no periodo (com comissao). */

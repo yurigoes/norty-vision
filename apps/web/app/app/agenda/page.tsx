@@ -1,6 +1,7 @@
 import { apiFetch } from "../../../lib/api";
 import { getSession } from "../../../lib/session";
 import { AgendaClient } from "./AgendaClient";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -71,15 +72,11 @@ export default async function AgendaPage({
 
   return (
     <div className="max-w-6xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Agenda
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Calendário do dia</h1>
-        <p className="mt-2 text-muted">
-          Slots disponíveis, agendamentos confirmados e ações rápidas.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Agenda"
+        title="Calendário do dia"
+        description="Slots disponíveis, agendamentos confirmados e ações rápidas."
+      />
 
       <AgendaClient
         date={date}

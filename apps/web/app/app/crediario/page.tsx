@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { CreditClient } from "./CreditClient";
+import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +30,7 @@ interface LimitRequest {
 
 export default async function CrediarioPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
@@ -40,27 +42,23 @@ export default async function CrediarioPage() {
   }
 
   const [accRes, reqRes, appRes] = await Promise.all([
-    apiFetch<{ items: Account[] }>("/api/credit/accounts"),
+    // primeiro pedaço pequeno: o resto vem no "carregar mais"
+    apiFetch<{ items: Account[]; total?: number }>("/api/credit/accounts?limit=50"),
     apiFetch<{ items: LimitRequest[] }>("/api/credit/limit-requests?status=pending"),
     apiFetch<{ items: any[] }>("/api/credit/applications?status=pending"),
   ]);
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configuração · Crediário
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Contas de crediário</h1>
-        <p className="mt-2 text-muted">
-          Limite por organização (vale em qualquer loja). Verde = em dia,
-          laranja = perto do vencimento, vermelho = vencido, gradiente animado
-          = inadimplente.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Crediário"
+        title="Contas de crediário"
+        description="Limite por organização (vale em qualquer loja). Verde = em dia, laranja = perto do vencimento, vermelho = vencido, gradiente animado = inadimplente."
+      />
 
       <CreditClient
         initialAccounts={accRes.data?.items ?? []}
+        totalAccounts={accRes.data?.total ?? 0}
         initialRequests={reqRes.data?.items ?? []}
         initialApplications={appRes.data?.items ?? []}
       />

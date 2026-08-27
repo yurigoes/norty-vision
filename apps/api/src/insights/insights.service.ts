@@ -3,6 +3,7 @@ import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { OrgAiService } from "../ai/org-ai.service";
 import type { RequestContext } from "../auth/session.middleware";
+import { loadEnv } from "../config";
 
 type Tip = { level: "info" | "warn" | "urgent"; text: string };
 type Finding = { kind: string; severity: "info" | "warn" | "urgent"; title: string; detail?: string; metric?: any };
@@ -171,7 +172,7 @@ export class InsightsService {
       const exists = await this.prisma.runWithContext(adm, (tx) => tx.aiMasterQuestion.findFirst({ where: { topic, status: "open" } })).catch(() => null);
       if (exists) continue;
       const sample = qs.slice(0, 12).map((q) => `- ${q.slice(0, 120)}`).join("\n");
-      const system = "Você é a IA do ecossistema yugochat aprendendo com o dono da plataforma (master). A partir das dúvidas recorrentes de clientes do nicho, formule UMA pergunta objetiva ao master, pra você aprender a responder melhor. Português do Brasil, 1 frase.";
+      const system = `Você é a IA do ${loadEnv().NORTY_SYSTEM_NAME} aprendendo com o dono da plataforma (master). A partir das dúvidas recorrentes de clientes do nicho, formule UMA pergunta objetiva ao master, pra você aprender a responder melhor. Português do Brasil, 1 frase.`;
       const user = `Nicho: ${n}. Dúvidas recorrentes de clientes (não resolvidas):\n${sample}\n\nQual UMA pergunta você faria ao master pra aprender a atender melhor esse nicho?`;
       // usa a cadeia de provedores de uma org representativa do nicho (cooldown/fallback → econômico)
       const q = await this.orgAi.complete(orgId, system, user, 120).catch(() => null);

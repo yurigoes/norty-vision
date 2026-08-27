@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { apiFetch } from "../../../../lib/api";
+import { PageHeader } from "../../../../components/PageHeader";
 
 interface HelpItem {
   id: string;
@@ -32,15 +33,11 @@ export default async function AjudaPage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Suporte · Ajuda
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Passo a passo</h1>
-        <p className="mt-2 text-muted">
-          Artigos sobre como usar cada parte do sistema. {items.length} artigos.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Suporte · Ajuda"
+        title="Passo a passo"
+        description={<>Artigos sobre como usar cada parte do sistema. {items.length} artigos.</>}
+      />
 
       {items.length === 0 ? (
         <p className="card text-muted">

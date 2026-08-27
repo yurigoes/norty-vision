@@ -3,14 +3,30 @@ import type { FastifyReply } from "fastify";
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { ReceivablesService } from "./receivables.service";
+import { limitePedido, offsetPedido } from "../common/pagina";
+import { RequireModule, RequireSubmodule } from "../common/modulo.guard";
 
 @Controller("receivables")
+@RequireModule("financeiro")
+@RequireSubmodule("financeiro.contas_receber")
 export class ReceivablesController {
   constructor(private readonly svc: ReceivablesService) {}
 
   @Get()
-  list(@CurrentContext() ctx: RequestContext, @Query("status") status?: string, @Query("from") from?: string, @Query("to") to?: string, @Query("search") search?: string) {
-    return this.svc.list(ctx, { status, from, to, search });
+  list(
+    @CurrentContext() ctx: RequestContext,
+    @Query("status") status?: string,
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+    @Query("search") search?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
+    return this.svc.list(ctx, {
+      status, from, to, search,
+      limit: limitePedido(limit, 1000, 1000),
+      offset: offsetPedido(offset),
+    });
   }
   @Get("summary")
   summary(@CurrentContext() ctx: RequestContext, @Query("from") from?: string, @Query("to") to?: string) { return this.svc.summary(ctx, { from, to }); }

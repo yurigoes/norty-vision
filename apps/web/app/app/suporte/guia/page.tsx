@@ -1,4 +1,5 @@
 import { apiFetch } from "../../../../lib/api";
+import { PageHeader } from "../../../../components/PageHeader";
 
 interface GuideSection {
   id: string;
@@ -35,15 +36,11 @@ export default async function GuiaPage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Suporte · Guia do sistema
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Como o sistema funciona</h1>
-        <p className="mt-2 text-muted">
-          Documentação arquitetural de cada módulo. {sections.length} seções.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Suporte · Guia do sistema"
+        title="Como o sistema funciona"
+        description={<>Documentação arquitetural de cada módulo. {sections.length} seções.</>}
+      />
 
       <div className="space-y-8">
         {Object.entries(byModule).map(([mod, list]) => (

@@ -9,6 +9,8 @@ import { MercadoPagoOrgAdapter } from "./mercadopago-org.adapter";
 import { InfinitePayAdapter } from "./infinitepay.adapter";
 import { orgBaseUrl } from "../common/org-url";
 import type { RequestContext } from "../auth/session.middleware";
+import { TRANSACTIONS_SQL, type TransactionsRow } from "./transactions.sql";
+import { type Pagina } from "../common/pagina";
 
 function brl(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -38,13 +40,13 @@ export class PaymentsService {
       throw new AppError(ErrorCode.Internal, "Mercado Pago da empresa nao configurado/ativo", 500);
     }
     const amount = this.amountWithAdjustments(installment);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const adapter = new MercadoPagoOrgAdapter(mp.accessToken);
     const r = await adapter.createPixPayment({
       amountCents: amount.total,
       description: `Parcela ${installment.number} — ${account.holderName}`,
       externalReference: installment.id,
-      payerEmail: customer?.email ?? "sememail@yugochat.com.br",
+      payerEmail: customer?.email ?? "sememail@vision.norty.com.br",
       payerName: account.holderName,
       payerDocument: account.document,
       notificationUrl: `https://${domain}/api/payments/webhooks/mercadopago/${orgId}`,
@@ -92,12 +94,12 @@ export class PaymentsService {
     if (!mp) throw new AppError(ErrorCode.Internal, "MP nao configurado", 500);
     const amount = this.amountWithAdjustments(installment);
     const adapter = new MercadoPagoOrgAdapter(mp.accessToken);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const r = await adapter.createCheckoutPreference({
       amountCents: amount.total,
       title: `Parcela ${installment.number} — ${account.holderName}`,
       externalReference: installment.id,
-      payerEmail: customer?.email ?? "sememail@yugochat.com.br",
+      payerEmail: customer?.email ?? "sememail@vision.norty.com.br",
       backUrl: `https://${domain}/c/parcelas`,
       notificationUrl: `https://${domain}/api/payments/webhooks/mercadopago/${orgId}`,
     });
@@ -125,7 +127,7 @@ export class PaymentsService {
     const ip = await this.orgIntegrations.resolveInfinitepay(orgId);
     if (!ip) throw new AppError(ErrorCode.Internal, "InfinitePay da empresa nao configurado/ativo", 500);
     const amount = this.amountWithAdjustments(installment);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
 
     // order_nsu = id do nosso registro de link (pra casar o webhook depois)
     const rec = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
@@ -199,7 +201,7 @@ export class PaymentsService {
       );
     }
     const amountCents = Number(sp.amountCents);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const rec = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.infinitepayLink.create({ data: { organizationId: orgId, kind: "sale", refId: sp.id, amountCents: BigInt(amountCents), status: "pending" }, select: { id: true } }),
     );
@@ -335,9 +337,9 @@ export class PaymentsService {
   private adminCtx(orgId: string): RequestContext {
     return {
       userId: null, platformUserId: null, membershipId: null, orgId, storeId: null,
-      role: null, isOrgAdmin: false, permissions: {}, isPlatformAdmin: true,
+      role: null, isOrgAdmin: false, permissions: {}, mustResetPassword: false, isPlatformAdmin: true,
       platformRole: null, techSpecsCategories: [], impersonating: false,
-      impersonatingOrgId: null, impersonatorPlatformUserId: null,
+      impersonatingOrgId: null, impersonatingOrgName: null, impersonatorPlatformUserId: null,
     };
   }
 
@@ -357,7 +359,7 @@ export class PaymentsService {
     const amountCents = Math.max(0, Math.round(body.amountCents ?? def));
     if (amountCents <= 0) throw new AppError(ErrorCode.ValidationFailed, "Valor a cobrar inválido", 400);
     const method = body.method;
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const cod = order.shortCode ?? "";
 
     // maquininha / dinheiro: registra pago direto (passa na máquina física)
@@ -411,7 +413,7 @@ export class PaymentsService {
         amountCents,
         description: `Pedido ${cod} — ${kind}`,
         externalReference: pp.id,
-        payerEmail: order.contactEmail ?? "sememail@yugochat.com.br",
+        payerEmail: order.contactEmail ?? "sememail@vision.norty.com.br",
         payerName: order.contactName,
         notificationUrl: `https://${domain}/api/payments/webhooks/mercadopago/${orgId}`,
       });
@@ -588,8 +590,9 @@ export class PaymentsService {
     const ctxLike: RequestContext = {
       userId: null, platformUserId: null, membershipId: null,
       orgId, storeId: null, role: null, isOrgAdmin: false, permissions: {},
+      mustResetPassword: false,
       isPlatformAdmin: true, platformRole: null, techSpecsCategories: [],
-      impersonating: false, impersonatingOrgId: null, impersonatorPlatformUserId: null,
+      impersonating: false, impersonatingOrgId: null, impersonatingOrgName: null, impersonatorPlatformUserId: null,
     };
     const data = await this.loadInstallment(ctxLike, installmentId).catch(() => null);
     if (data) {
@@ -647,61 +650,69 @@ export class PaymentsService {
    * Lista as transações MP (Pix/cartão) — do PDV (sale_payments provider=mp) e
    * do crediário (parcelas com mp_payment_id/mp_init_point). Ordenadas por data.
    */
-  async listTransactions(ctx: RequestContext, opts?: { status?: string }) {
-    const orgId = ctx.orgId;
-    if (!orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
-    const [sps, insts, ipLinks] = await Promise.all([
-      this.prisma.runWithContext(this.rls(ctx), (tx) =>
-        tx.salePayment.findMany({
-          where: { provider: "mp", ...(opts?.status ? { status: opts.status } : {}) },
-          orderBy: { createdAt: "desc" },
-          take: 300,
-          include: { sale: { select: { shortCode: true, customerId: true } } },
-        }),
-      ),
-      this.prisma.runWithContext(this.rls(ctx), (tx) =>
-        tx.creditInstallment.findMany({
-          where: { OR: [{ mpPaymentId: { not: null } }, { mpInitPoint: { not: null } }], ...(opts?.status ? { status: opts.status } : {}) },
-          orderBy: { updatedAt: "desc" },
-          take: 300,
-          include: { creditAccount: { select: { holderName: true } } },
-        }),
-      ),
-      this.prisma.runWithContext(this.rls(ctx), (tx) =>
-        tx.infinitepayLink.findMany({
-          where: { ...(opts?.status ? { status: opts.status } : {}) },
-          orderBy: { createdAt: "desc" },
-          take: 300,
-        }),
-      ).catch(() => [] as any[]),
-    ]);
-    const items = [
-      ...sps.map((s) => ({
-        kind: "sale" as const, provider: "mp" as const,
-        id: s.id, origin: "PDV",
-        method: s.method + (s.cardType ? ` (${s.cardType})` : ""),
-        amountCents: Number(s.amountCents),
-        status: s.status, mpPaymentId: s.mpPaymentId,
-        ref: s.sale?.shortCode ?? null, who: null as string | null, at: s.createdAt,
-      })),
-      ...insts.map((i) => ({
-        kind: "installment" as const, provider: "mp" as const,
-        id: i.id, origin: "Crediário",
-        method: i.paymentMethod ?? "mp",
-        amountCents: Number(i.amountCents),
-        status: i.status, mpPaymentId: i.mpPaymentId,
-        ref: `parcela ${i.number}`, who: i.creditAccount?.holderName ?? null, at: i.updatedAt,
-      })),
-      ...(ipLinks as any[]).map((l) => ({
-        kind: l.kind === "installment" ? ("installment" as const) : ("sale" as const), provider: "infinitepay" as const,
-        id: l.id, origin: "InfinitePay (link)",
-        method: `InfinitePay${l.captureMethod ? ` (${l.captureMethod === "credit_card" ? "cartão" : l.captureMethod})` : ""}`,
-        amountCents: Number(l.amountCents),
-        status: l.status, mpPaymentId: null as string | null,
-        ref: l.kind === "installment" ? "parcela" : "venda", who: null as string | null, at: l.updatedAt ?? l.createdAt,
-      })),
-    ].sort((a, b) => +new Date(b.at) - +new Date(a.at));
-    return items;
+  /**
+   * As três fontes viram uma lista só, no banco.
+   *
+   * Antes: três `findMany` com `take: 300` cada, concatenados e ordenados no
+   * Node. O teto era POR FONTE — 300 pagamentos do PDV + 300 parcelas + 300
+   * links — e ordenar depois de cortar cada uma não dá as mais recentes do
+   * conjunto: dá as mais recentes de cada fonte, misturadas. Uma loja que
+   * vende muito no PDV via as parcelas antigas empurrarem as vendas recentes
+   * pra fora da tela.
+   *
+   * Agora é um `UNION ALL` com uma ordem só, então `limit`/`offset` valem e o
+   * `total` é o total mesmo.
+   */
+  async listTransactions(
+    ctx: RequestContext,
+    opts?: { status?: string; limit?: number; offset?: number },
+  ): Promise<Pagina<any>> {
+    if (!ctx.orgId && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
+    const limit = opts?.limit ?? 300;
+    const offset = opts?.offset ?? 0;
+    const status = opts?.status ?? "";
+    const rls = this.rls(ctx);
+
+    const [linha] = await this.prisma.queryWithContext<TransactionsRow>(
+      rls,
+      TRANSACTIONS_SQL,
+      status,
+      limit,
+      offset,
+    );
+
+    // as duas redes de sempre: o canário e a consequência. Se os GUCs não
+    // valiam, o RLS barrou tudo em silêncio — refaz pelo caminho transacional.
+    const precisaRefazer =
+      !linha ||
+      linha.guc_aplicado === null ||
+      (Number(linha.total) === 0 && offset === 0 && !status);
+    const boa = precisaRefazer
+      ? (await this.prisma.queryWithContextInTransaction<TransactionsRow>(
+          rls,
+          TRANSACTIONS_SQL,
+          status,
+          limit,
+          offset,
+        ))[0]
+      : linha;
+
+    const brutos = boa?.itens ?? [];
+    const total = Number(boa?.total ?? 0);
+    const items = brutos.map((t) => ({
+      kind: t.kind,
+      provider: t.provider,
+      id: t.id,
+      origin: t.origin,
+      method: t.method,
+      amountCents: Number(t.amount_cents),
+      status: t.status,
+      mpPaymentId: t.mp_payment_id,
+      ref: t.ref,
+      who: t.who,
+      at: t.at,
+    }));
+    return { items, total, limit, offset, hasMore: offset + items.length < total };
   }
 
   /** Verifica um pagamento InfinitePay (force /payment_check) — tela de Transações. */
@@ -777,9 +788,9 @@ export class PaymentsService {
   async chargeInstallmentAuto(orgId: string, installmentId: string) {
     const ctxLike: RequestContext = {
       userId: null, platformUserId: null, membershipId: null, orgId, storeId: null,
-      role: null, isOrgAdmin: false, permissions: {}, isPlatformAdmin: true,
+      role: null, isOrgAdmin: false, permissions: {}, mustResetPassword: false, isPlatformAdmin: true,
       platformRole: null, techSpecsCategories: [], impersonating: false,
-      impersonatingOrgId: null, impersonatorPlatformUserId: null,
+      impersonatingOrgId: null, impersonatingOrgName: null, impersonatorPlatformUserId: null,
     };
     const data = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.creditInstallment.findFirst({
@@ -797,7 +808,7 @@ export class PaymentsService {
     const adapter = new MercadoPagoOrgAdapter(mp.accessToken);
 
     // e-mail do pagador (customer salvo no MP); fallback genérico
-    let email = "sememail@yugochat.com.br";
+    let email = "sememail@vision.norty.com.br";
     if (acc.primaryCustomerId) {
       const c = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
         tx.customer.findFirst({ where: { id: acc.primaryCustomerId! }, select: { email: true } }),
@@ -818,7 +829,7 @@ export class PaymentsService {
         payerEmail: email,
         customerId: acc.mpCustomerId,
         paymentMethodId: acc.cardPmId ?? undefined,
-        notificationUrl: `https://${process.env.DOMAIN ?? "yugochat.com.br"}/api/payments/webhooks/mercadopago/${orgId}`,
+        notificationUrl: `https://${process.env.DOMAIN ?? "vision.norty.com.br"}/api/payments/webhooks/mercadopago/${orgId}`,
       });
       status = r.body?.status;
       mpPaymentId = r.body?.id ? String(r.body.id) : null;

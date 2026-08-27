@@ -180,6 +180,8 @@ services:
       dockerfile: apps/web/Dockerfile
       args:
         NEXT_PUBLIC_ROOT_DOMAIN: ${NORTY_ROOT_DOMAIN:-norty.com.br}
+        # mesma variável que a API usa: um nome só nos dois lados
+        NEXT_PUBLIC_PRODUCT_NAME: ${NORTY_SYSTEM_NAME:-Norty Vision}
     container_name: nv-web
     <<: *default-restart
     logging: *default-logging

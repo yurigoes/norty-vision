@@ -40,9 +40,9 @@ export class CustomerPortalService {
   private orgCtx(ctx: CustomerContext): RequestContext {
     return {
       userId: null, platformUserId: null, membershipId: null, orgId: ctx.organizationId,
-      storeId: null, role: null, isOrgAdmin: false, permissions: {}, isPlatformAdmin: true,
+      storeId: null, role: null, isOrgAdmin: false, permissions: {}, mustResetPassword: false, isPlatformAdmin: true,
       platformRole: null, techSpecsCategories: [], impersonating: false,
-      impersonatingOrgId: null, impersonatorPlatformUserId: null,
+      impersonatingOrgId: null, impersonatingOrgName: null, impersonatorPlatformUserId: null,
     };
   }
 
@@ -211,7 +211,7 @@ export class CustomerPortalService {
       tx.creditAccount.findFirst({ where: { id: ctx.creditAccountId! }, select: { id: true, organizationId: true, holderName: true, document: true, primaryCustomerId: true } }),
     );
     if (!acc) throw new AppError(ErrorCode.NotFound, "Conta não encontrada", 404);
-    let email = "sememail@yugochat.com.br";
+    let email = "sememail@vision.norty.com.br";
     if (acc.primaryCustomerId) {
       const c = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
         tx.customer.findFirst({ where: { id: acc.primaryCustomerId! }, select: { email: true } }),

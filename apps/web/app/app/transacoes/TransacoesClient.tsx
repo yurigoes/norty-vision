@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePaginacao, Paginacao, PorPagina, useIrParaONovo } from "../../../components/Paginacao";
+import { useListaServidor } from "../../../lib/useListaServidor";
+import { CarregarMais } from "../../../components/CarregarMais";
 
 export interface Tx {
   kind: "sale" | "installment";
@@ -32,10 +35,21 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 
 const STATUS_LABEL: Record<string, string> = { paid: "Pago", approved: "Aprovado", pending: "Pendente", failed: "Falhou", rejected: "Recusado", canceled: "Cancelado", expired: "Expirado" };
 
-export function TransacoesClient({ initial }: { initial: Tx[] }) {
-  const [rows, setRows] = useState<Tx[]>(initial);
-  const [busy, setBusy] = useState<string | null>(null);
+export function TransacoesClient({ initial, total = 0 }: { initial: Tx[]; total?: number }) {
+  // o filtro vai ao servidor: antes ele cortava o que a tela tinha baixado, e
+  // o que a tela tinha baixado eram as 300 mais recentes DE CADA FONTE
   const [filter, setFilter] = useState<string>("all");
+  const lista = useListaServidor<Tx>({
+    rota: filter === "all" ? "/api/payments/transactions" : `/api/payments/transactions?status=${filter}`,
+    inicial: initial,
+    totalInicial: total,
+    passo: 50,
+    buscavel: false,
+    autoCarregar: filter !== "all",
+  });
+  const [ajustes, setAjustes] = useState<Record<string, string>>({});
+  const rows = lista.itens.map((r) => (ajustes[r.id] ? { ...r, status: ajustes[r.id]! } : r));
+  const [busy, setBusy] = useState<string | null>(null);
   const [org, setOrg] = useState<{ name: string; logoUrl: string | null } | null>(null);
 
   useEffect(() => {
@@ -51,12 +65,16 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
       const res = await fetch(url, { method: "POST", credentials: "include" });
       const d = await res.json().catch(() => null);
       if (res.ok && d?.status) {
-        setRows((r) => r.map((x) => (x.id === t.id ? { ...x, status: d.status } : x)));
+        setAjustes((a) => ({ ...a, [t.id]: d.status }));
       }
     } finally { setBusy(null); }
   }
 
-  const shown = filter === "all" ? rows : rows.filter((r) => [r.status].includes(filter));
+  // o servidor já filtrou; aqui só o corte em páginas do que está carregado.
+  // O relatório impresso continua com tudo o que foi carregado — papel não rola.
+  const shown = rows;
+  const pag = usePaginacao(shown, 50);
+  useIrParaONovo(pag, lista.itens.length); // o pedaço novo entra na página seguinte
   const totalShown = shown.reduce((s, r) => s + r.amountCents, 0);
   const totalPaid = shown.filter((r) => ["paid", "approved"].includes(r.status)).reduce((s, r) => s + r.amountCents, 0);
   const FILTER_LABEL: Record<string, string> = { all: "Todas", pending: "Pendentes", paid: "Pagas", failed: "Falhas" };
@@ -71,9 +89,10 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
           ["paid", "Pagas"],
           ["failed", "Falhas"],
         ].map(([k, l]) => (
-          <button key={k} onClick={() => setFilter(k)} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${filter === k ? "border-brand text-brand" : "border-line text-muted hover:text-fg"}`}>{l}</button>
+          <button key={k} onClick={() => { setFilter(k); pag.aoTopo(); }} className={`rounded-full border px-3 py-1 text-xs font-medium transition ${filter === k ? "border-brand text-brand" : "border-line text-muted hover:text-fg"}`}>{l}</button>
         ))}
-        <button onClick={() => window.print()} className="btn-grad ml-auto px-4 py-1.5 text-xs">🖨️ PDF / Imprimir</button>
+        <PorPagina p={pag} className="ml-auto py-1 text-xs" />
+        <button onClick={() => window.print()} className="btn-grad px-4 py-1.5 text-xs">🖨️ PDF / Imprimir</button>
       </div>
 
       {/* versão branded só pra impressão */}
@@ -87,7 +106,7 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
             </div>
             {org?.logoUrl && <img src={org.logoUrl} alt="" className="h-14 w-auto max-w-[160px] object-contain" />}
           </header>
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead>
               <tr className="border-b border-gray-300 text-left text-gray-600">
                 <th className="py-2 pr-2">Quando</th><th className="py-2 pr-2">Origem</th><th className="py-2 pr-2">Ref./Cliente</th><th className="py-2 pr-2">Meio</th><th className="py-2 pr-2 text-right">Valor</th><th className="py-2">Status</th>
@@ -116,8 +135,12 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
       {shown.length === 0 ? (
         <p className="no-print rounded-2xl border border-line bg-surface p-8 text-center text-sm text-muted">Nenhuma transação.</p>
       ) : (
+        <>
+        <p className="no-print text-[11px] text-muted">
+          {pag.total} transação(ões){pag.porPagina !== 0 ? ` · mostrando ${pag.pagina.length} · página ${pag.paginaAtual}/${pag.totalPaginas}` : ""}
+        </p>
         <div className="no-print overflow-x-auto rounded-2xl border border-line bg-surface">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
               <tr>
                 <th className="px-4 py-3">Quando</th>
@@ -130,7 +153,7 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
               </tr>
             </thead>
             <tbody>
-              {shown.map((t) => {
+              {pag.pagina.map((t) => {
                 const s = STATUS[t.status] ?? { label: t.status, cls: "bg-line text-muted" };
                 const pending = ["pending"].includes(t.status);
                 return (
@@ -154,6 +177,19 @@ export function TransacoesClient({ initial }: { initial: Tx[] }) {
             </tbody>
           </table>
         </div>
+        <div className="no-print"><Paginacao p={pag} /></div>
+        <div className="no-print">
+          <CarregarMais
+            mostrando={lista.itens.length}
+            total={lista.total}
+            temMais={lista.temMais}
+            carregando={lista.carregando}
+            aoCarregar={lista.carregarMais}
+            substantivo="transação"
+            plural="transações"
+          />
+        </div>
+        </>
       )}
     </div>
   );

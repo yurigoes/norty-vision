@@ -129,6 +129,7 @@ export class ProvisioningService {
       if (!r.ok || !r.body?.id) return { error: r.error ?? "createAccount falhou" };
       accountId = String(r.body.id);
       await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+        // cache-ok: o id do Chatwoot não entra na resposta de /organizations/me
         tx.organization.update({
           where: { id: org.id },
           data: { chatwootAccountId: accountId },
@@ -209,7 +210,8 @@ export class ProvisioningService {
       if (cr.ok && newId) {
         cwId = String(newId);
         await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
-          tx.platformUser.update({ where: { id: platformUserId }, data: { chatwootUserId: cwId } }),
+          // cache-ok: id do Chatwoot não entra no contexto do guard
+      tx.platformUser.update({ where: { id: platformUserId }, data: { chatwootUserId: cwId } }),
         );
       }
     }

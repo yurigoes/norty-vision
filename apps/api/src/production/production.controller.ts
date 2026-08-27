@@ -8,6 +8,8 @@ import { StorageService } from "../storage/storage.service";
 import { ProductionService } from "./production.service";
 import { ProductionImportService } from "./production-import.service";
 import { ProductionWipeService, type WipeScope } from "./production-wipe.service";
+import { limitePedido, offsetPedido } from "../common/pagina";
+import { RequireModule, RequireSubmodule } from "../common/modulo.guard";
 
 const ItemSchema = z.object({ description: z.string().min(1).max(300), qty: z.number().int().min(1).max(100000), unitPriceCents: z.number().int().min(0) });
 const UpsertSchema = z.object({
@@ -35,6 +37,7 @@ const UpsertSchema = z.object({
 const FILE_MIME = new Set(["image/png", "image/jpeg", "image/webp", "image/gif", "application/pdf", "application/postscript", "application/illustrator", "application/zip", "application/x-zip-compressed", "application/octet-stream"]);
 
 @Controller("production")
+@RequireModule("producao")
 export class ProductionController {
   constructor(private readonly svc: ProductionService, private readonly storage: StorageService, private readonly importSvc: ProductionImportService, private readonly wipeSvc: ProductionWipeService) {}
 
@@ -61,6 +64,7 @@ export class ProductionController {
 
   /** Pré-visualiza .xlsx (dry-run). Multipart 'file'. */
   @Post("import/preview")
+  @RequireSubmodule("producao.import")
   @HttpCode(200)
   @RequirePermission("production.create")
   async importPreview(@Req() req: FastifyRequest) {
@@ -73,6 +77,7 @@ export class ProductionController {
 
   /** Importa .xlsx para production_order (idempotente). */
   @Post("import/run")
+  @RequireSubmodule("producao.import")
   @HttpCode(200)
   @RequirePermission("production.create")
   async importRun(@CurrentContext() ctx: RequestContext, @Req() req: FastifyRequest) {
@@ -88,8 +93,13 @@ export class ProductionController {
   }
 
   @Get()
-  async list(@CurrentContext() ctx: RequestContext, @Query("status") status?: string) {
-    return { items: await this.svc.list(ctx, { status }) };
+  async list(
+    @CurrentContext() ctx: RequestContext,
+    @Query("status") status?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
+    return this.svc.list(ctx, { status, limit: limitePedido(limit, 500, 500), offset: offsetPedido(offset) });
   }
   @Get("kanban")
   async kanban(@CurrentContext() ctx: RequestContext) {
@@ -177,6 +187,7 @@ export class ProductionController {
   /** Atribui costureira (Supplier type=costureira) a um pedido. supplierId=null tira. */
   @Post(":id/assign")
   @HttpCode(200)
+  @RequireSubmodule("producao.costureiras")
   @RequirePermission("production.assign")
   async assign(@CurrentContext() ctx: RequestContext, @Param("id") id: string, @Body() body: unknown) {
     const input = z.object({ supplierId: z.string().uuid().nullable() }).parse(body);
@@ -185,6 +196,7 @@ export class ProductionController {
 
   /** Relatório admin de produção por costureira no período. */
   @Get("by-supplier/:supplierId/report")
+  @RequireSubmodule("producao.costureiras")
   @RequirePermission("payouts.manage")
   async supplierReport(
     @CurrentContext() ctx: RequestContext,
@@ -197,6 +209,7 @@ export class ProductionController {
 
   /** OSs prontas pendentes de pagamento da costureira (sem settlement ainda). */
   @Get("by-supplier/:supplierId/pending")
+  @RequireSubmodule("producao.costureiras")
   @RequirePermission("payouts.manage")
   async supplierPending(@CurrentContext() ctx: RequestContext, @Param("supplierId") supplierId: string) {
     return this.svc.productionPendingForSupplier(ctx, supplierId);

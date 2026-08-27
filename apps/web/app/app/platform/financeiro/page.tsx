@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { FinanceiroClient } from "./FinanceiroClient";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -9,11 +10,11 @@ export default async function FinanceiroPage() {
   if (!session.master) redirect("/app");
   return (
     <div className="max-w-5xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Master</p>
-        <h1 className="mt-1 text-3xl font-semibold">Financeiro das assinaturas</h1>
-        <p className="mt-2 text-muted">Mensalidades das empresas: lance, marque como paga e suba a nota fiscal.</p>
-      </header>
+      <PageHeader
+        eyebrow="Master"
+        title="Financeiro das assinaturas"
+        description="Mensalidades das empresas: lance, marque como paga e suba a nota fiscal."
+      />
       <FinanceiroClient />
     </div>
   );

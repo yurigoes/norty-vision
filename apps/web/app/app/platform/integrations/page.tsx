@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { getSession } from "../../../../lib/session";
 import { IntegrationsList } from "./IntegrationsList";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -26,18 +27,11 @@ export default async function IntegrationsPage() {
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Master · Integrações
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">
-          Conectar serviços externos
-        </h1>
-        <p className="mt-2 text-muted">
-          Evolution (WhatsApp), Chatwoot (atendimento) e GLPI (helpdesk
-          interno). Configurações ficam em <code className="font-mono text-xs">platform_integrations</code>.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Master · Integrações"
+        title="Conectar serviços externos"
+        description={<>Evolution (WhatsApp), Chatwoot (atendimento) e GLPI (helpdesk interno). Configurações ficam em <code className="font-mono text-xs">platform_integrations</code>.</>}
+      />
 
       <IntegrationsList initial={integrations} />
     </div>

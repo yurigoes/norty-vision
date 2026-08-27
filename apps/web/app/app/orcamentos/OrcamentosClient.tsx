@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { usePaginacao, Paginacao, PorPagina, useIrParaONovo } from "../../../components/Paginacao";
+import { useListaServidor } from "../../../lib/useListaServidor";
+import { CarregarMais } from "../../../components/CarregarMais";
 import { useRouter } from "next/navigation";
 import { useDialog } from "../../../components/SystemDialog";
 
@@ -9,7 +12,9 @@ interface Quote {
   id: string; shortCode: string | null; contactName: string; contactPhone: string | null; contactEmail: string | null;
   status: string; totalCents: string | number; discountCents: number; validUntil: string | null; createdAt: string;
   createdByUserId: string | null;
-  items: Array<{ id: string; description: string; qty: number; unitPriceCents: string | number; lineTotalCents: string | number }>;
+  // a listagem recebe só a contagem; os itens vêm no detalhe/PDF
+  items?: Array<{ id: string; description: string; qty: number; unitPriceCents: string | number; lineTotalCents: string | number }>;
+  _count?: { items: number };
 }
 
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -23,27 +28,32 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 function brl(c: number | string): string { return (Number(c) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
 function toCents(s: string): number { const n = Number(String(s).replace(/\./g, "").replace(",", ".")); return isNaN(n) ? 0 : Math.round(n * 100); }
 
-export function OrcamentosClient({ initial }: { initial: Quote[] }) {
+export function OrcamentosClient({ initial, total = 0 }: { initial: Quote[]; total?: number }) {
   const router = useRouter();
   const dialog = useDialog();
   const [, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
+  // a página traz 50 e o resto vem por pedaços, com o total do servidor
+  const lista = useListaServidor<Quote>({ rota: "/api/quotes", inicial: initial, totalInicial: total, passo: 50, buscavel: false });
+  // a tela montava TODOS os orçamentos de uma vez; agora corta em páginas
+  const pag = usePaginacao(lista.itens, 50);
+  useIrParaONovo(pag, lista.itens.length); // o pedaço novo entra na página seguinte
 
   async function send(q: Quote, channel: "whatsapp" | "email" | "both") {
     const res = await fetch(`/api/quotes/${q.id}/send`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ channel }) });
     const d = await res.json().catch(() => null);
     if (!res.ok) { dialog.toast(d?.error?.message ?? "Falha ao enviar", "error"); return; }
     dialog.toast("Orçamento enviado ✅", "success");
-    startTransition(() => router.refresh());
+    startTransition(() => router.refresh()); lista.refazer();
   }
   async function setStatus(q: Quote, status: string) {
     await fetch(`/api/quotes/${q.id}/status`, { method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ status }) });
-    startTransition(() => router.refresh());
+    startTransition(() => router.refresh()); lista.refazer();
   }
   async function remove(q: Quote) {
     if (!(await dialog.confirm({ title: "Excluir orçamento", message: `Excluir o orçamento ${q.shortCode ?? ""}?`, tone: "danger" }))) return;
     await fetch(`/api/quotes/${q.id}`, { method: "DELETE", credentials: "include" });
-    startTransition(() => router.refresh());
+    startTransition(() => router.refresh()); lista.refazer();
   }
   async function convert(q: Quote) {
     if (!(await dialog.confirm({ title: "Converter em pedido", message: `Gerar um pedido de produção a partir do orçamento ${q.shortCode ?? ""}? A entrada/sinal segue a política da gráfica.` }))) return;
@@ -51,24 +61,30 @@ export function OrcamentosClient({ initial }: { initial: Quote[] }) {
     const d = await res.json().catch(() => null);
     if (!res.ok) { dialog.toast(d?.error?.message ?? "Falha ao converter", "error"); return; }
     dialog.toast(`Pedido ${d?.order?.shortCode ?? ""} criado ✅`, "success");
-    startTransition(() => router.refresh());
+    startTransition(() => router.refresh()); lista.refazer();
   }
 
   return (
     <div className="space-y-5">
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {lista.itens.length > 0 && (
+          <p className="mr-auto text-[11px] text-muted">
+            {pag.porPagina !== 0 ? `página ${pag.paginaAtual}/${pag.totalPaginas}` : "todos na tela"}
+          </p>
+        )}
+        {lista.itens.length > 0 && <PorPagina p={pag} className="py-1 text-xs" />}
         <button onClick={() => setOpen(true)} className="btn-grad">+ Novo orçamento</button>
       </div>
 
-      {initial.length === 0 ? (
+      {lista.itens.length === 0 ? (
         <p className="rounded-2xl border border-line bg-surface p-8 text-center text-muted">Nenhum orçamento ainda. Crie o primeiro!</p>
       ) : (
         <div className="space-y-2">
-          {initial.map((q) => (
+          {pag.pagina.map((q) => (
             <div key={q.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
               <div className="min-w-0">
                 <p className="font-medium">{q.contactName} <span className="ml-1 text-xs text-muted">{q.shortCode}</span>{!q.createdByUserId && <span className="ml-1 rounded-full bg-brand/15 px-2 py-0.5 text-[9px] font-semibold uppercase text-brand">via IA</span>}</p>
-                <p className="text-xs text-muted">{new Date(q.createdAt).toLocaleDateString("pt-BR")} · {q.items.length} item(ns) · <b>{brl(q.totalCents)}</b></p>
+                <p className="text-xs text-muted">{new Date(q.createdAt).toLocaleDateString("pt-BR")} · {q._count?.items ?? q.items?.length ?? 0} item(ns) · <b>{brl(q.totalCents)}</b></p>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${STATUS[q.status]?.cls ?? "bg-line text-muted"}`}>{STATUS[q.status]?.label ?? q.status}</span>
@@ -81,10 +97,19 @@ export function OrcamentosClient({ initial }: { initial: Quote[] }) {
               </div>
             </div>
           ))}
+          <Paginacao p={pag} />
+          <CarregarMais
+            mostrando={lista.itens.length}
+            total={lista.total}
+            temMais={lista.temMais}
+            carregando={lista.carregando}
+            aoCarregar={lista.carregarMais}
+            substantivo="orçamento"
+          />
         </div>
       )}
 
-      {open && <NewQuote onClose={() => setOpen(false)} onSaved={() => { setOpen(false); startTransition(() => router.refresh()); }} />}
+      {open && <NewQuote onClose={() => setOpen(false)} onSaved={() => { setOpen(false); startTransition(() => router.refresh()); lista.refazer(); }} />}
     </div>
   );
 }

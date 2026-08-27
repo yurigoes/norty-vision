@@ -8,6 +8,7 @@ import { PaymentsService } from "../payments/payments.service";
 import { applyStoreStockDelta } from "../products/products.service";
 import type { RequestContext } from "../auth/session.middleware";
 import { ctxCan } from "../auth/decorators";
+import { paginar } from "../common/pagina";
 
 interface SaleItemInput {
   productId?: string | null;
@@ -67,20 +68,22 @@ export class SalesService {
       : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
   }
 
-  async list(ctx: RequestContext, opts?: { storeId?: string; startDate?: string; endDate?: string }) {
+  async list(ctx: RequestContext, opts?: { storeId?: string; startDate?: string; endDate?: string; limit?: number; offset?: number }) {
     if (!ctx.orgId && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
     const from = opts?.startDate ? new Date(opts.startDate + "T00:00:00Z") : undefined;
     const to = opts?.endDate ? new Date(opts.endDate + "T23:59:59Z") : undefined;
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.sale.findMany({
+      paginar(tx.sale, {
         where: {
           ...(opts?.storeId ? { storeId: opts.storeId } : {}),
           ...(from && to ? { createdAt: { gte: from, lte: to } } : {}),
         },
         orderBy: { createdAt: "desc" },
-        include: { items: true },
-        take: 500,
-      }),
+        // a LISTAGEM só mostra "N item(ns)" — mandava as linhas inteiras de cada
+        // venda pra isso. `_count` devolve o número, que é tudo o que a tela lê.
+        // Quem precisa dos itens (o detalhe, o cancelamento) usa o getById.
+        include: { _count: { select: { items: true } } },
+      }, { limit: opts?.limit ?? 500, offset: opts?.offset ?? 0 }),
     );
   }
 
@@ -279,7 +282,7 @@ export class SalesService {
       // cartão crédito/débito, pix maquininha (provider null) ou pix MP (provider 'mp')).
       const payments: any[] = [];
       if (input.payments && input.payments.length > 0) {
-        const domain = process.env.DOMAIN ?? "yugochat.com.br";
+        const domain = process.env.DOMAIN ?? "vision.norty.com.br";
         let mpAdapter: MercadoPagoOrgAdapter | null = null;
         for (const p of input.payments) {
           const isPixMp = p.method === "pix" && p.provider === "mp";
@@ -308,7 +311,7 @@ export class SalesService {
                   amountCents: p.amountCents,
                   description: `Venda ${sale.shortCode ?? sale.id}`,
                   externalReference: sp.id,
-                  payerEmail: "sememail@yugochat.com.br",
+                  payerEmail: "sememail@vision.norty.com.br",
                   payerName: "Cliente",
                   payerDocument: "",
                   notificationUrl: `https://${domain}/api/payments/webhooks/mercadopago/${ctx.orgId}`,

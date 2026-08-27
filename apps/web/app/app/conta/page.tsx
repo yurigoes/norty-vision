@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PageHeader } from "../../../components/PageHeader";
 
 export default function MinhaContaPage() {
   const [current, setCurrent] = useState("");
@@ -29,11 +30,11 @@ export default function MinhaContaPage() {
 
   return (
     <div className="max-w-lg">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Minha conta</p>
-        <h1 className="mt-1 text-3xl font-semibold">Trocar senha</h1>
-        <p className="mt-2 text-sm text-muted">Você pode alterar sua senha quando quiser. Mínimo de 8 caracteres.</p>
-      </header>
+      <PageHeader
+        eyebrow="Minha conta"
+        title="Trocar senha"
+        description="Você pode alterar sua senha quando quiser. Mínimo de 8 caracteres."
+      />
 
       <form onSubmit={submit} className="card space-y-4 p-6">
         <Field label="Senha atual" value={current} onChange={setCurrent} />

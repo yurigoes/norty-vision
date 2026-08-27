@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getSession, can } from "../../lib/session";
-import { apiFetch } from "../../lib/api";
-import { getChatwootEmbedConfig } from "../../lib/integrations";
+import { can } from "../../lib/session";
+import { getBootstrap } from "../../lib/bootstrap";
 import { hexToRgbTriplet } from "../../lib/color";
 import { ThemeToggle } from "../../components/ThemeToggle";
 import { LogoutButton } from "../../components/LogoutButton";
@@ -14,6 +13,18 @@ import { SidebarSection } from "../../components/SidebarSection";
 import { SidebarCountsProvider } from "../../components/SidebarCounts";
 import { LockedModules } from "../../components/LockedModules";
 import { moduleLabel, moduleAllowedForNiche } from "../../lib/modules";
+import { bloqueioDaRota, explicacao } from "../../lib/acesso";
+import { RotaBloqueada } from "../../components/RotaBloqueada";
+import { headers } from "next/headers";
+import {
+  NAV_OPERACAO,
+  NAV_ADMIN,
+  NAV_MASTER_TOP,
+  NAV_MASTER_OWNER,
+  NAV_MASTER_BOTTOM,
+  NAV_CONTA,
+  type NavItem,
+} from "../../lib/nav";
 import { InternalAlerts } from "../../components/InternalAlerts";
 import { RouteFade } from "../../components/RouteFade";
 import { DialogProvider } from "../../components/SystemDialog";
@@ -23,8 +34,16 @@ import { LoadingProvider } from "../../components/Loading";
 import { Mensalidades } from "./billing/Mensalidades";
 import { AppPwa } from "./AppPwa";
 import { SoftphoneProvider } from "../../components/SoftphoneProvider";
+import { AppShell } from "../../components/AppShell";
+import { CommandPalette, type PaletteItem } from "../../components/CommandPalette";
+import { CommandPaletteButton } from "../../components/CommandPaletteButton";
+import { SidebarFavorites } from "../../components/SidebarFavorites";
+import { RememberOrg } from "../../components/RememberOrg";
+import { TableCards } from "../../components/TableCards";
+import { ViewerProvider } from "../../components/Viewer";
 import { CentralLeadsBoot } from "../../components/CentralLeadsBoot";
 import type { Metadata } from "next";
+import { loginPath } from "../../lib/tenantServer";
 
 export const dynamic = "force-dynamic";
 
@@ -34,86 +53,17 @@ export const metadata: Metadata = {
   icons: { apple: "/yugo-app-icon.svg" },
 };
 
-// `perm` = permissão fina (catálogo) exigida pra ver o item. Quando presente,
-// o item só aparece se o usuário tem a permissão (org admin e master sempre têm,
-// via can()). Sem `perm`: item de operação aparece pra todos; item admin só pro
-// admin. Isso conserta "libero permissão e não aparece" e "BI aparece a todos".
-type NavItem = { key?: string; href: string; label: string; perm?: string; subMod?: string };
-// Operação só aparece com contexto de empresa (não pro master puro).
-const NAV_OPERACAO: NavItem[] = [
-  { key: "bi", href: "/app/painel/otica", label: "Painel (BI)", perm: "reports.bi_panel" },
-  { key: "insights", href: "/app/insights", label: "Insights (IA)" },
-  { key: "agenda", href: "/app/agenda", label: "Agenda" },
-  { key: "leads", href: "/app/leads", label: "Leads" },
-  { key: "vendas", href: "/app/vendas", label: "Vendas (PDV)" },
-  { key: "caixa", href: "/app/caixa", label: "Caixa" },
-  { key: "producao", href: "/app/producao", label: "Produção / Pedidos" },
-  { key: "producao", href: "/app/producao/costureiras", label: "Costureiras (atribuir / pagar)", subMod: "producao.costureiras" },
-  { key: "producao", href: "/app/producao/import", label: "Importar planilha (.xlsx)", subMod: "producao.import" },
-  { key: "atendimento_admin", href: "/app/atendimento/macros", label: "Macros do atendimento", subMod: "atendimento.macros" },
-  { key: "atendimento_admin", href: "/app/atendimento/webhooks", label: "Webhooks (n8n/Zapier)", subMod: "atendimento.webhooks" },
-  { key: "crm", href: "/app/crm", label: "Central de Atendimento" },
-  { key: "crm", href: "/app/prospector", label: "Prospecção (leads)", subMod: "crm.prospector" },
-  { key: "voip", href: "/app/voip", label: "Telefone (ramal)" },
-  { href: "/app/suporte-sistema", label: "Suporte ao sistema" },
-];
-// Categorias visíveis pro admin da empresa.
-const NAV_ADMIN: Array<{ title: string; items: NavItem[] }> = [
-  { title: "Comercial", items: [
-    { key: "orcamentos", href: "/app/orcamentos", label: "Orçamentos" },
-    { key: "clientes", href: "/app/clientes", label: "Clientes" },
-    { key: "atendimento", href: "/app/atendimento", label: "Atendimento" },
-    { key: "chamados", href: "/app/chamados", label: "Chamados" },
-    { key: "mala_direta", href: "/app/mala-direta", label: "Mala direta" },
-    { key: "produtos", href: "/app/produtos", label: "Produtos" },
-    { key: "catalogo", href: "/app/catalogo", label: "Catálogo online" },
-    { key: "comissoes", href: "/app/comissoes", label: "Comissões" },
-    { key: "pesquisas", href: "/app/pesquisas", label: "Pesquisas (NPS)" },
-  ] },
-  { title: "Ótica", items: [
-    { key: "fornecedores", href: "/app/fornecedores", label: "Fornecedores" },
-    { key: "pedidos_lente", href: "/app/pedidos-lente", label: "Pedidos de lente" },
-    { key: "repasses", href: "/app/repasses", label: "Repasses" },
-  ] },
-  { title: "Financeiro", items: [
-    { key: "crediario", href: "/app/crediario", label: "Crediário" },
-    { key: "pagamentos", href: "/app/pagamentos", label: "Pagamentos" },
-    { key: "pagamentos", href: "/app/transacoes", label: "Transações" },
-    { key: "cobranca", href: "/app/cobranca", label: "Cobrança" },
-    { key: "relatorios", href: "/app/relatorios", label: "Relatórios" },
-    { key: "vendas_historico", href: "/app/vendas-historico", label: "Vendas (histórico)" },
-    { key: "financeiro", href: "/app/financeiro/contas-a-pagar", label: "Contas a pagar", subMod: "financeiro.contas_pagar" },
-    { key: "financeiro", href: "/app/financeiro/contas-a-receber", label: "Contas a receber", subMod: "financeiro.contas_receber" },
-    { key: "fiscal", href: "/app/fiscal", label: "Nota fiscal (config)", perm: "fiscal.config" },
-  ] },
-  { title: "Documentos", items: [
-    { key: "contratos", href: "/app/contratos", label: "Contratos" },
-    { key: "modelos", href: "/app/modelos", label: "Mensagens" },
-    { href: "/app/empresa-contrato", label: "Contrato da plataforma" },
-  ] },
-  { title: "Pessoas", items: [
-    { key: "rh", href: "/app/rh", label: "RH & Funcionários" },
-    { href: "/app/ponto", label: "Ponto eletrônico" },
-  ] },
-  { title: "Configuração", items: [
-    { href: "/app/lojas", label: "Lojas", perm: "stores.manage" },
-    { href: "/app/usuarios", label: "Usuários", perm: "users.manage" },
-    { href: "/app/permissoes", label: "Permissões", perm: "roles.manage" },
-    { key: "voip", href: "/app/voip-admin", label: "Telefonia (call center)", perm: "voip.admin" },
-    { href: "/app/portal-cliente", label: "Portal do cliente" },
-    { href: "/app/integracoes", label: "Integrações", perm: "integrations.manage" },
-    { href: "/app/billing", label: "Assinatura" },
-  ] },
-];
-
 export default async function AppLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
+  // UMA chamada à API traz sessão, empresa, loja, assinatura, atalhos e widget.
+  // Antes eram seis, em série, a cada navegação (o layout é force-dynamic).
+  const boot = await getBootstrap();
+  const session = boot.session;
   if (!session.authenticated) {
-    redirect("/login");
+    redirect(await loginPath());
   }
   // staff da empresa: troca de senha obrigatória no 1º acesso
   // (não vale quando o master está impersonando — ele não troca a senha do dono)
@@ -127,7 +77,7 @@ export default async function AppLayout({
   const isPlatformOwner = session.master?.platformRole !== "support";
   const isOrgAdmin = session.user?.isOrgAdmin ?? false;
   // widget Chatwoot - master config define se aparece e com qual token
-  const chatwootCfg = isMaster ? await getChatwootEmbedConfig() : null;
+  const chatwootCfg = boot.chatwoot;
 
   // branding da empresa (contratante) — logo + cor principal no nivel da org
   let orgBrand: { primary: string | null; logoUrl: string | null } | null = null;
@@ -136,6 +86,9 @@ export default async function AppLayout({
   // módulos habilitados pelo plano: null = tudo liberado; array = só os listados
   let enabledModules: string[] | null = null;
   let orgStatus: string | null = null;
+  // slug da empresa: vira a "empresa deste aparelho" (cookie nv_org), pra que
+  // sair e sessão expirada devolvam o usuário pro login DELA, não pro genérico.
+  let orgSlug: string | null = null;
   let orgNiche: string | null = null;
   // "product skin": marca a org como produto Central de Leads (casca enxuta).
   let productSkin: string | null = null;
@@ -145,14 +98,17 @@ export default async function AppLayout({
   // Sub-módulos por empresa (Fase 2 + extensão): overrides default-on do master.
   // Mapa genérico { "<modulo>.<sub>": false }.
   let submoduleFeatures: Record<string, boolean> = {};
-  if (session.user?.orgId) {
-    const ores = await apiFetch<{ organization: any }>(`/api/organizations/me`);
-    const org = ores.data?.organization;
+  // recursos do módulo de produção (mapa próprio, separado dos sub-módulos)
+  let productionFeatures: Record<string, boolean> = {};
+  {
+    const org = boot.organization;
     if (org) {
       orgStatus = org.status ?? null;
+      orgSlug = typeof org.slug === "string" ? org.slug : null;
       orgNiche = org.niche ?? null;
       nicheHidden = Array.isArray(org.nicheHiddenModules) ? org.nicheHiddenModules : null;
       if (org.submoduleFeatures && typeof org.submoduleFeatures === "object") submoduleFeatures = org.submoduleFeatures;
+      if (org.productionFeatures && typeof org.productionFeatures === "object") productionFeatures = org.productionFeatures;
       orgBrand = {
         primary: org.primaryColor ? hexToRgbTriplet(org.primaryColor) : null,
         logoUrl: org.logoUrl ?? null,
@@ -217,6 +173,32 @@ export default async function AppLayout({
         ...(opVisible ? [{ title: "Operação", items: operacaoItems }] : []),
         ...(opVisible ? adminCats : []),
       ];
+  // ------------------------------------------------------------------ //
+  // O PORTEIRO DA ROTA
+  //
+  // Esconder do menu não é barrar: `/app/producao/costureiras` abria pela URL
+  // mesmo com o sub-módulo desligado. A MESMA conta que monta o menu decide
+  // agora se a rota pode abrir — mesma tabela, mesmos quatro filtros.
+  //
+  // O master puro (sem impersonar) passa direto: o painel dele é outro.
+  // ------------------------------------------------------------------ //
+  const caminhoAtual = (await headers()).get("x-nv-path") ?? "";
+  const bloqueio = opVisible && caminhoAtual.startsWith("/app")
+    ? bloqueioDaRota(caminhoAtual, {
+        // a MESMA lista que monta o menu, logo acima
+        telas: [...NAV_OPERACAO, ...NAV_ADMIN.flatMap((c) => c.items)],
+        enabledModules,
+        nicheHidden,
+        submoduleFeatures,
+        temPermissao: (perm) => can(session, perm),
+        nichoPermite: (key) => moduleAllowedForNiche(key, orgNiche),
+      })
+    : null;
+  // sem o módulo no plano → a página que explica e vende
+  if (bloqueio?.motivo === "plano" && bloqueio.moduleKey) {
+    redirect(`/app/modulos/${bloqueio.moduleKey}`);
+  }
+
   // módulos bloqueados (deduplicados por chave) → seção "não liberados"
   const lockedKeys = new Set<string>();
   for (const cat of visibleCats) for (const it of cat.items) if (it.key && locked(it.key)) lockedKeys.add(it.key);
@@ -225,18 +207,13 @@ export default async function AppLayout({
   const availItems = (items: NavItem[]) => items.filter((it) => !it.key || !locked(it.key));
 
   // atalhos SSO/acesso rápido (Chatwoot/GLPI) provisionados pra empresa
-  let shortcuts: Array<{ provider: string; label: string; url: string }> = [];
-  if (isOrgAdmin) {
-    const sc = await apiFetch<{ items: any[] }>(`/api/company-integrations/shortcuts`);
-    shortcuts = sc.data?.items ?? [];
-  }
+  const shortcuts = boot.shortcuts;
 
   // branding da loja ativa — tem precedencia sobre o da org (loja > empresa)
   let storeBrand: { primary: string | null; logoUrl: string | null } | null = null;
   let companyTheme: "light" | "dark" | null = null;
-  if (session.user?.storeId) {
-    const sres = await apiFetch<{ store: any }>(`/api/stores/${session.user.storeId}`);
-    const st = sres.data?.store;
+  {
+    const st = boot.store;
     if (st) {
       storeBrand = {
         primary: st.themePrimaryColor ? hexToRgbTriplet(st.themePrimaryColor) : null,
@@ -251,9 +228,8 @@ export default async function AppLayout({
   // ciclo de cancelamento: 30d carência (acesso normal) → 180d só leitura → encerrado
   let cancelPhase: "active" | "grace" | "readonly" | "ended" = "active";
   let cancelUntil: string | null = null;
-  if (session.user?.orgId && !isMaster) {
-    const subRes = await apiFetch<{ subscription: any }>(`/api/subscriptions/current`);
-    const sub = subRes.data?.subscription;
+  {
+    const sub = boot.subscription;
     if (sub?.status === "canceled" && sub.canceledAt) {
       const days = (Date.now() - new Date(sub.canceledAt).getTime()) / 86400_000;
       const fmt = (d: number) => new Date(new Date(sub.canceledAt).getTime() + d * 86400_000).toLocaleDateString("pt-BR");
@@ -315,6 +291,39 @@ export default async function AppLayout({
     );
   }
 
+  // ---------------------------------------------------------------------------
+  // BUSCA Ctrl+K — a lista sai do MESMO menu que este usuário vê (já filtrado
+  // por nicho, permissão, sub-módulo e plano). Nada aparece na busca que não
+  // apareceria na lateral.
+  // ---------------------------------------------------------------------------
+  const paletteItems: PaletteItem[] = [
+    { label: "Painel", href: "/app", group: "Geral", keywords: "inicio home visao geral dashboard" },
+    ...visibleCats.flatMap((cat) =>
+      availItems(cat.items).map((it) => ({ label: it.label, href: it.href, group: cat.title })),
+    ),
+    ...lockedList.map((m) => ({
+      label: m.label,
+      href: `/app/modulos/${m.key}`,
+      group: "Não liberado",
+      locked: true,
+      keywords: "plano assinatura liberar contratar",
+    })),
+    ...shortcuts.map((sc) => ({ label: sc.label, href: sc.url, group: "Atalhos", external: true })),
+    ...NAV_CONTA.filter((it) => !it.soUsuario || session.user).map((it) => ({
+      label: it.label,
+      href: it.href,
+      group: "Conta",
+      keywords: "senha perfil 2fa mfa chamado suporte duvida",
+    })),
+    ...(isMaster
+      ? [
+          ...NAV_MASTER_TOP.map((it) => ({ label: it.label, href: it.href, group: "Master" })),
+          ...(isPlatformOwner ? NAV_MASTER_OWNER.map((it) => ({ label: it.label, href: it.href, group: "Master" })) : []),
+          ...NAV_MASTER_BOTTOM.map((it) => ({ label: it.label, href: it.href, group: "Master" })),
+        ]
+      : []),
+  ];
+
   // softphone app-wide: ativa quando o módulo voip não está bloqueado pelo plano
   // e o usuário é da empresa (master/impersonando não toca como operador).
   const softphoneEnabled = !isMaster && !locked("voip");
@@ -324,7 +333,9 @@ export default async function AppLayout({
     <AppPwa />
     <SoftphoneProvider enabled={softphoneEnabled}>
     {isCentralLeads && <CentralLeadsBoot />}
-    <div className="flex min-h-screen">
+    <RememberOrg slug={orgSlug} />
+    <TableCards />
+    <CommandPalette items={paletteItems} />
       {brandPrimary && (
         <style
           dangerouslySetInnerHTML={{
@@ -342,7 +353,25 @@ export default async function AppLayout({
           }}
         />
       )}
-      <aside className="scroll-themed sticky top-0 hidden h-screen w-60 shrink-0 overflow-y-auto border-r border-line bg-surface/80 px-4 py-6 backdrop-blur-xl md:block">
+    <ViewerProvider value={{ isMaster, isOrgAdmin, submoduleFeatures, productionFeatures }}>
+    <AppShell
+      logo={
+        <Link href="/app" className="block min-w-0 transition-opacity hover:opacity-80" aria-label="Voltar ao painel">
+          {companyLogo ? (
+            <img src={companyLogo} alt="logo" className="h-8 w-auto max-w-[160px] object-contain" />
+          ) : (
+            <BrandLogo size="md" />
+          )}
+        </Link>
+      }
+      actions={
+        <>
+          <CommandPaletteButton variant="icon" />
+          <ThemeToggle />
+        </>
+      }
+      sidebar={
+        <>
         <Link
           href="/app"
           className="mb-8 block px-1 transition-opacity hover:opacity-80"
@@ -354,8 +383,11 @@ export default async function AppLayout({
             <BrandLogo size="md" />
           )}
         </Link>
-        <SidebarCountsProvider>
+        <CommandPaletteButton />
+        <SidebarCountsProvider temEmpresa={opVisible}>
         <nav className="space-y-1 text-sm">
+          {/* o que ESTA pessoa fixou vem antes de tudo */}
+          <SidebarFavorites items={paletteItems} />
           <SidebarLink href="/app">Painel</SidebarLink>
 
           {/* categorias recolhíveis: só itens liberados; bloqueados vão pra
@@ -394,78 +426,29 @@ export default async function AppLayout({
           )}
 
           <div className="my-4 border-t border-line" />
-          <SidebarLink href="/app/suporte">Suporte</SidebarLink>
-          {/* 2FA é um recurso de usuário da empresa; o master tem seu próprio
-              fluxo (não usar a página de perfil do usuário, que exige session.user
-              e jogava o master pro login). */}
-          {session.user && (
-            <>
-              <div className="my-4 border-t border-line" />
-              <SidebarLink href="/app/perfil/seguranca">
-                Minha segurança (2FA)
-              </SidebarLink>
-            </>
-          )}
+          {/* Conta e 2FA são recursos de usuário da empresa; o master tem seu
+              próprio fluxo (a página de perfil exige session.user e jogava o
+              master pro login). */}
+          {NAV_CONTA.filter((it) => !it.soUsuario || session.user).map((it) => (
+            <SidebarLink key={it.href} href={it.href}>{it.label}</SidebarLink>
+          ))}
           {isMaster && (
             <>
               <div className="my-4 border-t border-line" />
               <p className="px-3 text-[10px] uppercase tracking-wider text-muted">
                 Master
               </p>
-              <SidebarLink href="/app/platform">Visão geral</SidebarLink>
-              <SidebarLink href="/app/platform/organizations">
-                Organizações
-              </SidebarLink>
-              <SidebarLink href="/app/platform/contatos">
-                Leads do site
-              </SidebarLink>
-              <SidebarLink href="/app/platform/suporte">
-                Suporte (chamados)
-              </SidebarLink>
+              {NAV_MASTER_TOP.map((it) => (
+                <SidebarLink key={it.href} href={it.href}>{it.label}</SidebarLink>
+              ))}
               <MasterViewCompany />
-              {isPlatformOwner && (
-                <>
-                  <SidebarLink href="/app/platform/settings">
-                    Identidade & Branding
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/plans">
-                    Planos
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/niches">
-                    Nichos de mercado
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/modulos">
-                    Preços de módulos
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/financeiro">
-                    Financeiro (assinaturas)
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/ia">
-                    Aprendizado de IA
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/contratos">
-                    Contratos (empresas)
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/integrations">
-                    Integrações
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/fiscal-ref">
-                    Tabelas fiscais (NCM/CEST)
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/credentials">
-                    🔒 Credenciais
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/team">
-                    Equipe master
-                  </SidebarLink>
-                  <SidebarLink href="/app/platform/audit">
-                    Auditoria
-                  </SidebarLink>
-                </>
-              )}
-              <SidebarLink href="/app/platform/grants">
-                Acessos às Specs
-              </SidebarLink>
+              {isPlatformOwner &&
+                NAV_MASTER_OWNER.map((it) => (
+                  <SidebarLink key={it.href} href={it.href}>{it.label}</SidebarLink>
+                ))}
+              {NAV_MASTER_BOTTOM.map((it) => (
+                <SidebarLink key={it.href} href={it.href}>{it.label}</SidebarLink>
+              ))}
             </>
           )}
         </nav>
@@ -488,9 +471,9 @@ export default async function AppLayout({
           )}
           <LogoutButton isMaster={isMaster} className="mt-2" />
         </div>
-      </aside>
-
-      <main className="mx-auto w-full max-w-[1320px] flex-1 px-6 py-8 md:px-10">
+        </>
+      }
+    >
         <DialogProvider>
           {session.impersonating && <ImpersonationBanner orgName={session.impersonating.orgName} />}
           {cancelPhase === "grace" && (
@@ -503,10 +486,14 @@ export default async function AppLayout({
               <strong>Modo somente-leitura.</strong> Sua assinatura foi cancelada — você pode consultar seus dados até <strong>{cancelUntil}</strong>, mas não movimentar (vendas, pedidos, estoque). <a href="/app/billing" className="underline">Reativar assinatura</a>.
             </div>
           )}
-          <InternalAlerts />
-          <RouteFade>{children}</RouteFade>
+          <InternalAlerts temEmpresa={opVisible} />
+          <RouteFade>
+            {bloqueio ? <RotaBloqueada {...explicacao(bloqueio)} /> : children}
+          </RouteFade>
         </DialogProvider>
-      </main>
+    </AppShell>
+    </ViewerProvider>
+
 
       {/* marca d'agua do dono do SaaS (canto inferior direito, dark/white) */}
       <SaasWatermark />
@@ -522,7 +509,6 @@ export default async function AppLayout({
           }}
         />
       )}
-    </div>
     </SoftphoneProvider>
     </LoadingProvider>
   );

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { ProspectorService } from "./prospector.service";
+import { RequireModule, RequireSubmodule } from "../common/modulo.guard";
 
 const FilterSchema = z.object({ k: z.string().min(1).max(40), v: z.string().min(1).max(60) });
 const CampaignSchema = z.object({
@@ -19,6 +20,8 @@ const CampaignSchema = z.object({
 });
 
 @Controller("prospector")
+@RequireModule("crm")
+@RequireSubmodule("crm.prospector")
 export class ProspectorController {
   constructor(private readonly svc: ProspectorService) {}
 

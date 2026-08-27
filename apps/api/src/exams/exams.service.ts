@@ -161,12 +161,12 @@ export class ExamsService {
       const mp = await this.orgIntegrations.resolveMp(orgId);
       if (!mp) throw new AppError(ErrorCode.ValidationFailed, "Mercado Pago não configurado nesta empresa", 400);
       const adapter = new MercadoPagoOrgAdapter(mp.accessToken);
-      let email = "sememail@yugochat.com.br";
+      let email = "sememail@vision.norty.com.br";
       if (input.customerId) {
         const c = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.customer.findFirst({ where: { id: input.customerId! }, select: { email: true } }));
         if (c?.email) email = c.email;
       }
-      const notifUrl = `https://${process.env.DOMAIN ?? "yugochat.com.br"}/api/payments/webhooks/mercadopago/${orgId}`;
+      const notifUrl = `https://${process.env.DOMAIN ?? "vision.norty.com.br"}/api/payments/webhooks/mercadopago/${orgId}`;
       for (const line of created.lines) {
         if (line.method === "pix" && line.provider === "mp" && line.status === "pending") {
           const r = await adapter.createPixPayment({

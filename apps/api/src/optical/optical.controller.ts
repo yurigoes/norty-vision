@@ -6,6 +6,7 @@ import { CurrentContext, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { StorageService } from "../storage/storage.service";
 import { OpticalService } from "./optical.service";
+import { RequireModule } from "../common/modulo.guard";
 
 const EXAM_MIME = new Set(["image/png", "image/jpeg", "image/webp", "application/pdf"]);
 
@@ -46,6 +47,7 @@ const ConferSchema = z.object({
 });
 
 @Controller("optical")
+@RequireModule("pedidos_lente")
 export class OpticalController {
   constructor(
     private readonly svc: OpticalService,

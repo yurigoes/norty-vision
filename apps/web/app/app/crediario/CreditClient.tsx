@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useState, useTransition, type FormEvent } from "react";
+import { usePaginacao, Paginacao, PorPagina, useIrParaONovo } from "../../../components/Paginacao";
+import { useListaServidor } from "../../../lib/useListaServidor";
+import { CarregarMais } from "../../../components/CarregarMais";
 import { useRouter } from "next/navigation";
 import { useDialog } from "../../../components/SystemDialog";
 import { openDocBlob } from "../../../lib/openDoc";
@@ -43,10 +46,12 @@ interface Application {
 
 export function CreditClient({
   initialAccounts,
+  totalAccounts = 0,
   initialRequests,
   initialApplications,
 }: {
   initialAccounts: Account[];
+  totalAccounts?: number;
   initialRequests: LimitRequest[];
   initialApplications: Application[];
 }) {
@@ -54,6 +59,13 @@ export function CreditClient({
   const dialog = useDialog();
   const [isPending, startTransition] = useTransition();
   const [tab, setTab] = useState<"accounts" | "requests" | "applications">("accounts");
+  // contas: a página traz 50 e o resto vem por pedaços, com o total do servidor
+  const contas = useListaServidor<Account>({ rota: "/api/credit/accounts", inicial: initialAccounts, totalInicial: totalAccounts, passo: 50, buscavel: false });
+  // as três abas montavam TODAS as linhas de uma vez; agora cortam em páginas
+  const pagContas = usePaginacao(contas.itens, 50);
+  useIrParaONovo(pagContas, contas.itens.length); // o pedaço novo entra na página seguinte
+  const pagPedidos = usePaginacao(initialRequests, 50);
+  const pagKyc = usePaginacao(initialApplications, 50);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [docVal, setDocVal] = useState("");
@@ -94,7 +106,7 @@ export function CreditClient({
       body: JSON.stringify(approvedLimitCents ? { approvedLimitCents } : {}),
       credentials: "include",
     });
-    if (res.ok) startTransition(() => router.refresh());
+    if (res.ok) { startTransition(() => router.refresh()); contas.refazer(); }
   }
 
   async function onCreate(e: FormEvent<HTMLFormElement>) {
@@ -128,14 +140,14 @@ export function CreditClient({
       body: JSON.stringify({}),
       credentials: "include",
     });
-    if (res.ok) startTransition(() => router.refresh());
+    if (res.ok) { startTransition(() => router.refresh()); contas.refazer(); }
   }
 
   return (
     <div className="space-y-6">
       <nav className="flex gap-1 border-b border-line">
         <TabBtn active={tab === "accounts"} onClick={() => setTab("accounts")}>
-          Contas ({initialAccounts.length})
+          Contas ({contas.total || contas.itens.length})
         </TabBtn>
         <TabBtn active={tab === "requests"} onClick={() => setTab("requests")}>
           Pedidos de limite ({initialRequests.length})
@@ -197,8 +209,17 @@ export function CreditClient({
             </form>
           )}
 
+          {contas.itens.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[11px] text-muted">
+                {pagContas.total} conta(s){pagContas.porPagina !== 0 ? ` · mostrando ${pagContas.pagina.length} · página ${pagContas.paginaAtual}/${pagContas.totalPaginas}` : ""}
+              </p>
+              <PorPagina p={pagContas} className="ml-auto py-1 text-xs" />
+            </div>
+          )}
+
           <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-cards">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
                   <th className="px-4 py-3 font-medium">Titular</th>
@@ -211,9 +232,9 @@ export function CreditClient({
                 </tr>
               </thead>
               <tbody>
-                {initialAccounts.length === 0 ? (
+                {contas.itens.length === 0 ? (
                   <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">Nenhuma conta.</td></tr>
-                ) : initialAccounts.map((a) => {
+                ) : pagContas.pagina.map((a) => {
                   const available = Number(a.limitCents) - Number(a.usedCents);
                   return (
                     <tr key={a.id} className="border-t border-line transition hover:bg-surface-2">
@@ -232,6 +253,15 @@ export function CreditClient({
               </tbody>
             </table>
           </div>
+          <Paginacao p={pagContas} />
+          <CarregarMais
+            mostrando={contas.itens.length}
+            total={contas.total}
+            temMais={contas.temMais}
+            carregando={contas.carregando}
+            aoCarregar={contas.carregarMais}
+            substantivo="conta"
+          />
         </>
       )}
 
@@ -239,7 +269,7 @@ export function CreditClient({
         <div className="space-y-3">
           {initialRequests.length === 0 ? (
             <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhum pedido pendente.</p>
-          ) : initialRequests.map((r) => (
+          ) : pagPedidos.pagina.map((r) => (
             <div key={r.id} className="card">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -257,6 +287,7 @@ export function CreditClient({
               </div>
             </div>
           ))}
+          <Paginacao p={pagPedidos} />
         </div>
       )}
 
@@ -267,7 +298,7 @@ export function CreditClient({
               Nenhuma aplicação de crédito pendente. Quando um cliente pedir
               limite pelo painel (com documentos), aparece aqui.
             </p>
-          ) : initialApplications.map((a) => (
+          ) : pagKyc.pagina.map((a) => (
             <div key={a.id} className="card">
               <div className="flex items-start justify-between gap-4">
                 <div>
@@ -304,6 +335,7 @@ export function CreditClient({
               </div>
             </div>
           ))}
+          <Paginacao p={pagKyc} />
         </div>
       )}
 

@@ -96,6 +96,17 @@
     visibility: hidden;
   }
 
+  /* iPhone/iPad com notch: com viewport-fit=cover a tela vai até a borda —
+     estas margens evitam que texto e botões sumam embaixo do recorte quando
+     o aparelho está deitado. As margens de cima/baixo ficam por conta de
+     quem tem barra fixa (AppShell, telas de entrada). */
+  @supports (padding: env(safe-area-inset-left)) {
+    body {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+  }
+
   /* scroll suave em ancoras + foco visivel respeitando a brand */
   html {
     scroll-behavior: smooth;
@@ -154,6 +165,123 @@
     @apply rounded-xl px-4 py-2 text-sm font-semibold text-white transition hover:opacity-95 active:scale-[.98] disabled:opacity-50;
     background: var(--grad-brand);
   }
+  /* ========== TABELA VIRA CARTÃO NO CELULAR ========== */
+  /* Abaixo de 768px a linha da tabela deixa de rolar na horizontal e vira um
+     cartão empilhado: cada célula em uma linha, com o nome da coluna à
+     esquerda e o valor à direita.
+
+     `screen and` de propósito: na IMPRESSÃO a tabela continua tabela, mesmo
+     em papel estreito.
+
+     O rótulo sai do `data-label`, que o `components/TableCards.tsx` escreve a
+     partir do <thead> — assim nenhuma das ~58 tabelas precisou ser reescrita
+     célula por célula. Célula sem rótulo (colSpan, "nenhum resultado") ocupa
+     a linha inteira. */
+  @media screen and (max-width: 767px) {
+    .table-cards,
+    .table-cards tbody,
+    .table-cards tfoot,
+    .table-cards tr {
+      display: block;
+      width: 100%;
+    }
+    .table-cards thead {
+      display: none;
+    }
+    /* O contêiner que existia só pra rolar a tabela some no celular: com as
+       linhas já em cartão, ele viraria caixa em volta de caixa, com borda
+       dupla. `:has()` porque esse contêiner é irmão do CSS, não filho. */
+    :where(div):has(> table.table-cards) {
+      overflow: visible;
+      border: 0;
+      border-radius: 0;
+      padding: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .table-cards tr {
+      border: 1px solid rgb(var(--line));
+      border-radius: 14px;
+      background: rgb(var(--surface));
+      padding: 10px 14px;
+      margin-bottom: 10px;
+    }
+    .table-cards tr:last-child {
+      margin-bottom: 0;
+    }
+    .table-cards td {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px 14px;
+      width: auto;
+      padding: 5px 0;
+      border: 0;
+      text-align: right;
+      overflow-wrap: anywhere; /* e-mail e documento longos não estouram o cartão */
+    }
+    .table-cards td::before {
+      content: attr(data-label);
+      flex: 0 0 auto;
+      max-width: 45%;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgb(var(--muted));
+    }
+    /* sem rótulo (colSpan, linha de "nenhum resultado", ações): linha inteira */
+    .table-cards td:not([data-label]) {
+      justify-content: flex-start;
+      text-align: left;
+    }
+    .table-cards td:not([data-label])::before {
+      display: none;
+    }
+  }
+
+  /* ========== ESQUELETO DE CARREGAMENTO ========== */
+  /* Bloco cinza que ocupa o lugar do conteúdo enquanto a tela carrega. O
+     brilho corre da esquerda pra direita — sinal de "vem vindo", não de
+     "travou". Some junto com prefers-reduced-motion. */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px;
+    background: rgb(var(--muted) / 0.13);
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgb(var(--fg) / 0.06),
+      transparent
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.6s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton::after { animation: none; }
+  }
+
+  /* ========== ESTRELA DE FAVORITO (menu) ========== */
+  /* Some no repouso pra não poluir uma lista de 70 itens; aparece no hover e
+     no foco por teclado. Item já fixado mantém a estrela sempre visível — é o
+     que mostra o estado. Em aparelho SEM MOUSE o hover nunca acontece, então
+     ela fica esmaecida em vez de invisível pra sempre. */
+  .fav-star { opacity: 0; }
+  .group:hover .fav-star,
+  .fav-star:focus-visible,
+  .fav-star[data-on="true"] { opacity: 1; }
+  @media (hover: none) {
+    .fav-star { opacity: 0.4; }
+  }
+
   .input-base {
     @apply w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm text-fg outline-none transition placeholder:text-muted focus:border-brand focus:ring-2;
     --tw-ring-color: rgb(var(--ring) / 0.35);

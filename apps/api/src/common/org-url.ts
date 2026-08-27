@@ -2,13 +2,13 @@
  * URL pública por empresa (slug → subdomínio).
  *
  * Toda notificação ao CLIENTE precisa apontar pro portal da empresa dele, e não
- * pro apex "yugochat.com.br". A empresa apex (slug = PLATFORM_ORG_SLUG, default
+ * pro apex "vision.norty.com.br". A empresa apex (slug = PLATFORM_ORG_SLUG, default
  * "yugo") usa o domínio raiz; qualquer outra usa "<slug>.<raiz>".
  *
- *   yugo         → https://yugochat.com.br
- *   zito-oticas  → https://zito-oticas.yugochat.com.br
+ *   yugo         → https://vision.norty.com.br
+ *   zito-oticas  → https://zito-oticas.vision.norty.com.br
  *
- * O domínio raiz vem de DOMAIN (fallback yugochat.com.br).
+ * O domínio raiz vem de DOMAIN (fallback vision.norty.com.br).
  */
 export function orgBaseUrl(slug?: string | null): string {
   const root = (process.env.DOMAIN ?? "vision.norty.com.br").replace(/^https?:\/\//, "").replace(/\/+$/, "");

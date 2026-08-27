@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PRODUCT_NAME } from "../lib/brand";
 
 interface BrandLogoClientProps {
   size?: "sm" | "md" | "lg" | "xl";
@@ -38,7 +39,7 @@ export function BrandLogoClient({
       .then((d) => {
         const settings = d?.settings ?? {};
         cachedSettings = {
-          productName: settings.productName ?? "yugochat",
+          productName: settings.productName ?? PRODUCT_NAME,
           logoUrl: settings.logoUrl ?? null,
           logoDarkUrl: settings.logoDarkUrl ?? null,
         };
@@ -46,7 +47,7 @@ export function BrandLogoClient({
       })
       .catch(() => {
         cachedSettings = {
-          productName: "yugochat",
+          productName: PRODUCT_NAME,
           logoUrl: null,
           logoDarkUrl: null,
         };

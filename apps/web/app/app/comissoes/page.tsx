@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { ComissoesClient } from "./ComissoesClient";
+import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
 export default async function ComissoesPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
@@ -22,14 +24,11 @@ export default async function ComissoesPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Vendas</p>
-        <h1 className="mt-1 text-3xl font-semibold">Comissões & vendas por vendedor</h1>
-        <p className="mt-2 text-muted">
-          Acompanhe as vendas por vendedor no período e configure o percentual
-          de comissão de cada um.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Vendas"
+        title={<>Comissões & vendas por vendedor</>}
+        description="Acompanhe as vendas por vendedor no período e configure o percentual de comissão de cada um."
+      />
 
       <ComissoesClient sellers={data?.items ?? []} />
     </div>

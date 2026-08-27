@@ -1,134 +1,154 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-
-interface Brand {
-  name: string;
-  slug: string;
-  logoUrl: string | null;
-  primaryColor: string | null;
-  themeMode?: string | null;
-}
-
-function applyBrandColor(hex: string | null) {
-  if (hex && /^#[0-9a-fA-F]{6}$/.test(hex)) {
-    const int = parseInt(hex.slice(1), 16);
-    document.documentElement.style.setProperty("--brand", `${(int >> 16) & 255} ${(int >> 8) & 255} ${int & 255}`);
-  }
-}
-function applyTheme(mode: string | null | undefined) {
-  if (mode !== "light" && mode !== "dark") return;
-  try { if (localStorage.getItem("yugo-theme")) return; } catch { return; }
-  const r = document.documentElement; r.classList.remove("light", "dark"); r.classList.add(mode);
-}
+import { use, useState } from "react";
+import { PortalAuthLayout } from "../../../../components/PortalAuthLayout";
+import { useOrgBrand } from "../../../../lib/useOrgBrand";
+import { rememberOrgSlug, safeNext } from "../../../../lib/orgMemory";
 
 /**
- * Login da Equipe/administração com escopo no slug da empresa. Só passa quem
+ * Login da EQUIPE/ADMINISTRAÇÃO com escopo no slug da empresa. Só passa quem
  * tem membership ativo NESTA empresa (o backend rejeita os demais, mesmo admin
  * de outra). Segue a marca e o tema da empresa. O master continua só no apex.
+ *
+ * Depois de entrar vai pro `?next=` (a página que o usuário tentou abrir antes
+ * da sessão expirar) ou pro painel. O slug fica lembrado no aparelho, então
+ * "Sair" volta exatamente pra esta tela — e não pro /login genérico.
  */
 export default function TeamSlugLogin({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const router = useRouter();
-  const [brand, setBrand] = useState<Brand | null>(null);
+  const { brand } = useOrgBrand(slug);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPass, setShowPass] = useState(false);
   const [mfaCode, setMfaCode] = useState("");
   const [needMfa, setNeedMfa] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch(`/api/organizations/public/by-slug/${slug}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        const org: Brand | undefined = d?.organization;
-        if (org) { setBrand(org); applyBrandColor(org.primaryColor); applyTheme(org.themeMode); }
-      })
-      .catch(() => undefined);
-  }, [slug]);
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true); setErr(null);
+    setBusy(true);
+    setErr(null);
     try {
       const res = await fetch("/api/auth/login", {
-        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ email: email.trim(), password, mfaCode: mfaCode || undefined, orgSlug: slug }),
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          mfaCode: mfaCode || undefined,
+          orgSlug: slug,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
-        if (data?.error?.code === "MFA_REQUIRED") { setNeedMfa(true); setErr("Informe o código 2FA."); return; }
+        if (data?.error?.code === "MFA_REQUIRED") {
+          setNeedMfa(true);
+          setErr("Informe o código 2FA do seu aplicativo autenticador.");
+          return;
+        }
         throw new Error(data?.error?.message ?? "Falha no login");
       }
-      router.push("/app");
-    } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
+      rememberOrgSlug(slug);
+      const next = safeNext(new URLSearchParams(window.location.search).get("next"));
+      window.location.assign(next ?? "/app");
+    } catch (e: any) {
+      setErr(e.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
-  return (
-    <div className="grid min-h-screen grid-cols-[1.05fr_0.95fr] max-md:grid-cols-1">
-      {/* MARCA — painel premium com arte/gradiente */}
-      <aside className="relative flex flex-col overflow-hidden bg-[#060a15] p-12 text-white max-md:hidden">
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(900px 500px at 70% 8%, rgba(37,99,235,.45), transparent 60%), radial-gradient(720px 520px at 8% 92%, rgba(6,182,212,.30), transparent 55%)",
-          }}
-        />
-        <div className="relative flex items-center gap-3">
-          {brand?.logoUrl ? (
-            <img src={brand.logoUrl} alt={brand.name} className="h-9 w-auto max-w-[200px] object-contain" />
-          ) : (
-            <img src="/brand/norty-vision.png" alt="Norty Vision" className="h-9 w-auto object-contain" />
-          )}
-        </div>
-        <div className="relative my-auto">
-          <h2 className="max-w-md text-4xl font-extrabold leading-tight tracking-tight">
-            Toque a operação{" "}
-            <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-              por dentro
-            </span>
-            .
-          </h2>
-          <p className="mt-4 max-w-md text-slate-300">
-            {brand?.name ? `Acesso interno da ${brand.name} — agenda, vendas e financeiro.` : "Acesso interno da empresa — agenda, vendas e financeiro."}
-          </p>
-        </div>
-        <div className="relative text-xs text-slate-500">Acesso restrito · YUGO</div>
-      </aside>
+  const company = brand?.name ?? "sua empresa";
 
-      {/* FORM */}
-      <main className="grid place-items-center bg-bg p-6 md:p-10">
-        <form onSubmit={submit} className="w-full max-w-sm">
-          <div className="mb-8 flex justify-center md:hidden">
-            {brand?.logoUrl ? (
-              <img src={brand.logoUrl} alt={brand.name} className="h-12 w-auto max-w-[200px] object-contain" />
-            ) : (
-              <img src="/brand/norty-vision.png" alt="Norty Vision" className="h-9 w-auto object-contain" />
-            )}
-          </div>
-          <h1 className="text-2xl font-extrabold tracking-tight">Equipe / administração</h1>
-          <p className="mt-1 text-sm text-muted">{brand?.name ? `Acesso interno da ${brand.name}.` : "Acesso interno da empresa."}</p>
-          <label className="mt-5 block">
-            <span className="mb-1.5 block text-xs font-semibold text-muted">E-mail</span>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input-base" />
-          </label>
+  return (
+    <PortalAuthLayout
+      portal="equipe"
+      slug={slug}
+      title="Entrar na operação"
+      subtitle={`Acesso interno da ${company} — agenda, vendas e financeiro.`}
+      headline={
+        <>
+          Toque a operação{" "}
+          <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+            por dentro
+          </span>
+          .
+        </>
+      }
+      tagline={`Agenda, vendas, caixa e financeiro da ${company} num painel só.`}
+      hint={
+        <a href="/recuperar-senha" className="transition-colors hover:text-fg">
+          Esqueci minha senha
+        </a>
+      }
+    >
+      <form onSubmit={submit} noValidate>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold text-muted">E-mail</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            autoCapitalize="none"
+            placeholder="voce@empresa.com.br"
+            required
+            className="input-base py-3"
+          />
+        </label>
+
+        <label className="mt-3 block">
+          <span className="mb-1.5 block text-xs font-semibold text-muted">Senha</span>
+          <span className="relative block">
+            <input
+              type={showPass ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              required
+              className="input-base py-3 pr-16"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-[11px] font-semibold text-muted transition hover:text-fg"
+            >
+              {showPass ? "ocultar" : "ver"}
+            </button>
+          </span>
+        </label>
+
+        {needMfa && (
           <label className="mt-3 block">
-            <span className="mb-1.5 block text-xs font-semibold text-muted">Senha</span>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="input-base" />
+            <span className="mb-1.5 block text-xs font-semibold text-muted">Código 2FA</span>
+            <input
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              autoFocus
+              placeholder="000000"
+              className="input-base py-3 text-center text-lg tracking-[0.4em]"
+            />
           </label>
-          {needMfa && (
-            <label className="mt-3 block">
-              <span className="mb-1.5 block text-xs font-semibold text-muted">Código 2FA</span>
-              <input value={mfaCode} onChange={(e) => setMfaCode(e.target.value)} inputMode="numeric" className="input-base text-center text-lg tracking-widest" />
-            </label>
-          )}
-          {err && <p className="mt-3 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{err}</p>}
-          <button disabled={busy} className="btn-grad mt-5 w-full py-3 text-[15px]">{busy ? "Entrando..." : "Entrar"}</button>
-        </form>
-      </main>
-    </div>
+        )}
+
+        {err && (
+          <p
+            role="alert"
+            className="mt-3 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger"
+          >
+            {err}
+          </p>
+        )}
+
+        <button disabled={busy} className="btn-grad mt-5 w-full py-3.5 text-[15px]">
+          {busy ? "Entrando..." : "Entrar"}
+        </button>
+      </form>
+    </PortalAuthLayout>
   );
 }

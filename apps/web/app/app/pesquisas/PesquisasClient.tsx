@@ -77,7 +77,7 @@ export function PesquisasClient() {
         <p className="rounded-xl border border-line bg-surface p-6 text-sm text-muted">Nenhuma pesquisa no período.</p>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead>
               <tr className="border-b border-line bg-surface-2 text-left text-[10px] uppercase tracking-wider text-muted">
                 <th className="px-4 py-3">Origem</th>

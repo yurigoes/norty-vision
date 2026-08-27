@@ -2,7 +2,7 @@
 
 // Error Boundary global. Renderizado pelo Next.js quando qualquer página
 // dispara erro não-tratado (RSC ou client). MANTÉM o branding da empresa
-// (subdomínio) — o usuário NÃO deve ver "yugochat" se acessou pelo slug
+// (subdomínio) — o usuário NÃO deve ver o nome da plataforma se acessou pelo slug
 // da empresa dele.
 //
 // Carrega o branding via /api/organizations/public/by-slug/{slug} no client

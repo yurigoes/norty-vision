@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { RolesClient } from "./RolesClient";
+import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
 export default async function PermissoesPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
@@ -23,16 +25,11 @@ export default async function PermissoesPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configuração · Permissões
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Papéis e permissões</h1>
-        <p className="mt-2 text-muted">
-          Crie papéis personalizados para sua equipe e escolha exatamente o que
-          cada um pode fazer no sistema.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Permissões"
+        title="Papéis e permissões"
+        description="Crie papéis personalizados para sua equipe e escolha exatamente o que cada um pode fazer no sistema."
+      />
 
       <RolesClient
         initialRoles={res.data?.roles ?? []}

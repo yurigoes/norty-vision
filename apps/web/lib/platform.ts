@@ -1,4 +1,5 @@
 import { cache } from "react";
+import { PRODUCT_NAME, ROOT_DOMAIN } from "./brand";
 
 export interface PublicPlatformSettings {
   productName: string;
@@ -19,10 +20,10 @@ export interface PublicPlatformSettings {
 }
 
 const DEFAULTS: PublicPlatformSettings = {
-  productName: "yugochat",
+  productName: PRODUCT_NAME,
   tagline: null,
   companyTradeName: null,
-  primaryDomain: "yugochat.com.br",
+  primaryDomain: ROOT_DOMAIN,
   primaryColor: null,
   secondaryColor: null,
   accentColor: null,

@@ -74,7 +74,9 @@ import { CrmModule } from "./crm/crm.module";
 import { ProspectorModule } from "./prospector/prospector.module";
 import { VoipModule } from "./voip/voip.module";
 import { NortyLicenseModule } from "./norty-license/norty-license.module";
+import { BootstrapModule } from "./bootstrap/bootstrap.module";
 import { AuthGuard } from "./auth/auth.guard";
+import { ModuloGuard } from "./common/modulo.guard";
 
 @Module({
   imports: [
@@ -83,6 +85,7 @@ import { AuthGuard } from "./auth/auth.guard";
     StorageModule,
     HealthModule,
     AuthModule,
+    BootstrapModule,
     PlatformAuthModule,
     PlatformModule,
     UploadsModule,
@@ -155,6 +158,8 @@ import { AuthGuard } from "./auth/auth.guard";
   ],
   providers: [
     { provide: APP_GUARD, useClass: AuthGuard },
+    // depois do AuthGuard: precisa do contexto da empresa já resolvido
+    { provide: APP_GUARD, useClass: ModuloGuard },
   ],
 })
 export class AppModule {}

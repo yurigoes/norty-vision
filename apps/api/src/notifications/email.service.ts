@@ -82,7 +82,7 @@ export class EmailService {
     }
 
     // fallback: SMTP do master, mas em nome da empresa
-    const masterFrom = env.SMTP_FROM ?? env.SMTP_USER ?? "no-reply@yugochat.com.br";
+    const masterFrom = env.SMTP_FROM ?? env.SMTP_USER ?? `no-reply@${process.env.DOMAIN ?? "vision.norty.com.br"}`;
     return {
       transporter: this.getTransporter(),
       from: fromName ? `"${fromName}" <${masterFrom}>` : String(masterFrom),
@@ -115,13 +115,16 @@ export class EmailService {
     resetUrl: string;
   }): Promise<void> {
     const minutes = 30;
+    // nome do sistema vem do env (NORTY_SYSTEM_NAME) — o e-mail é a primeira
+    // coisa que a pessoa recebe: tem que chegar com o nome certo
+    const sistema = loadEnv().NORTY_SYSTEM_NAME;
     const html = `<!doctype html>
 <html lang="pt-BR">
 <body style="font-family:sans-serif;background:#0a0a0b;color:#f4f4f5;padding:24px">
   <div style="max-width:540px;margin:0 auto;background:#15151a;border-radius:12px;padding:32px">
     <h1 style="color:#60a5fa;font-size:24px;margin:0 0 16px">Redefinir senha</h1>
     <p>Olá, ${escapeHtml(opts.name)}.</p>
-    <p>Você (ou alguém) pediu para redefinir a senha do seu acesso ao yugochat.</p>
+    <p>Você (ou alguém) pediu para redefinir a senha do seu acesso ao ${escapeHtml(sistema)}.</p>
     <p style="margin:24px 0">
       <a href="${opts.resetUrl}" style="display:inline-block;background:#60a5fa;color:#0a0a0b;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:600">Definir nova senha</a>
     </p>
@@ -136,7 +139,7 @@ export class EmailService {
 </html>`;
     await this.send({
       to: opts.to,
-      subject: "yugochat — redefinir senha",
+      subject: `${sistema} — redefinir senha`,
       html,
       text: `Para redefinir sua senha, acesse: ${opts.resetUrl} (valido por ${minutes} minutos)`,
     });

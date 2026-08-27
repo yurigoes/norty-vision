@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
 import { TeamClient } from "./TeamClient";
+import { loginPath } from "../../../../lib/tenantServer";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlatformTeamPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.master || session.master.platformRole === "support") {
     return (
       <div className="max-w-3xl">
@@ -22,17 +24,11 @@ export default async function PlatformTeamPage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Master · Equipe
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Equipe master</h1>
-        <p className="mt-2 text-muted">
-          O <strong>dono</strong> tem acesso total. O <strong>suporte master</strong>{" "}
-          opera qualquer empresa, mas não acessa a configuração do SaaS
-          (identidade, planos, integrações e cofre de credenciais).
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Master · Equipe"
+        title="Equipe master"
+        description={<>O <strong>dono</strong> tem acesso total. O <strong>suporte master</strong>{" "} opera qualquer empresa, mas não acessa a configuração do SaaS (identidade, planos, integrações e cofre de credenciais).</>}
+      />
 
       <TeamClient
         initial={res.data?.items ?? []}

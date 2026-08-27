@@ -3,6 +3,10 @@ import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { CatalogClient } from "./CatalogClient";
 import { VitrineSettings, type VitrineData } from "./VitrineSettings";
+import { loginPath } from "../../../lib/tenantServer";
+import { getOrganization } from "../../../lib/bootstrap";
+import { PageHeader } from "../../../components/PageHeader";
+import { ROOT_DOMAIN } from "../../../lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -28,28 +32,24 @@ interface Lead {
 
 export default async function CatalogoPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
 
-  const [storesRes, leadsRes, orgRes] = await Promise.all([
+  const [storesRes, leadsRes, org] = await Promise.all([
     apiFetch<{ items: Store[] }>("/api/stores"),
     apiFetch<{ items: Lead[] }>("/api/marketplace/leads"),
-    apiFetch<{ organization: { slug: string; name: string } & VitrineData }>("/api/organizations/me"),
+    getOrganization<{ slug: string; name: string } & VitrineData>(),
   ]);
 
-  const org = orgRes.data?.organization ?? null;
   const orgSlug = org?.slug ?? null;
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "yugochat.com.br";
+  const rootDomain = ROOT_DOMAIN;
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Vitrine</p>
-        <h1 className="mt-1 text-3xl font-semibold">Catálogo online</h1>
-        <p className="mt-2 text-muted">
-          Publique seus produtos numa vitrine pública. Os clientes montam o pedido
-          e ele chega como lead no seu WhatsApp.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Vitrine"
+        title="Catálogo online"
+        description="Publique seus produtos numa vitrine pública. Os clientes montam o pedido e ele chega como lead no seu WhatsApp."
+      />
 
       {orgSlug && (
         <section className="mb-8 rounded-xl border border-line bg-bg/60 p-5">

@@ -7,7 +7,7 @@ import { orgSlugFromHost } from "../lib/orgSlug";
  * Tema da EMPRESA predominante em todo o slug.
  *
  * Quando o visitante está num subdomínio de empresa (ex.:
- * zitooticas.yugochat.com.br), descobrimos o slug pelo host e buscamos o
+ * zitooticas.vision.norty.com.br), descobrimos o slug pelo host e buscamos o
  * `themeMode` da empresa. Se for 'light'/'dark', aplicamos no <html> — desde a
  * vitrine até os portais (cliente/funcionário/fornecedor). Respeitamos a
  * escolha manual do visitante: se ele já trocou pelo toggle (grava

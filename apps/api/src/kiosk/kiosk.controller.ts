@@ -2,8 +2,10 @@ import { Controller, Get, HttpCode, Param, Post } from "@nestjs/common";
 import { CurrentContext, Public } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { KioskService } from "./kiosk.service";
+import { RequireModule } from "../common/modulo.guard";
 
 @Controller("kiosk")
+@RequireModule("producao")
 export class KioskController {
   constructor(private readonly svc: KioskService) {}
 

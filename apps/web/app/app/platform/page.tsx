@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
+import { PageHeader } from "../../../components/PageHeader";
+import { PRODUCT_NAME } from "../../../lib/brand";
 
 export const dynamic = "force-dynamic";
 
@@ -18,16 +20,11 @@ export default async function PlatformDashboard() {
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Master
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Painel da plataforma</h1>
-        <p className="mt-2 text-muted">
-          Você está logado como dono do yugo-platform. Aqui ficam controles
-          que afetam todas as organizações.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Master"
+        title="Painel da plataforma"
+        description={`Você está logado como dono do ${PRODUCT_NAME}. Aqui ficam controles que afetam todas as organizações.`}
+      />
 
       {/* métricas rápidas */}
       <div className="mb-8 grid gap-3 sm:grid-cols-4">

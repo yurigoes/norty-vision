@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { apiFetch } from "../../lib/api";
 import { moduleLabel, planLimitLines } from "../../lib/modules";
+import { getPublicSettings } from "../../lib/platform";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,8 @@ interface Plan {
 }
 
 export default async function PlanosPage() {
+  // e-mail de contato vem de platform_settings, não cravado no código
+  const { supportEmail } = await getPublicSettings();
   const { data } = await apiFetch<{ items: Plan[] }>("/api/plans");
   const plans = data?.items ?? [];
 
@@ -51,7 +54,10 @@ export default async function PlanosPage() {
       <footer className="mt-16 text-center text-sm text-muted">
         <p>
           Precisa de algo customizado?{" "}
-          <a href="mailto:contato@yugochat.com.br" className="text-brand hover:underline">
+          <a
+            href={supportEmail ? `mailto:${supportEmail}` : "/#contato"}
+            className="text-brand hover:underline"
+          >
             Fala com a gente
           </a>
           .

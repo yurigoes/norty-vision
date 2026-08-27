@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Param, Put } from "@nestjs/common";
-import { RequirePlatformAdmin } from "../auth/decorators";
+import { RequirePlatformAdmin, SemEmpresa } from "../auth/decorators";
 import { ModulePricingService } from "./module-pricing.service";
 
+@SemEmpresa()
 @Controller("module-pricing")
 export class ModulePricingController {
   constructor(private readonly svc: ModulePricingService) {}

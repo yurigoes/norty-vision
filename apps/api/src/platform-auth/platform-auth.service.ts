@@ -4,12 +4,14 @@ import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { ArgonService } from "../auth/argon.service";
 import { loadEnv } from "../config";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 @Injectable()
 export class PlatformAuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly argon: ArgonService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   async login(opts: {
@@ -51,6 +53,7 @@ export class PlatformAuthService {
     if (this.argon.needsRehash(user.passwordHash)) {
       const newHash = await this.argon.hash(opts.password);
       await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+        // cache-ok: rehash da senha durante o login; a sessão nasce depois
         tx.platformUser.update({
           where: { id: user.id },
           data: { passwordHash: newHash },
@@ -90,5 +93,8 @@ export class PlatformAuthService {
         data: { revokedAt: new Date(), revokeReason: "logout" },
       }),
     );
+    // sai do cache na hora — quem clicou em "sair" não pode continuar dentro
+    // por mais dez segundos
+    await this.cache.dropMaster(tokenHash);
   }
 }

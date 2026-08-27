@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CLT_DOCS, cltDocLabel } from "../../lib/clt-docs";
+import { goToLogin } from "../../lib/orgMemory";
+import { PRODUCT_NAME } from "../../lib/brand";
 
 function brl(c: number | null | undefined): string {
   return ((Number(c) || 0) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -18,7 +20,7 @@ export default function EmployeePortal() {
 
   const reload = useCallback(() => {
     fetch("/api/employee/me", { credentials: "include" })
-      .then((r) => { if (r.status === 401) { router.push("/rh/login"); return null; } return r.json(); })
+      .then((r) => { if (r.status === 401) { goToLogin("funcionario"); return null; } return r.json(); })
       .then((d) => {
         if (d) {
           if (d.employee?.mustResetPassword) { router.push("/rh/redefinir"); return; }
@@ -37,7 +39,7 @@ export default function EmployeePortal() {
 
   async function logout() {
     await fetch("/api/employee/auth/logout", { method: "POST", credentials: "include" });
-    router.push("/rh/login");
+    goToLogin("funcionario", { keepNext: false });
   }
 
   if (loading || !data) return <div className="flex min-h-screen items-center justify-center text-muted">Carregando...</div>;
@@ -45,7 +47,10 @@ export default function EmployeePortal() {
 
   const brand = data.brand;
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
+    <main
+      className="mx-auto max-w-2xl px-4 py-8"
+      style={{ paddingBottom: "max(2rem, env(safe-area-inset-bottom))" }}
+    >
       {/* Marca: empresa do funcionário + yugo */}
       <div className="mb-5 flex items-center justify-between border-b border-line pb-3">
         {brand?.logoUrl ? (
@@ -53,7 +58,7 @@ export default function EmployeePortal() {
         ) : (
           <span className="text-sm font-bold tracking-tight">{brand?.name ?? "Portal do funcionário"}</span>
         )}
-        <span className="text-[11px] text-muted">powered by <strong className="text-brand">yugo</strong></span>
+        <span className="text-[11px] text-muted">powered by <strong className="text-brand">{PRODUCT_NAME}</strong></span>
       </div>
 
       <header className="mb-6 flex items-center justify-between">
@@ -68,13 +73,29 @@ export default function EmployeePortal() {
             <p className="text-sm text-muted">{e.roleTitle ?? "Funcionário"}</p>
           </div>
         </div>
-        <button onClick={logout} className="text-sm text-muted transition-colors hover:text-danger">Sair</button>
+        <button
+          onClick={logout}
+          className="shrink-0 rounded-lg border border-line px-3 py-2 text-sm font-medium text-muted transition-colors hover:border-danger/50 hover:text-danger"
+        >
+          Sair
+        </button>
       </header>
 
-      <nav className="mb-5 flex flex-wrap gap-2 border-b border-line">
-        {([["home", "Início"], ["dados", "Meus dados"], ["ponto", "Ponto"], ["holerite", "Holerite"], ["emprestimos", "Empréstimos"], ["comissoes", "Comissões"], ["solicitacoes", "Solicitações"], ["documentos", "Documentos"]] as const).map(([k, l]) => (
-          <button key={k} onClick={() => setTab(k)} className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold transition ${tab === k ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"}`}>{l}</button>
-        ))}
+      {/* abas: no celular viram uma faixa que rola na horizontal (antes
+          quebravam em 4 linhas e comiam metade da tela) */}
+      <nav className="-mx-4 mb-5 overflow-x-auto border-b border-line px-4 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex w-max gap-1">
+          {([["home", "Início"], ["dados", "Meus dados"], ["ponto", "Ponto"], ["holerite", "Holerite"], ["emprestimos", "Empréstimos"], ["comissoes", "Comissões"], ["solicitacoes", "Solicitações"], ["documentos", "Documentos"]] as const).map(([k, l]) => (
+            <button
+              key={k}
+              onClick={() => setTab(k)}
+              aria-current={tab === k ? "page" : undefined}
+              className={`-mb-px shrink-0 whitespace-nowrap border-b-2 px-3.5 py-2.5 text-sm font-semibold transition ${tab === k ? "border-brand text-fg" : "border-transparent text-muted hover:text-fg"}`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
       </nav>
 
       {tab === "home" && <Home data={data} onGoDados={() => setTab("dados")} />}

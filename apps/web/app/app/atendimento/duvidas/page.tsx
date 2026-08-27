@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useDialog } from "../../../../components/SystemDialog";
+import { PageHeader } from "../../../../components/PageHeader";
 
 type Topic = { topic: string; count: number; samples: string[] };
 
@@ -48,20 +48,22 @@ export default function MaioresDuvidas() {
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Link href="/app/atendimento" className="text-sm text-brand hover:underline">← Atendimento</Link>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-brand">Atendimento</p>
-          <h1 className="mt-1 text-3xl font-semibold">Maiores dúvidas</h1>
-          <p className="mt-2 text-muted">O que os clientes mais perguntam — vai aprendendo com o volume de conversas.</p>
-        </div>
-        <div className="flex items-end gap-2 text-sm">
-          <label className="block"><span className="block text-[10px] uppercase text-muted">De</span>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input-base mt-1 w-auto" /></label>
-          <label className="block"><span className="block text-[10px] uppercase text-muted">Até</span>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input-base mt-1 w-auto" /></label>
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Atendimento"
+        title="Maiores dúvidas"
+        description="O que os clientes mais perguntam — vai aprendendo com o volume de conversas."
+        back={{ href: "/app/atendimento", label: "Atendimento" }}
+        actions={
+          <>
+          <div className="flex items-end gap-2 text-sm">
+                    <label className="block"><span className="block text-[10px] uppercase text-muted">De</span>
+                      <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input-base mt-1 w-auto" /></label>
+                    <label className="block"><span className="block text-[10px] uppercase text-muted">Até</span>
+                      <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input-base mt-1 w-auto" /></label>
+                  </div>
+          </>
+        }
+      />
 
       <p className="card mb-4 text-sm">Perguntas classificadas no período: <strong>{data?.total ?? 0}</strong></p>
 

@@ -10,6 +10,7 @@ import { OrgImpersonateButton } from "./OrgImpersonateButton";
 import { OrgModulesCard } from "./OrgModulesCard";
 import { ModuleFeaturesCard } from "./ModuleFeaturesCard";
 import { OrgSupportAccessCard } from "./OrgSupportAccessCard";
+import { PageHeader } from "../../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -101,15 +102,12 @@ export default async function OrgDetailPage({
         >
           ← Organizações
         </Link>
-        <header className="mt-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-            Master · {org.slug}
-          </p>
-          <h1 className="mt-1 text-3xl font-semibold">{org.name}</h1>
-          {org.legalName && (
-            <p className="mt-1 text-sm text-muted">{org.legalName}</p>
-          )}
-        </header>
+        <PageHeader
+          className="mt-4"
+          eyebrow={<>Master · {org.slug}</>}
+          title={org.name}
+          description={org.legalName || undefined}
+        />
       </div>
 
       <section className="card p-6">
@@ -195,7 +193,7 @@ export default async function OrgDetailPage({
           </p>
         ) : (
           <div className="card overflow-x-auto p-0">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-cards">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
                   <th className="px-4 py-3">Nome</th>
@@ -233,7 +231,7 @@ export default async function OrgDetailPage({
           </p>
         ) : (
           <div className="card overflow-x-auto p-0">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-cards">
               <thead>
                 <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
                   <th className="px-4 py-3">Nome</th>

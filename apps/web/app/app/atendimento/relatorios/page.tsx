@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { PageHeader } from "../../../../components/PageHeader";
 
 type Row = { id: string; name: string; count: number };
 type Report = { total: number; byTabulation: Row[]; byAgent: Row[] };
@@ -71,21 +72,22 @@ export default function AtendimentoRelatorios() {
   return (
     <div className="max-w-4xl">
       <style dangerouslySetInnerHTML={{ __html: "@media print { @page { margin: 0; } html, body { background:#fff !important; } .no-print { display:none !important; } .print-only { display:block !important; } .print-report { padding: 14mm !important; } }" }} />
-      <header className="no-print mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Link href="/app/atendimento" className="text-sm text-brand hover:underline">← Atendimento</Link>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-brand">Atendimento</p>
-          <h1 className="mt-1 text-3xl font-semibold">Relatórios de atendimento</h1>
-          <p className="mt-2 text-muted">Tabulações no período — onde está o gargalo.</p>
-        </div>
-        <div className="flex items-end gap-2 text-sm">
-          <label className="block"><span className="block text-[10px] uppercase text-muted">De</span>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input-base mt-1 w-auto" /></label>
-          <label className="block"><span className="block text-[10px] uppercase text-muted">Até</span>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input-base mt-1 w-auto" /></label>
-          <button onClick={() => window.print()} className="btn-grad">🖨️ PDF / Imprimir</button>
-        </div>
-      </header>
+      <PageHeader
+        className="no-print"
+        back={{ href: "/app/atendimento", label: "Atendimento" }}
+        eyebrow="Atendimento"
+        title="Relatórios de atendimento"
+        description="Tabulações no período — onde está o gargalo."
+        actions={
+          <>
+            <label className="block"><span className="block text-[10px] uppercase text-muted">De</span>
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="input-base mt-1 w-auto" /></label>
+            <label className="block"><span className="block text-[10px] uppercase text-muted">Até</span>
+              <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="input-base mt-1 w-auto" /></label>
+            <button onClick={() => window.print()} className="btn-grad">🖨️ PDF / Imprimir</button>
+          </>
+        }
+      />
 
       {/* Versão branded só pra impressão / PDF */}
       <div className="print-only hidden">
@@ -102,14 +104,14 @@ export default function AtendimentoRelatorios() {
           <div className="grid grid-cols-2 gap-6">
             <div>
               <h2 className="mb-2 text-sm font-bold">Por motivo (tabulação)</h2>
-              <table className="w-full text-sm"><tbody>
+              <table className="w-full text-sm table-cards"><tbody>
                 {(rep?.byTabulation ?? []).map((r) => (<tr key={r.id} className="border-b border-gray-200"><td className="py-1">{r.name}</td><td className="py-1 text-right font-medium">{r.count}</td></tr>))}
                 {(rep?.byTabulation.length ?? 0) === 0 && <tr><td className="py-2 text-gray-500">Sem dados.</td></tr>}
               </tbody></table>
             </div>
             <div>
               <h2 className="mb-2 text-sm font-bold">Por atendente</h2>
-              <table className="w-full text-sm"><tbody>
+              <table className="w-full text-sm table-cards"><tbody>
                 {(rep?.byAgent ?? []).map((r) => (<tr key={r.id} className="border-b border-gray-200"><td className="py-1">{r.name}</td><td className="py-1 text-right font-medium">{r.count}</td></tr>))}
                 {(rep?.byAgent.length ?? 0) === 0 && <tr><td className="py-2 text-gray-500">Sem dados.</td></tr>}
               </tbody></table>
@@ -143,7 +145,7 @@ export default function AtendimentoRelatorios() {
       <section className="no-print card mb-6">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted">Ranking por operador</h2>
         {agents.length === 0 ? <p className="text-xs text-muted">Sem dados no período.</p> : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-cards">
             <thead className="text-[10px] uppercase text-muted">
               <tr><th className="py-1 text-left">Operador</th><th className="text-right">Atend.</th><th className="text-right">1ª resp</th><th className="text-right">Resolver</th><th className="text-right">CSAT</th></tr>
             </thead>

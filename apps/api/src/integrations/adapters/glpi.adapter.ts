@@ -1,4 +1,5 @@
 import type { AdapterCredentials, AdapterResponse } from "./types";
+import { loadEnv } from "../../config";
 
 /**
  * GlpiAdapter
@@ -135,7 +136,7 @@ export class GlpiAdapter {
         password: opts.password,
         password2: opts.password,
         is_active: 1,
-        comment: "Provisionado via yugo-platform",
+        comment: `Provisionado via ${loadEnv().NORTY_SYSTEM_NAME}`,
       },
     });
     const userId = extractId(created);

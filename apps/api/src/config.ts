@@ -101,7 +101,7 @@ const EnvSchema = z.object({
   MINIO_BUCKET_PUBLIC: z.string().default("yugo-public"),
   MINIO_PUBLIC_BASE_URL: z
     .string()
-    .default("https://yugochat.com.br/storage"),
+    .default("https://vision.norty.com.br/storage"),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

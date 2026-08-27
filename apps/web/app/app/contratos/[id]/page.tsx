@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { apiFetch } from "../../../../lib/api";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -73,12 +74,11 @@ export default async function ContractDetailPage({
         >
           ← Contratos
         </Link>
-        <header className="mt-4 flex items-start justify-between gap-4">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-              {c.template.title}
-            </p>
-            <h1 className="mt-1 text-3xl font-semibold">
+        <PageHeader
+          className="mt-4"
+          eyebrow={c.template.title}
+          title={
+            <>
               Status:{" "}
               <span
                 className={
@@ -91,17 +91,19 @@ export default async function ContractDetailPage({
               >
                 {c.status}
               </span>
-            </h1>
-          </div>
-          <a
-            href={`/api/contracts/${c.id}/html`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-grad shrink-0"
-          >
-            Imprimir / Baixar
-          </a>
-        </header>
+            </>
+          }
+          actions={
+            <a
+              href={`/api/contracts/${c.id}/html`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn-grad"
+            >
+              Imprimir / Baixar
+            </a>
+          }
+        />
       </div>
 
       <section className="card">

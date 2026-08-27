@@ -3,8 +3,10 @@ import { z } from "zod";
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { VoipAdminService } from "./voip-admin.service";
+import { RequireModule } from "../common/modulo.guard";
 
 @Controller("voip/admin")
+@RequireModule("voip")
 export class VoipAdminController {
   constructor(private readonly svc: VoipAdminService) {}
 

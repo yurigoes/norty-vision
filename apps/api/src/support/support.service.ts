@@ -199,7 +199,7 @@ export class SupportService {
           enabled: false,
           last_run_at: null,
           last_status: null,
-          destination: "minio://yugo-platform/backups/postgres/",
+          destination: `minio://${process.env.MINIO_BUCKET_PRIVATE ?? "norty-vision"}/backups/postgres/`,
           status: "not_configured",
         },
         {
@@ -244,7 +244,7 @@ export class SupportService {
       return {
         retention_days: 365,
         encryption: "TLS 1.3 + Argon2id",
-        dpo_contact: "privacidade@yugochat.com.br",
+        dpo_contact: process.env.LGPD_DPO_EMAIL ?? `privacidade@${process.env.DOMAIN ?? "vision.norty.com.br"}`,
       };
     }
 
@@ -272,7 +272,7 @@ export class SupportService {
         lgpd: true,
         gdpr: "partial (sem DPO formal)",
       },
-      dpo_contact: "privacidade@yugochat.com.br",
+      dpo_contact: process.env.LGPD_DPO_EMAIL ?? `privacidade@${process.env.DOMAIN ?? "vision.norty.com.br"}`,
     };
   }
 }

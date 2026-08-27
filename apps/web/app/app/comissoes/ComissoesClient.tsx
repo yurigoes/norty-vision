@@ -75,7 +75,7 @@ export function ComissoesClient({ sellers: initialSellers }: { sellers: Seller[]
             <p className="card p-6 text-sm text-muted">Sem vendas no período.</p>
           ) : (
             <div className="card overflow-x-auto p-0">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-cards">
                 <thead>
                   <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
                     <th className="px-4 py-3 font-medium">Vendedor</th>

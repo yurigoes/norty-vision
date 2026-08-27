@@ -10,7 +10,7 @@ import {
   Query,
 } from "@nestjs/common";
 import { z } from "zod";
-import { CurrentContext } from "../auth/decorators";
+import { CurrentContext, SemEmpresa } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { UsersService } from "./users.service";
 
@@ -79,12 +79,14 @@ export class UsersController {
     return this.svc.setSeller(ctx, id, isSeller);
   }
 
+  @SemEmpresa()
   @Post(":id/reset-password")
   async resetPassword(@CurrentContext() ctx: RequestContext, @Param("id") id: string) {
     return this.svc.resetPassword(ctx, id);
   }
 
   /** Desbloqueia a conta: limpa o lock por tentativas e reativa (status=active). */
+  @SemEmpresa()
   @Post(":id/unblock")
   @HttpCode(200)
   async unblock(@CurrentContext() ctx: RequestContext, @Param("id") id: string) {
@@ -166,6 +168,7 @@ export class UsersController {
     return this.svc.deleteRole(ctx, id);
   }
 
+  @SemEmpresa()
   @Get()
   async list(
     @CurrentContext() ctx: RequestContext,

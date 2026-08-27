@@ -6,6 +6,7 @@ import { StorageService } from "../storage/storage.service";
 import { NotificationService } from "../notifications/notification.service";
 import { ProductionService } from "../production/production.service";
 import type { RequestContext } from "../auth/session.middleware";
+import { paginar } from "../common/pagina";
 
 interface QuoteItemInput { description: string; qty: number; unitPriceCents: number }
 interface UpsertQuoteInput {
@@ -59,10 +60,11 @@ export class QuotesService {
     return { lines, subtotal, total };
   }
 
-  async list(ctx: RequestContext, opts?: { status?: string }) {
+  async list(ctx: RequestContext, opts?: { status?: string; limit?: number; offset?: number }) {
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.quote.findMany({ where: { ...(opts?.status ? { status: opts.status } : {}) }, orderBy: { createdAt: "desc" }, include: { items: true }, take: 500 }),
+      // a LISTAGEM só mostra "N item(ns)"; o PDF e o detalhe usam o getById
+      paginar(tx.quote, { where: { ...(opts?.status ? { status: opts.status } : {}) }, orderBy: { createdAt: "desc" }, include: { _count: { select: { items: true } } } }, { limit: opts?.limit ?? 500, offset: opts?.offset ?? 0 }),
     );
   }
 

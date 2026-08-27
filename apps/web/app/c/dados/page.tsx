@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { goToLogin } from "../../../lib/orgMemory";
 
 export default function PortalDados() {
-  const router = useRouter();
   const [c, setC] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -13,10 +12,10 @@ export default function PortalDados() {
 
   useEffect(() => {
     fetch("/api/portal/me", { credentials: "include" })
-      .then((r) => { if (r.status === 401) { router.push("/c/login"); return null; } return r.json(); })
+      .then((r) => { if (r.status === 401) { goToLogin("cliente"); return null; } return r.json(); })
       .then((d) => { if (d) setC(d.customer ?? {}); })
       .finally(() => setLoading(false));
-  }, [router]);
+  }, []);
 
   async function uploadAvatar(file: File) {
     const fd = new FormData();

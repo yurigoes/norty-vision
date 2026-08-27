@@ -31,6 +31,22 @@ export const RequirePlatformOwner = () =>
   SetMetadata(REQUIRE_PLATFORM_OWNER_KEY, true);
 
 /**
+ * "Esta rota também atende o MASTER PURO (logado no painel do SaaS, sem ter
+ * entrado em empresa nenhuma)."
+ *
+ * O padrão é o contrário: rota de empresa exige contexto de empresa. Sem isso,
+ * `GET /api/customers` com o cookie do master devolvia os clientes da Acme e os
+ * da Zito na mesma lista — o RLS abre tudo pro platform admin, e a impersonação
+ * (que é o caminho auditado) ficava opcional.
+ *
+ * Use só onde a tela do painel do SaaS realmente precisa: ou a rota é do
+ * próprio SaaS, ou ela recebe a empresa por parâmetro (`?organizationId=`).
+ * Quando a rota é EXCLUSIVA do master, prefira `@RequirePlatformAdmin()`.
+ */
+export const ALLOW_SEM_EMPRESA_KEY = "allowSemEmpresa";
+export const SemEmpresa = () => SetMetadata(ALLOW_SEM_EMPRESA_KEY, true);
+
+/**
  * Exige uma permissao configuravel do papel do usuario (chave do catalogo).
  * Owner/admin da org e o master ignoram (acesso total). Demais papeis so
  * passam se a permissao estiver marcada (true) no JSON do papel.
@@ -56,11 +72,13 @@ export const CurrentContext = createParamDecorator(
       role: null,
       isOrgAdmin: false,
       permissions: {},
+      mustResetPassword: false,
       isPlatformAdmin: false,
       platformRole: null,
       techSpecsCategories: [],
       impersonating: false,
       impersonatingOrgId: null,
+      impersonatingOrgName: null,
       impersonatorPlatformUserId: null,
     };
   },

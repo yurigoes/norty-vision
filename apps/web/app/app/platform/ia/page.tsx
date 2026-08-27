@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "../../../../components/PageHeader";
 
 const NICHE_LABEL: Record<string, string> = { otica: "Ótica", grafica: "Gráfica/Uniformes", generico: "Genérico" };
 
@@ -48,11 +49,11 @@ export default function MasterIaPanel() {
 
   return (
     <main className="max-w-4xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Master · IA</p>
-        <h1 className="mt-1 text-3xl font-semibold">Aprendizado da IA</h1>
-        <p className="mt-2 text-muted">Como a IA do call center está performando entre as empresas. Gargalos, assertividade e ranking.</p>
-      </header>
+      <PageHeader
+        eyebrow="Master · IA"
+        title="Aprendizado da IA"
+        description="Como a IA do call center está performando entre as empresas. Gargalos, assertividade e ranking."
+      />
 
       {/* ===== Inteligência do ecossistema ===== */}
       <section className="mb-8 rounded-2xl border border-brand/30 bg-brand/5 p-5 shadow-sm">
@@ -186,7 +187,7 @@ export default function MasterIaPanel() {
             <>
               <h2 className="mb-3 text-lg font-semibold">Por nicho</h2>
               <div className="card mb-6 overflow-hidden p-0">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm table-cards">
                   <thead className="bg-surface-2 text-left text-[10px] uppercase tracking-wider text-muted">
                     <tr><th className="px-4 py-2">Nicho</th><th className="px-4 py-2">Empresas</th><th className="px-4 py-2">Interações</th><th className="px-4 py-2">Dúvidas</th><th className="px-4 py-2">Assertividade</th></tr>
                   </thead>
@@ -209,7 +210,7 @@ export default function MasterIaPanel() {
           <h2 className="mb-3 text-lg font-semibold">Por empresa</h2>
           {(data.perOrg ?? []).length === 0 ? <p className="card p-6 text-sm text-muted">Sem dados ainda.</p> : (
             <div className="card overflow-hidden p-0">
-              <table className="w-full text-sm">
+              <table className="w-full text-sm table-cards">
                 <thead className="bg-surface-2 text-left text-[10px] uppercase tracking-wider text-muted">
                   <tr><th className="px-4 py-2">Empresa</th><th className="px-4 py-2">Nicho</th><th className="px-4 py-2">Interações</th><th className="px-4 py-2">Dúvidas</th><th className="px-4 py-2">Assertividade</th></tr>
                 </thead>

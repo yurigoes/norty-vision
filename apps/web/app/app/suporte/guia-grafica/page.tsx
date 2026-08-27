@@ -1,13 +1,15 @@
+import { PageHeader } from "../../../../components/PageHeader";
+
 export const dynamic = "force-dynamic";
 
 export default function GuiaGraficaPage() {
   return (
     <div className="max-w-3xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Suporte · Guia</p>
-        <h1 className="mt-1 text-3xl font-semibold">Configurar a Gráfica (passo a passo)</h1>
-        <p className="mt-2 text-muted">Do catálogo à entrega: como deixar o fluxo da gráfica/uniformes rodando com a IA, pagamento e produção.</p>
-      </header>
+      <PageHeader
+        eyebrow="Suporte · Guia"
+        title="Configurar a Gráfica (passo a passo)"
+        description="Do catálogo à entrega: como deixar o fluxo da gráfica/uniformes rodando com a IA, pagamento e produção."
+      />
 
       <Step n={1} title="Definir o nicho como Gráfica">
         <p>No cadastro da empresa (master) ou em <b>Configurações</b>, o nicho precisa estar como <b>gráfica/uniformes</b>. É isso que ativa o bot e os painéis certos (Produção, Orçamentos, etc.).</p>

@@ -1,3 +1,4 @@
+import { loadEnv } from "../config";
 import { Injectable, Logger } from "@nestjs/common";
 import PDFDocument from "pdfkit";
 import { z } from "zod";
@@ -7,6 +8,7 @@ import { NotificationService } from "../notifications/notification.service";
 import { IntegrationsService } from "../integrations/integrations.service";
 import { MercadoPagoOrgAdapter } from "../payments/mercadopago-org.adapter";
 import type { RequestContext } from "../auth/session.middleware";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 // dias após o vencimento para suspender a empresa inadimplente
 const GRACE_DAYS = 7;
@@ -38,6 +40,7 @@ export class SubscriptionInvoicesService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationService,
     private readonly integrations: IntegrationsService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   private rls(ctx: RequestContext) {
@@ -120,7 +123,7 @@ export class SubscriptionInvoicesService {
     if (!org.contactEmail) throw new AppError(ErrorCode.ValidationFailed, "Cadastre um e-mail de contato na empresa antes", 400);
 
     const adapter = new MercadoPagoOrgAdapter(mp.apiToken);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const notificationUrl = `https://${domain}/api/subscriptions/webhooks/mercadopago`;
     const extRef = `inv:${inv.id}`;
     const amountCents = Number(inv.amountCents);
@@ -155,6 +158,8 @@ export class SubscriptionInvoicesService {
       const overdue = await tx.subscriptionInvoice.count({ where: { organizationId, status: "pending", dueDate: { lt: new Date() } } });
       if (overdue === 0) await tx.organization.update({ where: { id: organizationId }, data: { status: "active" } });
     });
+    // status suspended/active decide se a empresa entra no painel
+    await this.cache.dropOrg(organizationId);
   }
 
   // ============================== COBRANÇA AUTOMÁTICA (cron) ==============================
@@ -226,6 +231,7 @@ export class SubscriptionInvoicesService {
         // suspende após carência
         if (dueDays >= GRACE_DAYS && org.status === "active") {
           await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) => tx.organization.update({ where: { id: org.id }, data: { status: "suspended" } }));
+          await this.cache.dropOrg(org.id);
           suspended++;
           this.logger.warn(`Empresa suspensa por inadimplência: ${org.name} (${org.id})`);
         }
@@ -276,7 +282,7 @@ export class SubscriptionInvoicesService {
         if (r.ok && (ct.includes("png") || ct.includes("jpeg") || ct.includes("jpg"))) logoBuf = Buffer.from(await r.arrayBuffer());
       } catch { /* ignora */ }
     }
-    const provider = ps?.companyLegalName || ps?.productName || "yugochat";
+    const provider = ps?.companyLegalName || ps?.productName || loadEnv().NORTY_SYSTEM_NAME;
     return await new Promise<Buffer>((resolve, reject) => {
       const doc = new PDFDocument({ size: "A4", margin: 48 });
       const chunks: Buffer[] = [];
@@ -318,7 +324,7 @@ export class SubscriptionInvoicesService {
       if (inv.notes) { doc.moveDown(0.5); doc.fillColor("#666").fontSize(9).text(inv.notes, M, undefined as any, { width: right - M }); }
 
       doc.fillColor("#999").fontSize(8).font("Helvetica").text(
-        `Documento gerado eletronicamente por ${ps?.productName ?? "yugochat"}.`,
+        `Documento gerado eletronicamente por ${ps?.productName ?? loadEnv().NORTY_SYSTEM_NAME}.`,
         M, doc.page.height - 70, { width: right - M, align: "center" },
       );
       doc.end();

@@ -1,4 +1,5 @@
 import { apiFetch } from "../../../../lib/api";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -49,15 +50,11 @@ export default async function PrivacidadePage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Suporte · Privacidade & LGPD
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Como tratamos seus dados</h1>
-        <p className="mt-2 text-muted">
-          Retenção, criptografia, e trilha de auditoria de acessos.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow={<>Suporte · Privacidade & LGPD</>}
+        title="Como tratamos seus dados"
+        description="Retenção, criptografia, e trilha de auditoria de acessos."
+      />
 
       {(overview?.customers !== undefined ||
         overview?.users !== undefined) && (
@@ -154,7 +151,7 @@ export default async function PrivacidadePage() {
           </p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm table-cards">
               <thead>
                 <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
                   <th className="pb-2 pr-3">Quando</th>

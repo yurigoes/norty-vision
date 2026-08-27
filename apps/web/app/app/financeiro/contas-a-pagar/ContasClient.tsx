@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useListaServidor } from "../../../../lib/useListaServidor";
+import { CarregarMais } from "../../../../components/CarregarMais";
 import { useDialog } from "../../../../components/SystemDialog";
 
 function brl(c: number | string): string { return (Number(c) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
@@ -19,23 +21,31 @@ const STATUS_TABS = [
 export function ContasClient() {
   const dialog = useDialog();
   const [tab, setTab] = useState<string>("a_pagar");
-  const [items, setItems] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [payFor, setPayFor] = useState<any | null>(null);
   const [recipientsOpen, setRecipientsOpen] = useState(false);
   const [sum, setSum] = useState<any | null>(null);
 
+  // a lista vem por pedaços de 50, com o total do servidor: antes o teto eram
+  // 1.000 parcelas e a tela não tinha como saber que havia mais
+  const lista = useListaServidor<any>({ rota: `/api/payables?status=${tab}`, inicial: [], passo: 50, buscavel: false, autoCarregar: true });
+  const items = lista.itens;
+  const loading = lista.carregando;
+
   const load = useCallback(() => {
-    setLoading(true);
-    fetch(`/api/payables?status=${tab}`, { credentials: "include", headers: { "x-no-loading": "1" } })
-      .then((r) => (r.ok ? r.json() : null)).then((d) => setItems(d?.items ?? [])).catch(() => {}).finally(() => setLoading(false));
+    lista.refazer();
+    fetch(`/api/payables/summary`, { credentials: "include", headers: { "x-no-loading": "1" } })
+      .then((r) => (r.ok ? r.json() : null)).then(setSum).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+  useEffect(() => {
     fetch(`/api/payables/summary`, { credentials: "include", headers: { "x-no-loading": "1" } })
       .then((r) => (r.ok ? r.json() : null)).then(setSum).catch(() => {});
   }, [tab]);
-  useEffect(() => { load(); }, [load]);
 
-  const total = items.reduce((s, it) => s + Number(it.amountCents), 0);
+  // soma do que ESTÁ NA TELA — com a lista paginada, isso não é mais o total
+  // do filtro; o total real está nos cartões de resumo, que vêm do servidor
+  const somaNaTela = items.reduce((s: number, it: any) => s + Number(it.amountCents), 0);
 
   async function importDanfe(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; e.currentTarget.value = ""; if (!f) return;
@@ -69,12 +79,14 @@ export function ContasClient() {
       )}
 
       <div className="card p-4 text-sm">
-        <span className="text-muted">{loading ? "Carregando…" : `${items.length} parcela(s)`}</span>
-        <span className="ml-3 font-semibold">Total ({STATUS_TABS.find((t) => t.k === tab)?.label}): {brl(total)}</span>
+        <span className="text-muted">
+          {loading ? "Carregando…" : `${items.length}${lista.temMais ? ` de ${lista.total}` : ""} parcela(s)`}
+        </span>
+        <span className="ml-3 font-semibold">Soma na tela: {brl(somaNaTela)}</span>
       </div>
 
       <div className="card overflow-x-auto p-0">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-cards">
           <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted">
             <th className="px-4 py-3">Fornecedor / descrição</th><th className="px-4 py-3">Parcela</th><th className="px-4 py-3">Vencimento</th><th className="px-4 py-3">Valor</th><th className="px-4 py-3">Status</th><th className="px-4 py-3"></th>
           </tr></thead>
@@ -100,6 +112,15 @@ export function ContasClient() {
           </tbody>
         </table>
       </div>
+
+      <CarregarMais
+        mostrando={items.length}
+        total={lista.total}
+        temMais={lista.temMais}
+        carregando={lista.carregando}
+        aoCarregar={lista.carregarMais}
+        substantivo="parcela"
+      />
 
       {creating && <NewPayable onClose={() => setCreating(false)} onSaved={() => { setCreating(false); load(); }} dialog={dialog} />}
       {payFor && <PayModal inst={payFor} onClose={() => setPayFor(null)} onSaved={() => { setPayFor(null); load(); }} dialog={dialog} />}

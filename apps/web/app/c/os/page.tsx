@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { goToLogin } from "../../../lib/orgMemory";
 
 type SO = {
   id: string; code: string; title: string; equipment: string | null; type: string;
@@ -22,16 +22,15 @@ const STEPS = ["open", "in_progress", "ready", "delivered"];
 function brl(c: number | string) { return (Number(c) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
 
 export default function PortalOS() {
-  const router = useRouter();
   const [list, setList] = useState<SO[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
   const reload = useCallback(() => {
     fetch("/api/portal/service-orders", { credentials: "include" })
-      .then((r) => { if (r.status === 401) { router.push("/c/login"); return null; } return r.json(); })
+      .then((r) => { if (r.status === 401) { goToLogin("cliente"); return null; } return r.json(); })
       .then((d) => d && setList(d.items ?? []))
       .catch(() => {});
-  }, [router]);
+  }, []);
   useEffect(() => { reload(); }, [reload]);
   // tempo real: atualiza a cada 15s
   useEffect(() => { const t = setInterval(reload, 15000); return () => clearInterval(t); }, [reload]);

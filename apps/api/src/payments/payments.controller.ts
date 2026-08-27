@@ -5,6 +5,7 @@ import type { FastifyRequest } from "fastify";
 import { CurrentContext, Public, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { PaymentsService } from "./payments.service";
+import { limitePedido, offsetPedido } from "../common/pagina";
 
 @Controller("payments")
 export class PaymentsController {
@@ -13,8 +14,17 @@ export class PaymentsController {
   // ===== TRANSAÇÕES MP (PDV + crediário) =====
   @Get("transactions")
   @RequirePermission("credit.view")
-  async transactions(@CurrentContext() ctx: RequestContext, @Query("status") status?: string) {
-    return { items: await this.svc.listTransactions(ctx, { status }) };
+  async transactions(
+    @CurrentContext() ctx: RequestContext,
+    @Query("status") status?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
+    return this.svc.listTransactions(ctx, {
+      status,
+      limit: limitePedido(limit, 300, 300),
+      offset: offsetPedido(offset),
+    });
   }
 
   @Post("transactions/:kind/:id/force")

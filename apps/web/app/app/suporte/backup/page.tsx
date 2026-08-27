@@ -1,4 +1,6 @@
 import { apiFetch } from "../../../../lib/api";
+import { getPublicSettings } from "../../../../lib/platform";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -22,20 +24,19 @@ interface BackupStatus {
 }
 
 export default async function BackupPage() {
+  // e-mail de suporte vem de platform_settings (o master edita em Identidade
+  // & Branding) — antes era o endereço de outro produto, cravado no código
+  const { supportEmail } = await getPublicSettings();
   const { data } = await apiFetch<BackupStatus>("/api/support/backup");
   const jobs = data?.jobs ?? [];
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Suporte · Backup
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Política de backup</h1>
-        <p className="mt-2 text-muted">
-          Jobs agendados, retenção e criptografia em repouso.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Suporte · Backup"
+        title="Política de backup"
+        description="Jobs agendados, retenção e criptografia em repouso."
+      />
 
       <section className="card mb-8">
         <h2 className="mb-4 text-lg font-semibold">Jobs agendados</h2>
@@ -95,9 +96,15 @@ export default async function BackupPage() {
         <h2 className="mb-4 text-lg font-semibold">Restauração</h2>
         <p className="text-sm text-muted">
           Para restaurar um dump, abra um chamado em{" "}
-          <span className="font-semibold text-fg">/app/suporte/ajuda</span> ou
-          contate o time pelo e-mail{" "}
-          <span className="font-mono text-xs">suporte@yugochat.com.br</span>.
+          <span className="font-semibold text-fg">/app/suporte/ajuda</span>
+          {supportEmail ? (
+            <>
+              {" "}ou pelo e-mail{" "}
+              <span className="font-mono text-xs">{supportEmail}</span>.
+            </>
+          ) : (
+            "."
+          )}
           Restaurações em produção são executadas manualmente após validação do
           motivo e da janela de manutenção.
         </p>

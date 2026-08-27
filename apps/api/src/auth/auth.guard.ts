@@ -2,6 +2,7 @@ import {
   CanActivate,
   ExecutionContext,
   Injectable,
+  Logger,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import type { FastifyRequest } from "fastify";
@@ -11,11 +12,40 @@ import {
   IS_PUBLIC_KEY,
   REQUIRE_PLATFORM_ADMIN_KEY,
   REQUIRE_PLATFORM_OWNER_KEY,
+  ALLOW_SEM_EMPRESA_KEY,
   REQUIRE_PERMISSION_KEY,
 } from "./decorators";
 import { PrismaService } from "../prisma/prisma.service";
+import { SessionCacheService } from "./session-cache.service";
+import {
+  SESSION_SQL,
+  CANCELLATION_SQL,
+  type SessionRow,
+  type CancellationRow,
+  type LinhaMaster,
+  type LinhaImpersonacao,
+} from "./guard.sql";
 import { loadEnv } from "../config";
 import type { RequestContext } from "./session.middleware";
+
+/** O que vai pro cache: só o que o guard monta a partir do banco. */
+type ContextoUsuario = Pick<
+  RequestContext,
+  | "userId"
+  | "membershipId"
+  | "orgId"
+  | "storeId"
+  | "role"
+  | "isOrgAdmin"
+  | "permissions"
+  | "mustResetPassword"
+>;
+
+/** O que vai pro cache do master: a sessão dele e a empresa impersonada. */
+interface CacheMaster {
+  master: LinhaMaster;
+  impersonado: LinhaImpersonacao | null;
+}
 
 const NONE_CONTEXT: RequestContext = {
   userId: null,
@@ -26,11 +56,13 @@ const NONE_CONTEXT: RequestContext = {
   role: null,
   isOrgAdmin: false,
   permissions: {},
+  mustResetPassword: false,
   isPlatformAdmin: false,
   platformRole: null,
   techSpecsCategories: [],
   impersonating: false,
   impersonatingOrgId: null,
+  impersonatingOrgName: null,
   impersonatorPlatformUserId: null,
 };
 
@@ -44,9 +76,14 @@ const NONE_CONTEXT: RequestContext = {
  */
 @Injectable()
 export class AuthGuard implements CanActivate {
+  private readonly logger = new Logger("Auth");
+  /** avisa uma vez só, pra não inundar o log */
+  private avisouSessao = false;
+
   constructor(
     private readonly reflector: Reflector,
     private readonly prisma: PrismaService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   async canActivate(execCtx: ExecutionContext): Promise<boolean> {
@@ -109,6 +146,29 @@ export class AuthGuard implements CanActivate {
       );
     }
 
+    // UMA EMPRESA, OU NENHUMA
+    // ------------------------------------------------------------------
+    // Master PURO (logado no painel do SaaS, sem ter entrado em empresa
+    // nenhuma) chegando numa rota de EMPRESA. Isso passava, e o RLS abre tudo
+    // pro platform admin — então `GET /api/customers` devolvia os clientes da
+    // Acme e os da Zito **na mesma lista**, sem impersonação e sem auditoria.
+    // Medido: 121 clientes de 2 empresas numa resposta só.
+    //
+    // Rota de empresa é o que sobrou aqui: `@Public()`, `@RequirePlatformOwner`
+    // e `@RequirePlatformAdmin` já responderam acima. Pra ver dado de empresa o
+    // master entra nela — que é o caminho que deixa rastro no `platform_audit`.
+    const atendeSemEmpresa = this.reflector.getAllAndOverride<boolean>(
+      ALLOW_SEM_EMPRESA_KEY,
+      [execCtx.getHandler(), execCtx.getClass()],
+    );
+    if (req.yugo.isPlatformAdmin && !req.yugo.orgId && !atendeSemEmpresa) {
+      throw new AppError(
+        ErrorCode.Forbidden,
+        "Entre na empresa para ver os dados dela (impersonar). O painel do SaaS não lista dado de cliente.",
+        403,
+      );
+    }
+
     // permissao configuravel: master e owner/admin da org ignoram
     const requirePermission = this.reflector.getAllAndOverride<string>(
       REQUIRE_PERMISSION_KEY,
@@ -150,9 +210,22 @@ export class AuthGuard implements CanActivate {
 
   /** Fase do cancelamento: active | grace(30d) | readonly(+180d) | ended. */
   private async cancellationPhase(orgId: string): Promise<"active" | "grace" | "readonly" | "ended"> {
-    const sub = await this.prisma
-      .runWithContext({ isPlatformAdmin: true }, (tx) => tx.subscription.findFirst({ where: { organizationId: orgId }, select: { status: true, canceledAt: true } }))
+    const linhas = await this.prisma
+      .queryWithContext<CancellationRow>({ isPlatformAdmin: true }, CANCELLATION_SQL, orgId)
       .catch(() => null);
+    // canário desligado: só o caminho transacional pode responder com confiança
+    const linha =
+      linhas?.[0]?.guc_aplicado != null
+        ? linhas[0]
+        : await this.prisma
+            .queryWithContextInTransaction<CancellationRow>(
+              { isPlatformAdmin: true },
+              CANCELLATION_SQL,
+              orgId,
+            )
+            .catch(() => null)
+            .then((r) => r?.[0] ?? null);
+    const sub = linha?.assinatura ?? null;
     if (!sub || sub.status !== "canceled" || !sub.canceledAt) return "active";
     const days = (Date.now() - new Date(sub.canceledAt).getTime()) / 86400_000;
     if (days < 30) return "grace";
@@ -160,105 +233,167 @@ export class AuthGuard implements CanActivate {
     return "ended";
   }
 
+  /**
+   * Quem é esta pessoa — em uma ida ao banco (ou nenhuma).
+   *
+   * Antes eram até três transações: a sessão do usuário (com `include`, que
+   * vira uma consulta por tabela), a do master e, se estivesse impersonando,
+   * a busca do membership representativo. Agora é uma instrução só
+   * (`session.sql.ts`) — e, com a sessão quente no Redis, nem isso.
+   */
   private async resolveSession(req: FastifyRequest): Promise<RequestContext> {
     const env = loadEnv();
     const ctx: RequestContext = { ...NONE_CONTEXT };
 
     const userToken = req.cookies?.[env.SESSION_COOKIE_NAME];
     const masterToken = req.cookies?.[env.MASTER_COOKIE_NAME];
+    if (!userToken && !masterToken) return ctx;
 
-    if (userToken) {
-      try {
-        const tokenHash = sha256(userToken);
-        const session = await this.prisma.runWithContext(
-          { isPlatformAdmin: true },
-          (tx) =>
-            tx.session.findUnique({
-              where: { tokenHash },
-              include: {
-                activeMembership: {
-                  include: { role: true, store: true, organization: true },
-                },
-              },
+    const userHash = userToken ? sha256(userToken) : "";
+    const masterHash = masterToken ? sha256(masterToken) : "";
+
+    try {
+      // 1) cache: absorve a rajada de requisições de uma mesma tela sem tocar
+      //    no banco. Os dois lados têm cache próprio — se os dois cookies
+      //    estiverem quentes, a requisição não vai ao banco nenhuma vez.
+      const doUsuario = userHash ? await this.cache.get<ContextoUsuario>(userHash) : null;
+      const doMaster = masterHash ? await this.cache.getMaster<CacheMaster>(masterHash) : null;
+
+      // basta um lado faltando pra valer a consulta — ela traz os dois
+      const faltaAlgo = (Boolean(userHash) && !doUsuario) || (Boolean(masterHash) && !doMaster);
+      const linha = faltaAlgo ? await this.consultaSessao(userHash, masterHash) : null;
+
+      if (doUsuario) Object.assign(ctx, doUsuario);
+      else if (linha) await this.aplicaUsuario(ctx, linha, userHash);
+
+      // o master vem DEPOIS: master puro descarta o contexto de empresa
+      if (doMaster) await this.aplicaMaster(ctx, doMaster.master, doMaster.impersonado, masterHash, false);
+      else if (linha) await this.aplicaMaster(ctx, linha.master, linha.impersonado, masterHash, true);
+
+      // 2) "sessão ativa": escrita no banco no máximo a cada 5 min, e não a
+      //    cada clique. O valor só serve pra saber que a sessão está viva.
+      if (ctx.userId && userHash && (await this.cache.deveMarcarAtividade(userHash))) {
+        this.prisma
+          // cache-ok: só carimba "visto por último"; não muda papel nem permissão
+          .runWithContext({ isPlatformAdmin: true }, (tx) =>
+            tx.session.updateMany({
+              where: { tokenHash: userHash },
+              data: { lastSeenAt: new Date() },
             }),
-        );
-        if (session && !session.revokedAt && session.expiresAt > new Date()) {
-          const m = session.activeMembership;
-          ctx.userId = session.userId;
-          ctx.membershipId = m?.id ?? null;
-          ctx.orgId = m?.organizationId ?? null;
-          ctx.storeId = m?.storeId ?? null;
-          ctx.role = m?.role.slug ?? null;
-          ctx.isOrgAdmin = m?.role.slug === "owner" || m?.role.slug === "admin";
-          // permissoes do papel + overrides por usuario (membership.permissions)
-          ctx.permissions = mergePermissions(
-            m?.role.permissions,
-            (m as any)?.permissions,
-          );
-
-          this.prisma
-            .runWithContext({ isPlatformAdmin: true }, (tx) =>
-              tx.session.update({
-                where: { id: session.id },
-                data: { lastSeenAt: new Date() },
-              }),
-            )
-            .catch(() => undefined);
-        }
-      } catch {
-        // ignore
+          )
+          .catch(() => undefined);
       }
-    }
-
-    if (masterToken) {
-      try {
-        const tokenHash = sha256(masterToken);
-        const ps = await this.prisma.runWithContext(
-          { isPlatformAdmin: true },
-          (tx) =>
-            tx.platformSession.findUnique({
-              where: { tokenHash },
-              include: { platformUser: { select: { role: true } } },
-            }),
-        );
-        if (ps && !ps.revokedAt && ps.expiresAt > new Date()) {
-          if (ps.impersonatingOrgId) {
-            // IMPERSONANDO: o contexto vira o de um usuário da empresa.
-            await this.applyImpersonation(ctx, ps.impersonatingOrgId, ps.platformUserId);
-          } else {
-            // MASTER PURO (sem impersonar): descarta qualquer contexto de
-            // usuário de empresa que tenha vazado de um cookie de sessão antigo
-            // (ex.: trocou de conta sem limpar cookies). Sem isso, o /app
-            // herdaria o branding/identidade da empresa anterior. #108
-            ctx.userId = null;
-            ctx.membershipId = null;
-            ctx.orgId = null;
-            ctx.storeId = null;
-            ctx.role = null;
-            ctx.isOrgAdmin = false;
-            ctx.permissions = {};
-            ctx.platformUserId = ps.platformUserId;
-            ctx.isPlatformAdmin = true;
-            ctx.platformRole =
-              (ps as any).platformUser?.role === "support" ? "support" : "owner";
-            ctx.techSpecsCategories = ps.techSpecsCategories;
-          }
-
-          this.prisma
-            .runWithContext({ isPlatformAdmin: true }, (tx) =>
-              tx.platformSession.update({
-                where: { id: ps.id },
-                data: { lastSeenAt: new Date() },
-              }),
-            )
-            .catch(() => undefined);
-        }
-      } catch {
-        // ignore
-      }
+    } catch {
+      // ignore
     }
 
     return ctx;
+  }
+
+  /** Sessão do usuário + sessão do master + membership impersonado, numa ida. */
+  private async consultaSessao(userHash: string, masterHash: string): Promise<SessionRow | null> {
+    const rls = { isPlatformAdmin: true };
+    const linhas = await this.prisma
+      .queryWithContext<SessionRow>(rls, SESSION_SQL, userHash, masterHash)
+      .catch(() => null);
+    const linha = linhas?.[0] ?? null;
+
+    // DUAS redes. O canário diz se os GUCs valiam; a segunda olha a
+    // CONSEQUÊNCIA: veio cookie e não achamos NADA. Quase sempre é cookie
+    // velho — e aí a segunda consulta é o preço de um pedido já perdido —,
+    // mas é também como um RLS barrado se manifestaria, e aqui isso
+    // significaria deslogar todo mundo em silêncio.
+    const canario = linha?.guc_aplicado != null;
+    const achou = Boolean(linha?.sessao || linha?.master);
+    if (linha && canario && achou) return linha;
+
+    if (!this.avisouSessao && !canario) {
+      this.avisouSessao = true;
+      this.logger.warn(
+        "os GUCs do RLS não valiam na consulta da sessão — refazendo dentro de " +
+          "transação. Se isto se repetir, confira o plano: cada LATERAL precisa " +
+          "referenciar `ctx` e terminar em OFFSET 0.",
+      );
+    }
+
+    const seguro = await this.prisma
+      .queryWithContextInTransaction<SessionRow>(rls, SESSION_SQL, userHash, masterHash)
+      .catch(() => null);
+    return seguro?.[0] ?? linha;
+  }
+
+  private async aplicaUsuario(ctx: RequestContext, linha: SessionRow, userHash: string): Promise<void> {
+    const s = linha.sessao;
+    if (!s || !viva(s.revokedAt, s.expiresAt)) return;
+
+    const resolvido: ContextoUsuario = {
+      userId: s.userId,
+      membershipId: s.membershipId,
+      orgId: s.orgId,
+      storeId: s.storeId,
+      role: s.roleSlug,
+      isOrgAdmin: s.roleSlug === "owner" || s.roleSlug === "admin",
+      // permissoes do papel + overrides por usuario (membership.permissions)
+      permissions: mergePermissions(s.rolePermissions, s.membershipPermissions),
+      mustResetPassword: s.mustResetPassword ?? false,
+    };
+    Object.assign(ctx, resolvido);
+    // indexado por usuário e por papel: é assim que uma troca de permissão
+    // derruba a sessão de quem nem está com o navegador aberto
+    if (userHash) {
+      await this.cache.set(userHash, resolvido, { userId: s.userId, roleId: s.roleId });
+    }
+  }
+
+  private async aplicaMaster(
+    ctx: RequestContext,
+    ps: LinhaMaster | null,
+    impersonado: LinhaImpersonacao | null,
+    masterHash: string,
+    guardarNoCache: boolean,
+  ): Promise<void> {
+    if (!ps || !viva(ps.revokedAt, ps.expiresAt)) return;
+
+    if (guardarNoCache && masterHash) {
+      await this.cache.setMaster(masterHash, ps.platformUserId, { master: ps, impersonado });
+    }
+
+    if (ps.impersonatingOrgId) {
+      // IMPERSONANDO: o contexto vira o de um usuário da empresa.
+      this.applyImpersonation(ctx, ps.impersonatingOrgId, ps.platformUserId, impersonado);
+    } else {
+      // MASTER PURO (sem impersonar): descarta qualquer contexto de
+      // usuário de empresa que tenha vazado de um cookie de sessão antigo
+      // (ex.: trocou de conta sem limpar cookies). Sem isso, o /app
+      // herdaria o branding/identidade da empresa anterior. #108
+      ctx.userId = null;
+      ctx.membershipId = null;
+      ctx.orgId = null;
+      ctx.storeId = null;
+      ctx.role = null;
+      ctx.isOrgAdmin = false;
+      ctx.permissions = {};
+      ctx.mustResetPassword = false;
+      ctx.platformUserId = ps.platformUserId;
+      ctx.isPlatformAdmin = true;
+      ctx.platformRole = ps.platformUserRole === "support" ? "support" : "owner";
+      ctx.techSpecsCategories = ps.techSpecsCategories ?? [];
+    }
+
+    // mesma regra do usuário: "visto por último" no máximo a cada 5 min. Aqui
+    // era gravado a CADA requisição do master — uma transação por clique numa
+    // linha quente.
+    if (masterHash && (await this.cache.deveMarcarAtividade(masterHash))) {
+      this.prisma
+        // cache-ok: só carimba "visto por último" do master
+        .runWithContext({ isPlatformAdmin: true }, (tx) =>
+          tx.platformSession.update({
+            where: { id: ps.id },
+            data: { lastSeenAt: new Date() },
+          }),
+        )
+        .catch(() => undefined);
+    }
   }
 
   /**
@@ -266,41 +401,47 @@ export class AuthGuard implements CanActivate {
    * impersonada. Mantém isPlatformAdmin=false pra que todos os serviços
    * org-scoped enxerguem APENAS os dados daquela empresa (RLS por org),
    * exatamente como a empresa veria. Guarda o id do master pra auditoria.
+   *
+   * O membership representativo é o mais antigo da empresa — vem na mesma
+   * consulta, no CTE `imp`.
    */
-  private async applyImpersonation(
+  private applyImpersonation(
     ctx: RequestContext,
     orgId: string,
     impersonatorPlatformUserId: string,
-  ): Promise<void> {
-    // membership representativo: prioriza owner, depois admin, depois qualquer.
-    const membership = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
-      tx.membership.findFirst({
-        where: { organizationId: orgId },
-        orderBy: { createdAt: "asc" },
-        include: { role: true, store: true, organization: true },
-      }),
-    ).catch(() => null);
-
+    membership: LinhaImpersonacao | null,
+  ): void {
     ctx.impersonating = true;
     ctx.impersonatingOrgId = orgId;
+    ctx.impersonatingOrgName = membership?.orgName ?? null;
     ctx.impersonatorPlatformUserId = impersonatorPlatformUserId;
     ctx.orgId = orgId;
     ctx.isPlatformAdmin = false;
     ctx.platformRole = null;
+    // o master não herda o "precisa trocar a senha" de quem ele está
+    // emprestando: a senha não é dele. Antes o valor vinha do usuário
+    // emprestado — o front já ignorava (`&& !session.impersonating`), mas o
+    // payload mentia.
+    ctx.mustResetPassword = false;
 
-    if (membership) {
+    if (membership?.membershipId && membership.userId) {
       ctx.userId = membership.userId;
-      ctx.membershipId = membership.id;
+      ctx.membershipId = membership.membershipId;
       ctx.storeId = membership.storeId ?? null;
-      ctx.role = membership.role?.slug ?? "owner";
-      ctx.isOrgAdmin = membership.role?.slug === "owner" || membership.role?.slug === "admin";
-      ctx.permissions = mergePermissions(membership.role?.permissions, (membership as any)?.permissions);
+      ctx.role = membership.roleSlug ?? "owner";
+      ctx.isOrgAdmin = membership.roleSlug === "owner" || membership.roleSlug === "admin";
+      ctx.permissions = mergePermissions(membership.rolePermissions, membership.membershipPermissions);
     } else {
-      // empresa sem usuários: ainda assim entra como admin da org
+      // empresa sem usuários ativos: ainda assim entra como admin da org
       ctx.isOrgAdmin = true;
       ctx.role = "owner";
     }
   }
+}
+
+/** Sessão de pé: não revogada e dentro da validade. */
+function viva(revokedAt: string | null, expiresAt: string): boolean {
+  return revokedAt == null && new Date(expiresAt) > new Date();
 }
 
 function sha256(input: string): string {

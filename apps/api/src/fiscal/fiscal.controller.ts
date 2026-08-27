@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Res } from "@nestjs/common";
 import type { FastifyReply } from "fastify";
-import { CurrentContext, RequirePermission } from "../auth/decorators";
+import { CurrentContext, RequirePermission, SemEmpresa } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { FiscalService } from "./fiscal.service";
 import { NfceService } from "./nfce.service";
@@ -124,20 +124,26 @@ export class FiscalController {
   }
 
   // ===================== Referência fiscal (NCM/CEST/LC116) =====================
+  @SemEmpresa()
   @Get("ref/counts")
   refCounts(@CurrentContext() ctx: RequestContext) { return this.ref.counts(ctx); }
   /** Importa a tabela NCM oficial (JSON Siscomex) — master. */
+  @SemEmpresa()
   @Post("ref/ncm")
   @HttpCode(200)
   refImportNcm(@CurrentContext() ctx: RequestContext, @Body() b: any) { return this.ref.importNcm(ctx, typeof b?.json === "string" ? b.json : JSON.stringify(b ?? {})); }
   /** Semeia CEST + LC116 das tabelas oficiais embutidas — master. */
+  @SemEmpresa()
   @Post("ref/seed")
   @HttpCode(200)
   refSeed(@CurrentContext() ctx: RequestContext) { return this.ref.seedCestLc116(ctx); }
+  @SemEmpresa()
   @Get("ref/ncm")
   refNcm(@CurrentContext() ctx: RequestContext, @Query("q") q?: string) { return this.ref.searchNcm(ctx, q ?? ""); }
+  @SemEmpresa()
   @Get("ref/cest")
   refCest(@CurrentContext() ctx: RequestContext, @Query("ncm") ncm?: string) { return this.ref.cestForNcm(ctx, ncm ?? ""); }
+  @SemEmpresa()
   @Get("ref/servicos")
   refServicos(@CurrentContext() ctx: RequestContext, @Query("q") q?: string) { return this.ref.searchServicos(ctx, q ?? ""); }
 }

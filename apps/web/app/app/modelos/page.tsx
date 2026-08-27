@@ -2,12 +2,14 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { MessagingClient } from "./MessagingClient";
+import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
 export default async function ModelosPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
@@ -26,16 +28,11 @@ export default async function ModelosPage() {
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configuração · Mensagens
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Modelos de mensagem</h1>
-        <p className="mt-2 text-muted">
-          Crie modelos de email e WhatsApp com variáveis, teste o envio e
-          configure o SMTP da sua empresa.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Mensagens"
+        title="Modelos de mensagem"
+        description="Crie modelos de email e WhatsApp com variáveis, teste o envio e configure o SMTP da sua empresa."
+      />
 
       <MessagingClient
         initialTemplates={tplRes.data?.items ?? []}

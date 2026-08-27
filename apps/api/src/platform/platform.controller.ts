@@ -5,8 +5,7 @@ import {
   CurrentContext,
   Public,
   RequirePlatformAdmin,
-  RequirePlatformOwner,
-} from "../auth/decorators";
+  RequirePlatformOwner, SemEmpresa } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 
 @Controller("platform")
@@ -87,11 +86,17 @@ export class PlatformController {
   @RequirePlatformOwner()
   @Patch("team/:id/status")
   async setMemberStatus(@Param("id") id: string, @Body() body: unknown) {
-    const { status } = z.object({ status: z.enum(["active", "inactive"]) }).parse(body);
+    // "inactive" continua aceito porque era o que o front mandava; no banco o
+    // CHECK só conhece active/suspended/disabled — mandar "inactive" dava 500.
+    const { status } = z
+      .object({ status: z.enum(["active", "disabled", "inactive"]) })
+      .transform((v) => ({ status: v.status === "inactive" ? ("disabled" as const) : v.status }))
+      .parse(body);
     return { member: await this.platform.setMemberStatus(id, status) };
   }
 
   // ---- acessos às Specs Técnicas (grants) — owner-only ----
+  @SemEmpresa()
   @Get("specs/categories")
   async specCategories() { return { items: await this.platform.specCategories() }; }
 

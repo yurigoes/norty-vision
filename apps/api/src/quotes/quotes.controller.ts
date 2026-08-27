@@ -4,6 +4,8 @@ import type { FastifyReply } from "fastify";
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { QuotesService } from "./quotes.service";
+import { limitePedido, offsetPedido } from "../common/pagina";
+import { RequireModule } from "../common/modulo.guard";
 
 const ItemSchema = z.object({ description: z.string().min(1).max(300), qty: z.number().int().min(1).max(100000), unitPriceCents: z.number().int().min(0) });
 const UpsertSchema = z.object({
@@ -19,12 +21,18 @@ const UpsertSchema = z.object({
 });
 
 @Controller("quotes")
+@RequireModule("orcamentos")
 export class QuotesController {
   constructor(private readonly svc: QuotesService) {}
 
   @Get()
-  async list(@CurrentContext() ctx: RequestContext, @Query("status") status?: string) {
-    return { items: await this.svc.list(ctx, { status }) };
+  async list(
+    @CurrentContext() ctx: RequestContext,
+    @Query("status") status?: string,
+    @Query("limit") limit?: string,
+    @Query("offset") offset?: string,
+  ) {
+    return this.svc.list(ctx, { status, limit: limitePedido(limit, 500, 500), offset: offsetPedido(offset) });
   }
   @Get(":id")
   async getById(@CurrentContext() ctx: RequestContext, @Param("id") id: string) {

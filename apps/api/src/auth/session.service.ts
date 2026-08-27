@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { createHash, randomBytes } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
+import { SessionCacheService } from "./session-cache.service";
 import { loadEnv } from "../config";
 
 export interface SessionContext {
@@ -18,11 +19,16 @@ export interface SessionContext {
  * Sessoes httpOnly:
  *  - Token raw = 32 bytes base64url (~43 chars). Vai no cookie httpOnly+Secure+SameSite=Strict.
  *  - Armazenamos APENAS sha256(token) na DB e como key em Redis (cache).
- *  - Redis acelera lookups (TTL = session_duration); DB e fonte da verdade.
+ *  - O contexto resolvido é cacheado em Redis por poucos segundos
+ *    (`SessionCacheService`); o banco continua sendo a fonte da verdade, e
+ *    revogar limpa o cache na hora.
  */
 @Injectable()
 export class SessionService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cache: SessionCacheService,
+  ) {}
 
   generateRawToken(): string {
     return randomBytes(32).toString("base64url");
@@ -65,6 +71,8 @@ export class SessionService {
       where: { tokenHash, revokedAt: null },
       data: { revokedAt: new Date(), revokeReason: reason },
     });
+    // sair tem que valer AGORA — não esperar o TTL do cache expirar
+    await this.cache.drop(tokenHash);
   }
 
   async lookup(rawToken: string): Promise<SessionContext | null> {

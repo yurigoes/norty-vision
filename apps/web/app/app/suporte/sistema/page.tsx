@@ -1,5 +1,6 @@
 import { getSession } from "../../../../lib/session";
 import { SistemaClient } from "./SistemaClient";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -8,10 +9,10 @@ export default async function SistemaPage() {
   if (!session.master) {
     return (
       <div className="max-w-3xl">
-        <header className="mb-8">
-          <p className="text-xs font-semibold uppercase tracking-wider text-brand">Suporte · Sistema</p>
-          <h1 className="mt-1 text-3xl font-semibold">Acesso restrito</h1>
-        </header>
+        <PageHeader
+          eyebrow="Suporte · Sistema"
+          title="Acesso restrito"
+        />
         <p className="rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-100">
           Operações de servidor (RAM, disco, backup, manutenção) são exclusivas do master da plataforma.
         </p>
@@ -20,11 +21,11 @@ export default async function SistemaPage() {
   }
   return (
     <div className="max-w-4xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Suporte · Sistema</p>
-        <h1 className="mt-1 text-3xl font-semibold">Servidor / VPS</h1>
-        <p className="mt-2 text-muted">Uso de RAM e disco, backup do banco e rotinas de manutenção do servidor.</p>
-      </header>
+      <PageHeader
+        eyebrow="Suporte · Sistema"
+        title="Servidor / VPS"
+        description="Uso de RAM e disco, backup do banco e rotinas de manutenção do servidor."
+      />
       <SistemaClient />
     </div>
   );

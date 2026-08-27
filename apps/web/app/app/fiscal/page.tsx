@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useDialog } from "../../../components/SystemDialog";
+import { PageHeader } from "../../../components/PageHeader";
 
 export default function FiscalPage() {
   const dialog = useDialog();
@@ -32,11 +33,11 @@ export default function FiscalPage() {
   if (!c) return <main className="max-w-4xl"><p className="text-sm text-muted">Carregando…</p></main>;
   return (
     <main className="max-w-4xl">
-      <header className="mb-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Financeiro · Fiscal</p>
-        <h1 className="mt-1 text-2xl font-semibold">Nota fiscal (NFC-e)</h1>
-        <p className="mt-1 text-muted">Configuração do emitente + certificado A1. Ambiente atual: <b>{c.ambiente === 1 ? "Produção" : "Homologação (teste)"}</b>.</p>
-      </header>
+      <PageHeader
+        eyebrow="Financeiro · Fiscal"
+        title="Nota fiscal (NFC-e)"
+        description={<>Configuração do emitente + certificado A1. Ambiente atual: <b>{c.ambiente === 1 ? "Produção" : "Homologação (teste)"}</b>.</>}
+      />
 
       <section className="card mb-5">
         <p className="mb-3 text-sm font-semibold">Dados do emitente</p>

@@ -2,23 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { goToLogin } from "../../../lib/orgMemory";
 
 const STATUS_LABEL: Record<string, string> = { novo: "Pedido", arte: "Arte", costura: "Costura", producao: "Produção", separacao: "Separação", pronto: "Pronto", entrega: "Entrega", finalizado: "Finalizado", cancelado: "Cancelado" };
 const ART_LABEL: Record<string, string> = { aguardando_arquivos: "Aguardando seus arquivos", arquivos_recebidos: "Arquivos recebidos", em_producao: "Arte em produção", enviada: "Arte para sua aprovação", aprovada: "Arte aprovada", reprovada: "Aguardando ajustes" };
 function brl(c: number | string): string { return (Number(c) / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }); }
 
 export default function PedidosPage() {
-  const router = useRouter();
   const [orders, setOrders] = useState<any[] | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
 
   const load = useCallback(() => {
     fetch("/api/portal/production-orders", { credentials: "include" })
-      .then((r) => { if (r.status === 401) { router.push("/c/login"); return null; } return r.json(); })
+      .then((r) => { if (r.status === 401) { goToLogin("cliente"); return null; } return r.json(); })
       .then((d) => d && setOrders(d.items ?? []))
       .catch(() => setOrders([]));
-  }, [router]);
+  }, []);
   useEffect(() => { load(); }, [load]);
 
   return (

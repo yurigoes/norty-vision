@@ -26,6 +26,7 @@ export class KioskService {
   async generateToken(ctx: RequestContext): Promise<{ token: string }> {
     this.requireAdmin(ctx);
     const token = randomBytes(20).toString("hex");
+    // cache-ok: o token do kiosk não entra na resposta de /organizations/me
     await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.organization.update({ where: { id: ctx.orgId! }, data: { kioskToken: token } }));
     return { token };
   }

@@ -7,6 +7,7 @@ import { OrgAiService } from "../ai/org-ai.service";
 import { AuthService } from "../auth/auth.service";
 import { ArgonService } from "../auth/argon.service";
 import type { RequestContext } from "../auth/session.middleware";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 const ADM = { isPlatformAdmin: true as const };
 type Action = "password_change" | "email_change" | "phone_change";
@@ -26,6 +27,7 @@ export class PlatformSupportService {
     private readonly orgAi: OrgAiService,
     private readonly auth: AuthService,
     private readonly argon: ArgonService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   private rls(ctx: RequestContext) {
@@ -244,6 +246,7 @@ export class PlatformSupportService {
       if ((newValue ?? "").length < 8) throw new AppError(ErrorCode.ValidationFailed, "A nova senha precisa ter ao menos 8 caracteres", 400);
       const passwordHash = await this.argon.hash(newValue);
       await this.prisma.runWithContext(ADM, (tx) => tx.user.update({ where: { id: userId }, data: { passwordHash, mustResetPassword: false } }));
+      await this.cache.dropByUser(userId);
       await this.postMessage(ctx, id, "sistema", "🔒 Senha redefinida com sucesso (não exibida por segurança).");
     } else if (action === "email_change") {
       const email = (newValue ?? "").trim().toLowerCase();

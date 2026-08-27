@@ -3,6 +3,8 @@ import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { PaymentsConfigClient } from "./PaymentsConfigClient";
 import { InfinitepayConfigClient } from "./InfinitepayConfigClient";
+import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +22,7 @@ interface MpIntegration {
 
 export default async function PagamentosPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
@@ -39,17 +41,11 @@ export default async function PagamentosPage() {
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configuração · Pagamentos
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Mercado Pago da empresa</h1>
-        <p className="mt-2 text-muted">
-          Conecte a conta Mercado Pago <strong>da sua empresa</strong> para
-          cobrar clientes do crediário (Pix, cartão à vista e recorrente). É
-          separado da assinatura da plataforma.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Pagamentos"
+        title="Mercado Pago da empresa"
+        description={<>Conecte a conta Mercado Pago <strong>da sua empresa</strong> para cobrar clientes do crediário (Pix, cartão à vista e recorrente). É separado da assinatura da plataforma.</>}
+      />
 
       <PaymentsConfigClient initial={data?.integration ?? null} orgId={orgId} />
 

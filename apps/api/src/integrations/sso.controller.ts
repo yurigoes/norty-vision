@@ -1,6 +1,6 @@
 import { Controller, Get } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
-import { CurrentContext } from "../auth/decorators";
+import { CurrentContext, SemEmpresa } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { ProvisioningService } from "./provisioning.service";
 
@@ -12,6 +12,7 @@ import { ProvisioningService } from "./provisioning.service";
  *  GET /api/sso/chatwoot  -> { url } login do Chatwoot
  *  GET /api/sso/glpi      -> { url } console do GLPI
  */
+@SemEmpresa()
 @Controller("sso")
 export class SsoController {
   constructor(private readonly provisioning: ProvisioningService) {}

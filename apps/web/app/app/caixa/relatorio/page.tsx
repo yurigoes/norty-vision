@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
 import { PrintButton } from "../../agenda/relatorio/PrintButton";
+import { loginPath } from "../../../../lib/tenantServer";
+import { getOrganization } from "../../../../lib/bootstrap";
 
 export const dynamic = "force-dynamic";
 
@@ -29,17 +31,16 @@ export default async function CaixaRelatorioPage({
   searchParams: Promise<{ id?: string }>;
 }) {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   const { id } = await searchParams;
   if (!id) redirect("/app/caixa");
 
-  const [regRes, orgRes] = await Promise.all([
+  const [regRes, org] = await Promise.all([
     apiFetch<{ register: Register }>(`/api/cash/${id}`),
-    apiFetch<{ organization: { name: string; logoUrl: string | null } }>("/api/organizations/me"),
+    getOrganization<{ name: string; logoUrl: string | null }>(),
   ]);
   const r = regRes.data?.register;
   if (!r) redirect("/app/caixa");
-  const org = orgRes.data?.organization;
   const t = r.totals ?? ({} as Totals);
   const diff = r.closingCountedCents != null && r.expectedCashCents != null ? r.closingCountedCents - r.expectedCashCents : null;
 

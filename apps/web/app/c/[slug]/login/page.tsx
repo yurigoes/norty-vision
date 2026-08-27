@@ -1,32 +1,15 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { use, useState } from "react";
+import { PortalAuthLayout } from "../../../../components/PortalAuthLayout";
+import { useOrgBrand } from "../../../../lib/useOrgBrand";
+import { rememberOrgSlug, safeNext } from "../../../../lib/orgMemory";
 
-// Modos de login do portal do cliente.
-// Por padrão começa em "phone" (telefone + OTP WhatsApp) — cliente comum prefere
-// não dar CPF. Quem quiser pode trocar pra "doc-code" (CPF + OTP) ou "password".
-type IdMode = "phone" | "doc"; // identificador
+// Por padrão começa em "phone" (telefone + código no WhatsApp) — cliente comum
+// prefere não dar CPF. Quem quiser troca pra CPF/CNPJ (código ou senha).
+type IdMode = "phone" | "doc";
 type Step = "input" | "code" | "password";
 
-interface Brand {
-  name: string;
-  slug: string;
-  logoUrl: string | null;
-  primaryColor: string | null;
-}
-
-function applyBrandColor(hex: string | null) {
-  if (hex && /^#[0-9a-fA-F]{6}$/.test(hex)) {
-    const int = parseInt(hex.slice(1), 16);
-    document.documentElement.style.setProperty(
-      "--brand",
-      `${(int >> 16) & 255} ${(int >> 8) & 255} ${int & 255}`,
-    );
-  }
-}
-
-// Formata telefone enquanto digita: (XX) XXXXX-XXXX
 function formatPhone(raw: string): string {
   const d = raw.replace(/\D/g, "").slice(0, 11);
   if (d.length <= 2) return d;
@@ -34,46 +17,40 @@ function formatPhone(raw: string): string {
   return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
 }
 function formatDoc(raw: string): string {
-  // CPF (11) ou CNPJ (14) — máscara genérica deixa o usuário ver
   return raw.replace(/\D/g, "").slice(0, 14);
 }
 
+/**
+ * Portal do CLIENTE com escopo na empresa: compras, crediário, ordens de
+ * serviço e chamados. Entrada por telefone + código no WhatsApp (padrão) ou
+ * CPF/CNPJ com código/senha.
+ */
 export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const router = useRouter();
-  const [brand, setBrand] = useState<Brand | null>(null);
-  const [brandLoading, setBrandLoading] = useState(true);
+  const { brand } = useOrgBrand(slug);
 
   const [idMode, setIdMode] = useState<IdMode>("phone");
   const [step, setStep] = useState<Step>("input");
-
   const [phone, setPhone] = useState("");
   const [document, setDocument] = useState("");
   const [code, setCode] = useState("");
   const [password, setPassword] = useState("");
-
   const [masked, setMasked] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch(`/api/organizations/public/by-slug/${slug}`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        const org: Brand | undefined = d?.organization;
-        if (org) {
-          setBrand(org);
-          applyBrandColor(org.primaryColor);
-        }
-      })
-      .finally(() => setBrandLoading(false));
-  }, [slug]);
-
   const idDigits = idMode === "phone" ? phone.replace(/\D/g, "") : document.replace(/\D/g, "");
   const idValid = idMode === "phone" ? idDigits.length >= 10 : idDigits.length >= 11;
 
+  function finish(fallback: string) {
+    rememberOrgSlug(slug);
+    const next = safeNext(new URLSearchParams(window.location.search).get("next"));
+    window.location.assign(next ?? fallback);
+  }
+
   async function requestCode() {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
       const url = idMode === "phone" ? "/api/portal/auth/request-code-phone" : "/api/portal/auth/request-code";
       const payload = idMode === "phone" ? { phone, orgSlug: slug } : { document, orgSlug: slug };
@@ -83,20 +60,28 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data?.error?.message ?? "Falha"); return; }
+      if (!res.ok) {
+        setError(data?.error?.message ?? "Falha");
+        return;
+      }
       if (!data.sent) {
-        setError(idMode === "phone"
-          ? "Telefone não encontrado. Verifique o número ou procure a loja."
-          : "Documento não encontrado ou sem WhatsApp. Procure a loja.");
+        setError(
+          idMode === "phone"
+            ? "Telefone não encontrado. Verifique o número ou procure a loja."
+            : "Documento não encontrado ou sem WhatsApp. Procure a loja.",
+        );
         return;
       }
       setMasked(data.masked);
       setStep("code");
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function verifyCode() {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
       const url = idMode === "phone" ? "/api/portal/auth/verify-code-phone" : "/api/portal/auth/verify-code";
       const payload = idMode === "phone" ? { phone, code, orgSlug: slug } : { document, code, orgSlug: slug };
@@ -106,13 +91,19 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data?.error?.message ?? "Código inválido"); return; }
-      router.push("/c");
-    } finally { setLoading(false); }
+      if (!res.ok) {
+        setError(data?.error?.message ?? "Código inválido");
+        return;
+      }
+      finish("/c");
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function loginPassword() {
-    setLoading(true); setError(null);
+    setLoading(true);
+    setError(null);
     try {
       const res = await fetch("/api/portal/auth/login-password", {
         method: "POST",
@@ -120,101 +111,94 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
         body: JSON.stringify({ document, password, orgSlug: slug }),
       });
       const data = await res.json();
-      if (!res.ok) { setError(data?.error?.message ?? "Credenciais inválidas"); return; }
-      router.push(data.mustReset ? "/c/redefinir" : "/c");
-    } finally { setLoading(false); }
+      if (!res.ok) {
+        setError(data?.error?.message ?? "Credenciais inválidas");
+        return;
+      }
+      if (data.mustReset) {
+        rememberOrgSlug(slug);
+        window.location.assign("/c/redefinir");
+        return;
+      }
+      finish("/c");
+    } finally {
+      setLoading(false);
+    }
   }
 
+  const company = brand?.name ?? "sua loja";
+
   return (
-    <div className="grid min-h-screen grid-cols-[1.05fr_0.95fr] max-md:grid-cols-1">
-      {/* MARCA — painel premium com arte/gradiente */}
-      <aside className="relative flex flex-col overflow-hidden bg-[#060a15] p-12 text-white max-md:hidden">
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(900px 500px at 70% 8%, rgba(37,99,235,.45), transparent 60%), radial-gradient(720px 520px at 8% 92%, rgba(6,182,212,.30), transparent 55%)",
-          }}
-        />
-        <div className="relative flex items-center gap-3">
-          {brand?.logoUrl ? (
-            <img src={brand.logoUrl} alt={brand.name} className="h-9 w-auto max-w-[200px] object-contain" />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src="/brand/norty-vision.png" alt="Norty Vision" className="h-9 w-auto object-contain" />
-          )}
-        </div>
-        <div className="relative my-auto">
-          <h2 className="max-w-md text-4xl font-extrabold leading-tight tracking-tight">
-            Seu crediário,{" "}
-            <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-              na palma
-            </span>{" "}
-            da mão.
-          </h2>
-          <p className="mt-4 max-w-md text-slate-300">
-            {brand?.name ? `Acompanhe compras, parcelas e boletos na ${brand.name}.` : "Acompanhe suas compras e parcelas do crediário."}
-          </p>
-        </div>
-        <div className="relative text-xs text-slate-500">Portal seguro por YUGO</div>
-      </aside>
-
-      {/* FORM */}
-      <main className="grid place-items-center bg-bg p-6 md:p-10">
-        <div className="w-full max-w-sm">
-          <div className="mb-8 text-center md:hidden">
-            {brand?.logoUrl ? (
-              <img src={brand.logoUrl} alt={brand.name} className="mx-auto h-12 w-auto max-w-[200px] object-contain" />
-            ) : brandLoading ? (
-              <span className="opacity-0">•</span>
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src="/brand/norty-vision.png" alt="Norty Vision" className="mx-auto h-9 w-auto object-contain" />
-            )}
-          </div>
-
-          <h1 className="text-2xl font-extrabold tracking-tight">Painel do cliente</h1>
-          <p className="mt-1 text-sm text-muted">
-            {brand?.name ? `Acompanhe suas compras e parcelas na ${brand.name}.` : "Acompanhe suas compras e parcelas do crediário."}
-          </p>
-
-          <div className="card mt-6 p-6 sm:p-7">
+    <PortalAuthLayout
+      portal="cliente"
+      slug={slug}
+      title="Painel do cliente"
+      subtitle={`Acompanhe suas compras e parcelas na ${company}.`}
+      headline={
+        <>
+          Seu crediário,{" "}
+          <span className="bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+            na palma
+          </span>{" "}
+          da mão.
+        </>
+      }
+      tagline={`Compras, parcelas, boletos e ordens de serviço da ${company}.`}
+    >
+      <div className="card p-5 sm:p-6">
         {step === "input" && (
           <>
-            {/* Toggle de modo: telefone (default) ou CPF/CNPJ */}
             <div className="mb-4 flex rounded-xl border border-line bg-surface-2 p-1 text-sm">
               <button
-                onClick={() => { setIdMode("phone"); setError(null); }}
-                className={`flex-1 rounded-lg py-1.5 font-medium transition ${idMode === "phone" ? "bg-surface text-brand shadow-sm" : "text-muted hover:text-fg"}`}
-              >📱 Telefone</button>
+                type="button"
+                onClick={() => {
+                  setIdMode("phone");
+                  setError(null);
+                }}
+                className={`flex-1 rounded-lg py-2 font-medium transition ${idMode === "phone" ? "bg-surface text-brand shadow-sm" : "text-muted hover:text-fg"}`}
+              >
+                Telefone
+              </button>
               <button
-                onClick={() => { setIdMode("doc"); setError(null); }}
-                className={`flex-1 rounded-lg py-1.5 font-medium transition ${idMode === "doc" ? "bg-surface text-brand shadow-sm" : "text-muted hover:text-fg"}`}
-              >🪪 CPF / CNPJ</button>
+                type="button"
+                onClick={() => {
+                  setIdMode("doc");
+                  setError(null);
+                }}
+                className={`flex-1 rounded-lg py-2 font-medium transition ${idMode === "doc" ? "bg-surface text-brand shadow-sm" : "text-muted hover:text-fg"}`}
+              >
+                CPF / CNPJ
+              </button>
             </div>
 
             {idMode === "phone" ? (
               <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">Telefone (com DDD)</span>
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
+                  Telefone (com DDD)
+                </span>
                 <input
                   value={phone}
                   onChange={(e) => setPhone(formatPhone(e.target.value))}
                   inputMode="numeric"
                   placeholder="(71) 99999-9999"
-                  className="input-base"
+                  className="input-base py-3 text-lg"
                   autoFocus
                 />
-                <p className="mt-1.5 text-[11px] text-muted">Enviamos um código de 6 dígitos pelo WhatsApp.</p>
+                <span className="mt-1.5 block text-[11px] text-muted">
+                  Enviamos um código de 6 dígitos pelo WhatsApp.
+                </span>
               </label>
             ) : (
               <label className="block">
-                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">CPF / CNPJ</span>
+                <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-muted">
+                  CPF / CNPJ
+                </span>
                 <input
                   value={document}
                   onChange={(e) => setDocument(formatDoc(e.target.value))}
                   inputMode="numeric"
-                  placeholder="000.000.000-00"
-                  className="input-base"
+                  placeholder="00000000000"
+                  className="input-base py-3 text-lg"
                   autoFocus
                 />
               </label>
@@ -222,17 +206,19 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
 
             <div className="mt-4 space-y-2">
               <button
+                type="button"
                 onClick={requestCode}
                 disabled={loading || !idValid}
-                className="btn-grad w-full py-2.5 text-[15px]"
+                className="btn-grad w-full py-3 text-[15px]"
               >
                 {loading ? "Enviando..." : "Receber código no WhatsApp"}
               </button>
               {idMode === "doc" && (
                 <button
+                  type="button"
                   onClick={() => setStep("password")}
                   disabled={!idValid}
-                  className="w-full rounded-xl border border-line bg-surface py-2.5 text-sm font-medium text-fg transition hover:border-brand/50 hover:text-brand disabled:opacity-50"
+                  className="w-full rounded-xl border border-line bg-surface py-3 text-sm font-medium text-fg transition hover:border-brand/50 hover:text-brand disabled:opacity-50"
                 >
                   Entrar com senha
                 </button>
@@ -248,18 +234,29 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
               inputMode="numeric"
+              autoComplete="one-time-code"
               placeholder="000000"
-              className="input-base text-center font-mono text-lg tracking-widest"
+              className="input-base py-3 text-center font-mono text-xl tracking-[0.4em]"
               autoFocus
             />
             <button
+              type="button"
               onClick={verifyCode}
               disabled={loading || code.length !== 6}
-              className="btn-grad w-full py-2.5 text-[15px]"
+              className="btn-grad w-full py-3 text-[15px]"
             >
               {loading ? "Verificando..." : "Entrar"}
             </button>
-            <button onClick={() => { setStep("input"); setCode(""); }} className="w-full text-xs text-muted transition-colors hover:text-fg">voltar</button>
+            <button
+              type="button"
+              onClick={() => {
+                setStep("input");
+                setCode("");
+              }}
+              className="w-full text-xs text-muted transition-colors hover:text-fg"
+            >
+              voltar
+            </button>
           </div>
         )}
 
@@ -270,26 +267,40 @@ export default function PortalSlugLoginPage({ params }: { params: Promise<{ slug
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Sua senha"
-              className="input-base"
+              autoComplete="current-password"
+              className="input-base py-3"
               autoFocus
             />
             <button
+              type="button"
               onClick={loginPassword}
               disabled={loading || !password}
-              className="btn-grad w-full py-2.5 text-[15px]"
+              className="btn-grad w-full py-3 text-[15px]"
             >
               {loading ? "Entrando..." : "Entrar"}
             </button>
-            <button onClick={() => { setStep("input"); setPassword(""); }} className="w-full text-xs text-muted transition-colors hover:text-fg">usar WhatsApp</button>
+            <button
+              type="button"
+              onClick={() => {
+                setStep("input");
+                setPassword("");
+              }}
+              className="w-full text-xs text-muted transition-colors hover:text-fg"
+            >
+              usar WhatsApp
+            </button>
           </div>
         )}
 
-        {error && <p className="mt-4 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger">{error}</p>}
-          </div>
-
-          <p className="mt-6 text-center text-[11px] text-muted">Portal seguro por YUGO</p>
-        </div>
-      </main>
-    </div>
+        {error && (
+          <p
+            role="alert"
+            className="mt-4 rounded-xl border border-danger/40 bg-danger/10 px-3.5 py-2.5 text-sm font-medium text-danger"
+          >
+            {error}
+          </p>
+        )}
+      </div>
+    </PortalAuthLayout>
   );
 }

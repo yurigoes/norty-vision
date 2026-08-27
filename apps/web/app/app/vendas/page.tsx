@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { SalesClient } from "./SalesClient";
+import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -21,37 +23,36 @@ interface Account { id: string; document: string; holderName: string; limitCents
 
 export default async function VendasPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
 
-  const [prodRes, storesRes, custRes, accRes, salesRes, cfgRes, sellersRes] = await Promise.all([
-    apiFetch<{ items: Product[] }>("/api/products?activeOnly=true"),
+  // o PDV não carrega mais cliente nenhum (eram 300 de 3.000, só pro seletor)
+  // e o catálogo virou um pedaço: os dois seletores perguntam ao servidor
+  const [prodRes, storesRes, accRes, salesRes, cfgRes, sellersRes] = await Promise.all([
+    apiFetch<{ items: Product[]; total?: number }>("/api/products?activeOnly=true&limit=100"),
     apiFetch<{ items: Store[] }>("/api/stores"),
-    apiFetch<{ items: Customer[] }>("/api/customers?limit=300"),
     apiFetch<{ items: Account[] }>("/api/credit/accounts"),
-    apiFetch<{ items: any[] }>("/api/sales"),
+    // o PDV carregava 500 vendas só pro modal de notas/devolução; agora traz 50
+    // e o modal pede o resto quando o usuário quiser
+    apiFetch<{ items: any[]; total?: number }>("/api/sales?limit=50"),
     apiFetch<{ config: { defaultMaxInstallments: number } }>("/api/credit/config"),
     apiFetch<{ items: Array<{ id: string; name: string }> }>("/api/users/sellers"),
   ]);
 
   return (
     <div className="max-w-6xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Vendas
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">PDV — registrar venda</h1>
-        <p className="mt-2 text-muted">
-          Escolha cliente, adicione produtos e a forma de pagamento. No
-          crediário, o sistema valida o limite automaticamente.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Vendas"
+        title="PDV — registrar venda"
+        description="Escolha cliente, adicione produtos e a forma de pagamento. No crediário, o sistema valida o limite automaticamente."
+      />
 
       <SalesClient
         products={prodRes.data?.items ?? []}
+        totalProducts={prodRes.data?.total ?? 0}
         stores={storesRes.data?.items ?? []}
-        customers={custRes.data?.items ?? []}
         accounts={accRes.data?.items ?? []}
         recentSales={salesRes.data?.items ?? []}
+        totalSales={salesRes.data?.total ?? 0}
         defaultMaxInstallments={cfgRes.data?.config?.defaultMaxInstallments ?? 12}
         sellers={sellersRes.data?.items ?? []}
       />

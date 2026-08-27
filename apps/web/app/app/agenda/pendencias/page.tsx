@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../../lib/session";
 import { apiFetch } from "../../../../lib/api";
 import { FollowupsClient } from "./FollowupsClient";
+import { loginPath } from "../../../../lib/tenantServer";
+import { PageHeader } from "../../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -16,22 +18,21 @@ interface Followup {
 
 export default async function PendenciasPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
 
   const res = await apiFetch<{ items: Followup[] }>("/api/schedule/followups?status=open");
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Agenda</p>
-        <h1 className="mt-1 text-3xl font-semibold">Pendências</h1>
-        <p className="mt-2 text-muted">
-          Clientes que cancelaram (WhatsApp ou portal) e precisam de contato para remarcar.
-        </p>
+      <PageHeader
+        eyebrow="Agenda"
+        title="Pendências"
+        description="Clientes que cancelaram (WhatsApp ou portal) e precisam de contato para remarcar."
+      >
         <a href="/app/agenda/recall-exames" className="mt-3 inline-block rounded-lg border border-line px-3 py-1.5 text-xs transition hover:border-brand">
           📅 Recall de exame (1 ano) →
         </a>
-      </header>
+      </PageHeader>
       <FollowupsClient items={res.data?.items ?? []} />
     </div>
   );

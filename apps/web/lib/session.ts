@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { getBootstrap } from "./bootstrap";
 
 export interface SessionUser {
   id: string;
@@ -35,43 +35,21 @@ export interface SessionSnapshot {
 }
 
 /**
- * Le a sessao atual chamando /api/auth/me direto pela rede interna do Docker
- * (api:3001) com os cookies do request RSC repassados.
+ * Sessão atual do request.
  *
- * Tolerância a falhas: só retorna `authenticated: false` se o backend
- * respondeu 401/403 explicitamente. Em caso de timeout, erro de rede ou
- * 5xx, retorna "soft auth" baseado no cookie presente — evita expulsar
- * o usuário pra /login só porque /api/auth/me piscou (era a causa de
- * "ao finalizar pedido o sistema desloga": o router.refresh() recarregava
- * o RSC, /api/auth/me dava timeout pontual e redirect("/login") batia).
+ * Hoje é uma leitura do `getBootstrap()` — a MESMA resposta que a casca do
+ * painel usa para empresa, loja, assinatura e atalhos. Com o `cache()` do
+ * React, layout e página dividem uma única ida à API dentro da requisição;
+ * antes cada `getSession()` batia de novo em `/api/auth/me`.
+ *
+ * Tolerância a falhas (inalterada, detalhada em `lib/bootstrap.ts`): só
+ * retorna `authenticated: false` se a API respondeu 401/403. Timeout, erro de
+ * rede ou 5xx mantêm "soft auth" com base no cookie presente — evita expulsar
+ * o usuário pra /login só porque a API piscou (era a causa de "ao finalizar
+ * pedido o sistema desloga").
  */
 export async function getSession(): Promise<SessionSnapshot> {
-  const jar = await cookies();
-  const cookieHeader = jar.getAll().map((c) => `${c.name}=${c.value}`).join("; ");
-  const hasSessionCookie = jar.getAll().some((c) => /session|token/i.test(c.name));
-
-  const apiBase = process.env.API_INTERNAL_URL ?? "http://api:3001";
-
-  try {
-    const res = await fetch(`${apiBase}/api/auth/me`, {
-      method: "GET",
-      headers: { cookie: cookieHeader },
-      cache: "no-store",
-      signal: AbortSignal.timeout(8000),
-    });
-    // 401/403 → realmente não autenticado
-    if (res.status === 401 || res.status === 403) {
-      return { authenticated: false, user: null, master: null };
-    }
-    // 5xx ou outros → mantém soft auth pra não deslogar por hiccup do backend
-    if (!res.ok) {
-      return { authenticated: hasSessionCookie, user: null, master: null };
-    }
-    return (await res.json()) as SessionSnapshot;
-  } catch {
-    // timeout/erro de rede → soft auth se cookie existe
-    return { authenticated: hasSessionCookie, user: null, master: null };
-  }
+  return (await getBootstrap()).session;
 }
 
 /**

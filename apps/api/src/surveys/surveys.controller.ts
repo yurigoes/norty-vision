@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Public, CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { SurveysService } from "./surveys.service";
+import { RequireModule } from "../common/modulo.guard";
 
 const RespondSchema = z.object({
   npsScore: z.number().int().min(0).max(10).nullable().optional(),
@@ -17,6 +18,7 @@ const ManualSchema = z.object({
 });
 
 @Controller("surveys")
+@RequireModule("pesquisas")
 export class SurveysController {
   constructor(private readonly svc: SurveysService) {}
 

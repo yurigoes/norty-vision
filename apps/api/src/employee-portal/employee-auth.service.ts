@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ArgonService } from "../auth/argon.service";
 import { loadEnv } from "../config";
 import type { EmployeeContext } from "./employee-context";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 function sha256(s: string): string {
   return createHash("sha256").update(s).digest("hex");
@@ -15,10 +16,11 @@ export class EmployeeAuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly argon: ArgonService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   /**
-   * Resolve o id da org a partir do slug. Sem slug (apex yugochat.com.br),
+   * Resolve o id da org a partir do slug. Sem slug (apex vision.norty.com.br),
    * escopa pra empresa dona do SaaS (PLATFORM_ORG_SLUG) — nunca puxa empresa
    * cliente. Assim o apex só acha funcionário da yugo.
    */
@@ -95,6 +97,8 @@ export class EmployeeAuthService {
       await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
         tx.user.update({ where: { id: e.userId! }, data: { passwordHash: hash, mustResetPassword: false } }),
       );
+      // a senha do portal e a do painel são a mesma: derruba a sessão em cache
+      await this.cache.dropByUser(e.userId);
       await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
         tx.employee.update({ where: { id: ctx.employeeId }, data: { mustResetPassword: false } }),
       );

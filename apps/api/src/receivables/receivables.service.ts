@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
 import { OrgAiService } from "../ai/org-ai.service";
 import type { RequestContext } from "../auth/session.middleware";
+import { paginar, todasAsPaginas } from "../common/pagina";
 
 interface InstallmentInput { number?: number; dueDate: string; amountCents: number }
 interface CreateReceivableInput {
@@ -69,7 +70,7 @@ export class ReceivablesService {
   }
 
   /** Lista parcelas (com o título) por status derivado + período de vencimento. */
-  async list(ctx: RequestContext, opts: { status?: string; from?: string; to?: string; search?: string }) {
+  async list(ctx: RequestContext, opts: { status?: string; from?: string; to?: string; search?: string; limit?: number; offset?: number }) {
     this.requireOrg(ctx);
     const today = new Date(); today.setUTCHours(0, 0, 0, 0);
     const where: any = {};
@@ -78,15 +79,26 @@ export class ReceivablesService {
     else if (opts.status === "a_vencer") { where.status = "a_receber"; where.dueDate = { gte: today }; }
     else if (opts.status === "a_receber") where.status = "a_receber";
     if (opts.from || opts.to) where.dueDate = { ...(where.dueDate ?? {}), ...(opts.from ? { gte: new Date(opts.from + "T00:00:00Z") } : {}), ...(opts.to ? { lte: new Date(opts.to + "T23:59:59Z") } : {}) };
-    const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.receivableInstallment.findMany({
-      where, orderBy: [{ dueDate: "asc" }], take: 1000,
+    // a busca ia ao banco pra 1.000 parcelas e filtrava as 1.000 na memória —
+    // pagador fora desse pedaço não era encontrado. Agora o filtro é do banco.
+    const search = (opts.search || "").trim();
+    if (search) {
+      where.receivable = {
+        OR: [
+          { payer: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+          { docNumber: { contains: search, mode: "insensitive" } },
+        ],
+      };
+    }
+    const pagina = await this.prisma.runWithContext(this.rls(ctx), (tx) => paginar(tx.receivableInstallment, {
+      where, orderBy: [{ dueDate: "asc" }],
       include: { receivable: { select: { id: true, payer: true, description: true, category: true, docType: true, docNumber: true } } },
-    }));
-    const search = (opts.search || "").trim().toLowerCase();
-    const items = rows
-      .filter((r: any) => !search || `${r.receivable?.payer ?? ""} ${r.receivable?.description ?? ""} ${r.receivable?.docNumber ?? ""}`.toLowerCase().includes(search))
-      .map((r: any) => ({ ...r, amountCents: Number(r.amountCents), paidCents: r.paidCents != null ? Number(r.paidCents) : null, overdue: r.status === "a_receber" && new Date(r.dueDate) < today }));
-    return { items };
+    }, { limit: opts.limit ?? 1000, offset: opts.offset ?? 0 }));
+    return {
+      ...pagina,
+      items: pagina.items.map((r: any) => ({ ...r, amountCents: Number(r.amountCents), paidCents: r.paidCents != null ? Number(r.paidCents) : null, overdue: r.status === "a_receber" && new Date(r.dueDate) < today })),
+    };
   }
 
   async getById(ctx: RequestContext, receivableId: string) {
@@ -190,7 +202,10 @@ export class ReceivablesService {
 
   /** Export CSV da lista (mesmos filtros da tela). */
   async exportCsv(ctx: RequestContext, opts: { status?: string; from?: string; to?: string; search?: string }): Promise<{ buffer: Buffer; filename: string }> {
-    const { items } = await this.list(ctx, opts);
+    // exportar é o caso em que a página não serve: percorre tudo, em pedaços
+    const { items, total, truncado } = await todasAsPaginas((limit, offset) =>
+      this.list(ctx, { ...opts, limit, offset }),
+    );
     const money = (c: number) => (c / 100).toFixed(2).replace(".", ",");
     const rows: string[] = ["Pagador;Descricao;Categoria;Documento;Parcela;Vencimento;Valor;Status;Recebido em;Meio;Valor recebido"];
     for (const it of items as any[]) {
@@ -201,14 +216,17 @@ export class ReceivablesService {
         it.paidAt ? String(it.paidAt).slice(0, 10) : "", it.paymentMethod ?? "", it.paidCents != null ? money(Number(it.paidCents)) : "",
       ].map((c) => String(c).replace(/;/g, ",")).join(";"));
     }
+    // truncar acontece; truncar calado é que não pode
+    if (truncado) rows.push(`;;;;;;;;;;ATENCAO: arquivo cortado em ${items.length} de ${total} parcelas`);
     const buffer = Buffer.from("﻿" + rows.join("\r\n"), "utf8");
     return { buffer, filename: `contas-a-receber-${opts.status ?? "todas"}-${new Date().toISOString().slice(0, 10)}.csv` };
   }
 
   /** Relatório PDF (resumo + lista) das contas a receber. */
   async reportPdf(ctx: RequestContext, opts: { status?: string; from?: string; to?: string; search?: string }): Promise<{ buffer: Buffer; filename: string }> {
-    const [{ items }, sum, org] = await Promise.all([
-      this.list(ctx, opts),
+    const [{ items, total, truncado }, sum, org] = await Promise.all([
+      // relatório também precisa da lista inteira, não da primeira página
+      todasAsPaginas((limit, offset) => this.list(ctx, { ...opts, limit, offset })),
       this.summary(ctx, { from: opts.from, to: opts.to }),
       this.prisma.runWithContext(this.rls(ctx), (tx) => tx.organization.findFirst({ where: {}, select: { name: true } })).catch(() => null),
     ]);
@@ -240,6 +258,13 @@ export class ReceivablesService {
         pdf.text(money(Number(it.amountCents)), cx, y, { width: cols[2]!.w, lineBreak: false }); cx += cols[2]!.w;
         pdf.fillColor(st === "atrasado" ? "#b00" : st === "recebido" ? "#0a0" : "#333").text(st, cx, y, { width: cols[3]!.w, lineBreak: false }); pdf.fillColor("#333");
         pdf.moveDown(0.4);
+      }
+      // truncar acontece; truncar calado é que não pode
+      if (truncado) {
+        pdf.moveDown(0.6);
+        pdf.font("Helvetica-Bold").fillColor("#b00")
+          .text(`ATENCAO: relatorio cortado em ${items.length} de ${total} parcelas.`);
+        pdf.fillColor("#333");
       }
       pdf.end();
     });

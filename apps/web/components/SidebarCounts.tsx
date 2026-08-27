@@ -15,10 +15,18 @@ const HREF_TO_KEY: Record<string, keyof Counts> = {
 
 const Ctx = createContext<Counts>(EMPTY);
 
-/** Busca os contadores de pendências e atualiza a cada 60s (foco também). */
-export function SidebarCountsProvider({ children }: { children: React.ReactNode }) {
+/**
+ * Busca os contadores de pendências e atualiza a cada 60s (foco também).
+ *
+ * `temEmpresa=false` (master no painel do SaaS, sem ter entrado em empresa
+ * nenhuma) não pergunta nada: contador de pendência é de UMA empresa, e a API
+ * responde 403 nessa situação — de propósito. Perguntar assim mesmo era um 403
+ * a cada 60 segundos, em toda tela do painel.
+ */
+export function SidebarCountsProvider({ children, temEmpresa = true }: { children: React.ReactNode; temEmpresa?: boolean }) {
   const [counts, setCounts] = useState<Counts>(EMPTY);
   useEffect(() => {
+    if (!temEmpresa) return;
     let active = true;
     const load = () => {
       fetch("/api/sidebar/counts", { credentials: "include", headers: { "x-no-loading": "1" } })
@@ -31,7 +39,7 @@ export function SidebarCountsProvider({ children }: { children: React.ReactNode 
     window.addEventListener("focus", onFocus);
     const t = setInterval(load, 60_000);
     return () => { active = false; window.removeEventListener("focus", onFocus); clearInterval(t); };
-  }, []);
+  }, [temEmpresa]);
   return <Ctx.Provider value={counts}>{children}</Ctx.Provider>;
 }
 

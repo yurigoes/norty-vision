@@ -2,6 +2,9 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { ProductsClient } from "./ProductsClient";
+import { loginPath } from "../../../lib/tenantServer";
+import { getOrganization } from "../../../lib/bootstrap";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +28,7 @@ interface Product {
 
 export default async function ProdutosPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
@@ -36,30 +39,26 @@ export default async function ProdutosPage() {
     );
   }
 
-  const [{ data }, supRes, storesRes, orgRes] = await Promise.all([
-    apiFetch<{ items: Product[] }>("/api/products"),
+  const [{ data }, supRes, storesRes, org] = await Promise.all([
+    // primeiro pedaço pequeno: o resto vem no "carregar mais"
+    apiFetch<{ items: Product[]; total?: number }>("/api/products?limit=50"),
     apiFetch<{ items: any[] }>("/api/suppliers?activeOnly=true"),
     apiFetch<{ items: any[] }>("/api/stores"),
-    apiFetch<{ organization: any }>("/api/organizations/me"),
+    getOrganization(),
   ]);
   const labs = (supRes.data?.items ?? []).filter((s) => s.type === "laboratorio").map((s) => ({ id: s.id, name: s.name }));
   const stores = (storesRes.data?.items ?? []).map((s: any) => ({ id: s.id, name: s.name }));
-  const niche = orgRes.data?.organization?.niche ?? null;
+  const niche = org?.niche ?? null;
 
   return (
     <div className="max-w-5xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configuração · Produtos
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Catálogo</h1>
-        <p className="mt-2 text-muted">
-          Cada produto tem 4 preços (à vista, cartão à vista, cartão parcelado,
-          crediário). O cliente só vê o preço final da forma escolhida.
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Produtos"
+        title="Catálogo"
+        description="Cada produto tem 4 preços (à vista, cartão à vista, cartão parcelado, crediário). O cliente só vê o preço final da forma escolhida."
+      />
 
-      <ProductsClient initialProducts={data?.items ?? []} labs={labs} stores={stores} niche={niche} />
+      <ProductsClient initialProducts={data?.items ?? []} total={data?.total ?? 0} labs={labs} stores={stores} niche={niche} />
     </div>
   );
 }

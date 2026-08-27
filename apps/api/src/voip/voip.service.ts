@@ -10,7 +10,7 @@ const ADM = { isPlatformAdmin: true as const };
 // ---- VAPID (Web Push) — gere uma vez com `npx web-push generate-vapid-keys` --
 const VAPID_PUBLIC = process.env.VAPID_PUBLIC_KEY || "";
 const VAPID_PRIVATE = process.env.VAPID_PRIVATE_KEY || "";
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:suporte@yugochat.com.br";
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:suporte@vision.norty.com.br";
 
 // ---- Cloudflare Realtime TURN (relay de mídia grátis, 1TB/mês) -------------
 // Crie um "TURN App" no painel Cloudflare → pega Key ID + API Token e põe no
@@ -23,7 +23,7 @@ const TURN_USER = process.env.VOIP_TURN_USER || "yugo";
 const TURN_PASS = process.env.VOIP_TURN_PASS || "";
 
 const FS_SECRET = process.env.VOIP_FS_SECRET || "yugo-voip"; // endpoints do FreeSWITCH
-const SIP_DOMAIN = process.env.VOIP_SIP_DOMAIN || "voip.yugochat.com.br";
+const SIP_DOMAIN = process.env.VOIP_SIP_DOMAIN || "voip.vision.norty.com.br";
 // Modo SIP (PABX FreeSWITCH na VPS externa): defina VOIP_SIP_WS_URL = wss://voip.seu-dominio
 // (Caddy/FreeSWITCH). Setado → o softphone vira SIP; vazio → modo P2P (Cloudflare TURN).
 const SIP_WS_URL = process.env.VOIP_SIP_WS_URL || "";

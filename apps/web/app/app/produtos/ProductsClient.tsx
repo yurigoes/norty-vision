@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { useListaServidor } from "../../../lib/useListaServidor";
+import { CarregarMais } from "../../../components/CarregarMais";
+import { usePaginacao, Paginacao, PorPagina, useIrParaONovo } from "../../../components/Paginacao";
 
 interface Product {
   id: string;
@@ -43,7 +46,7 @@ function toCents(v: FormDataEntryValue | null): number | null {
   return isNaN(n) ? null : Math.round(n * 100);
 }
 
-export function ProductsClient({ initialProducts, labs = [], stores = [], niche = null }: { initialProducts: Product[]; labs?: LabOpt[]; stores?: Array<{ id: string; name: string }>; niche?: string | null }) {
+export function ProductsClient({ initialProducts, total: totalServidor = 0, labs = [], stores = [], niche = null }: { initialProducts: Product[]; total?: number; labs?: LabOpt[]; stores?: Array<{ id: string; name: string }>; niche?: string | null }) {
   const isOtica = niche === "otica";
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -51,9 +54,10 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
   const [editing, setEditing] = useState<Product | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
-  const [q, setQ] = useState("");
-  const [pageSize, setPageSize] = useState<number>(50); // 0 = todas
-  const [page, setPage] = useState(1);
+  // a busca vai ao servidor (antes filtrava os 500 que a pagina trouxe, e quem
+  // estivesse fora deles "nao existia") e o resto da lista vem por pedacos
+  const lista = useListaServidor<Product>({ rota: "/api/products", inicial: initialProducts, totalInicial: totalServidor, passo: 50 });
+  const { q, setQ, buscando, doServidor } = lista;
   const [entradaFor, setEntradaFor] = useState<Product | null>(null);
   const [movFor, setMovFor] = useState<Product | null>(null);
   const [viewing, setViewing] = useState<Product | null>(null);
@@ -110,24 +114,18 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
     } catch { /* silencioso: dicas não atrapalham o fluxo */ }
   }
 
-  // filtro por nome / SKU / valor (parte do texto)
-  const filtered = (() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return initialProducts;
-    const digits = s.replace(/\D/g, "");
-    return initialProducts.filter((p) => {
-      const inName = p.name.toLowerCase().includes(s);
-      const inSku = (p.sku ?? "").toLowerCase().includes(s);
-      const inCat = (p.category ?? "").toLowerCase().includes(s);
-      const inPrice = digits.length > 0 && [p.priceCashCents, p.priceCardInstallmentsCents, p.priceCreditCents]
-        .some((c) => c != null && String(c).includes(digits));
-      return inName || inSku || inCat || inPrice;
-    });
-  })();
-  const total = filtered.length;
-  const totalPages = pageSize === 0 ? 1 : Math.max(1, Math.ceil(total / pageSize));
-  const curPage = Math.min(page, totalPages);
-  const paged = pageSize === 0 ? filtered : filtered.slice((curPage - 1) * pageSize, curPage * pageSize);
+  // nome / SKU / categoria, procurados no banco em todos os produtos.
+  // `pag` corta o que já foi carregado; `lista` traz mais do servidor.
+  const pag = usePaginacao(lista.itens, 50);
+  const total = pag.total;
+  const paged = pag.pagina;
+  useIrParaONovo(pag, lista.itens.length); // o pedaço novo entra na página seguinte
+
+  /** recarrega a pagina e, se houver busca ativa, refaz a busca no servidor */
+  function atualizar() {
+    startTransition(() => router.refresh());
+    lista.refazer();
+  }
 
   function startEdit(p: Product) { setEditing(p); setImageUrl(p.imageUrl ?? null); setTips([]); setNcmVal((p as any).ncm ?? ""); setCestVal((p as any).cest ?? ""); setNcmSugs([]); setNcmDesc(null); }
   function startCreate() { setCreating(true); setImageUrl(null); setTips([]); setNcmVal(""); setCestVal(""); setNcmSugs([]); setNcmDesc(null); }
@@ -146,7 +144,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
       body: JSON.stringify({ show: !(p.showInCatalog ?? true) }),
       credentials: "include",
     });
-    if (res.ok) startTransition(() => router.refresh());
+    if (res.ok) atualizar();
   }
 
   /** Upload direto (so em edicao — precisa do id do produto). */
@@ -155,7 +153,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
     const fd = new FormData(); fd.append("file", file);
     const res = await fetch(`/api/products/${editing.id}/image`, { method: "POST", body: fd, credentials: "include" });
     const data = await res.json();
-    if (res.ok) { setImageUrl(data.url); startTransition(() => router.refresh()); }
+    if (res.ok) { setImageUrl(data.url); atualizar(); }
   }
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
@@ -204,7 +202,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
     }
     setCreating(false);
     setEditing(null);
-    startTransition(() => router.refresh());
+    atualizar();
   }
 
   const formOpen = creating || editing;
@@ -219,7 +217,7 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
           ↑ Importar estoque
         </button>
       </div>
-      {importing && <ImportEstoque onClose={() => setImporting(false)} onDone={() => { setImporting(false); startTransition(() => router.refresh()); }} />}
+      {importing && <ImportEstoque onClose={() => setImporting(false)} onDone={() => { setImporting(false); atualizar(); }} />}
 
       {formOpen && (
         <div
@@ -385,24 +383,30 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
 
       {/* busca + itens por página */}
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          value={q}
-          onChange={(e) => { setQ(e.target.value); setPage(1); }}
-          placeholder="Buscar por nome, SKU, categoria ou valor"
-          className="input-base flex-1"
-        />
-        <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-          className="input-base w-auto">
-          <option value={10}>10 por página</option>
-          <option value={50}>50 por página</option>
-          <option value={100}>100 por página</option>
-          <option value={0}>Todas</option>
-        </select>
+        <div className="relative flex-1">
+          <input
+            value={q}
+            onChange={(e) => { setQ(e.target.value); pag.aoTopo(); }}
+            placeholder="Buscar por nome, SKU ou categoria"
+            className="input-base w-full"
+            aria-label="Buscar produtos"
+          />
+          {buscando && (
+            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[11px] text-muted">
+              buscando…
+            </span>
+          )}
+        </div>
+        <PorPagina p={pag} />
       </div>
-      <p className="text-[11px] text-muted">{total} produto(s){q ? " (filtrados)" : ""}{pageSize !== 0 ? ` · página ${curPage}/${totalPages}` : ""}</p>
+      <p className="text-[11px] text-muted">
+        {doServidor ? `Procurado em todos os produtos por "${q.trim()}"` : "Catálogo"}
+        {pag.porPagina !== 0 ? ` · página ${pag.paginaAtual}/${pag.totalPaginas}` : ""}
+      </p>
+      {lista.erro && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-700 dark:text-red-200">{lista.erro}</p>}
 
       <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm table-cards">
           <thead>
             <tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted">
               <th className="px-4 py-3 font-medium">Produto</th>
@@ -416,7 +420,9 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
           </thead>
           <tbody>
             {paged.length === 0 ? (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">Nenhum produto.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">
+                {doServidor ? `Nenhum produto encontrado para "${q.trim()}".` : "Nenhum produto."}
+              </td></tr>
             ) : paged.map((p) => (
               <tr key={p.id} className="border-t border-line transition hover:bg-surface-2">
                 <td className="px-4 py-3">
@@ -467,16 +473,19 @@ export function ProductsClient({ initialProducts, labs = [], stores = [], niche 
         </table>
       </div>
 
-      {pageSize !== 0 && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 text-sm">
-          <button disabled={curPage <= 1} onClick={() => setPage(curPage - 1)} className="rounded-xl border border-line px-3 py-1.5 transition hover:border-brand/60 disabled:opacity-40">‹ Anterior</button>
-          <span className="text-muted">{curPage} / {totalPages}</span>
-          <button disabled={curPage >= totalPages} onClick={() => setPage(curPage + 1)} className="rounded-xl border border-line px-3 py-1.5 transition hover:border-brand/60 disabled:opacity-40">Próxima ›</button>
-        </div>
-      )}
+      <Paginacao p={pag} />
 
-      {entradaFor && <EntradaModal product={entradaFor} stores={stores} onClose={() => setEntradaFor(null)} onSaved={() => { setEntradaFor(null); startTransition(() => router.refresh()); }} />}
-      {movFor && <MovsModal product={movFor} stores={stores} onClose={() => setMovFor(null)} onChanged={() => startTransition(() => router.refresh())} />}
+      <CarregarMais
+        mostrando={lista.itens.length}
+        total={lista.total}
+        temMais={lista.temMais}
+        carregando={lista.carregando}
+        aoCarregar={lista.carregarMais}
+        substantivo={doServidor ? "resultado" : "produto"}
+      />
+
+      {entradaFor && <EntradaModal product={entradaFor} stores={stores} onClose={() => setEntradaFor(null)} onSaved={() => { setEntradaFor(null); atualizar(); }} />}
+      {movFor && <MovsModal product={movFor} stores={stores} onClose={() => setMovFor(null)} onChanged={() => atualizar()} />}
       {viewing && <ProductView product={viewing} labs={labs} onClose={() => setViewing(null)} onEdit={() => { const p = viewing; setViewing(null); startEdit(p); }} />}
     </div>
   );
@@ -756,7 +765,7 @@ function ImportEstoque({ onClose, onDone }: { onClose: () => void; onDone: () =>
             <div className="mt-2 text-xs text-muted">Reconhecidos: <b className="text-fg">{parsed.rows.length}</b> item(ns){parsed.ignored ? ` · ${parsed.ignored} linha(s) ignorada(s) (cabeçalho/sem padrão)` : ""}.</div>
             {parsed.rows.length > 0 && (
               <div className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-line">
-                <table className="w-full text-xs">
+                <table className="w-full text-xs table-cards">
                   <thead className="bg-surface-2 text-left text-[10px] uppercase text-muted"><tr><th className="px-2 py-1">SKU</th><th className="px-2 py-1">Produto</th><th className="px-2 py-1">Estoque</th><th className="px-2 py-1">Preço</th></tr></thead>
                   <tbody>
                     {parsed.rows.slice(0, 12).map((r, i) => (

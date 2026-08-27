@@ -3,6 +3,7 @@ import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import type { RequestContext } from "../auth/session.middleware";
 import { ctxCan } from "../auth/decorators";
+import { paginar } from "../common/pagina";
 
 interface UpsertProductInput {
   storeId?: string | null;
@@ -44,12 +45,14 @@ export class ProductsService {
       : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
   }
 
-  async list(ctx: RequestContext, opts?: { search?: string; activeOnly?: boolean; storeId?: string }) {
+  async list(ctx: RequestContext, opts?: { search?: string; activeOnly?: boolean; storeId?: string; limit?: number; offset?: number }) {
     if (!ctx.orgId && !ctx.isPlatformAdmin) {
       throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
     }
+    const limit = Math.min(Number.isFinite(opts?.limit as number) && (opts!.limit as number) > 0 ? (opts!.limit as number) : 500, 500);
+    const offset = opts?.offset ?? 0;
     return this.prisma.runWithContext(this.rls(ctx), async (tx) => {
-      const products = await tx.product.findMany({
+      const pagina = await paginar(tx.product, {
         where: {
           deletedAt: null,
           ...(opts?.activeOnly ? { isActive: true } : {}),
@@ -58,13 +61,16 @@ export class ProductsService {
                 OR: [
                   { name: { contains: opts.search, mode: "insensitive" } },
                   { sku: { contains: opts.search, mode: "insensitive" } },
+                  // a tela também procurava por categoria quando filtrava na
+                  // memória; sem isto, ligar a busca no servidor tiraria algo
+                  { category: { contains: opts.search, mode: "insensitive" } },
                 ],
               }
             : {}),
         },
         orderBy: { name: "asc" },
-        take: 500,
-      });
+      }, { limit, offset });
+      const products = pagina.items;
       // PDV: quando vem o storeId, o stockQty reflete o SALDO DAQUELA LOJA
       // (e expõe storeStockQty), pro aviso de estoque ser por loja, não o total.
       if (opts?.storeId && products.length) {
@@ -73,9 +79,9 @@ export class ProductsService {
           select: { productId: true, qty: true },
         });
         const bal = new Map(balances.map((b) => [b.productId, b.qty]));
-        return products.map((p) => ({ ...p, storeStockQty: bal.get(p.id) ?? 0, stockQty: bal.get(p.id) ?? 0 }));
+        return { ...pagina, items: products.map((p) => ({ ...p, storeStockQty: bal.get(p.id) ?? 0, stockQty: bal.get(p.id) ?? 0 })) };
       }
-      return products;
+      return pagina;
     });
   }
 

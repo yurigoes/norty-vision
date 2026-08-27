@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "../../../lib/session";
 import { apiFetch } from "../../../lib/api";
 import { DunningClient } from "./DunningClient";
+import { loginPath } from "../../../lib/tenantServer";
+import { PageHeader } from "../../../components/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +18,7 @@ interface Rule {
 
 export default async function CobrancaPage() {
   const session = await getSession();
-  if (!session.authenticated) redirect("/login");
+  if (!session.authenticated) redirect(await loginPath());
   if (!session.user?.isOrgAdmin && !session.master) {
     return (
       <div className="max-w-3xl">
@@ -31,17 +33,11 @@ export default async function CobrancaPage() {
 
   return (
     <div className="max-w-4xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">
-          Configuração · Cobrança
-        </p>
-        <h1 className="mt-1 text-3xl font-semibold">Régua de cobrança</h1>
-        <p className="mt-2 text-muted">
-          O sistema cobra automaticamente conforme estas regras (lembretes
-          antes do vencimento e cobranças após). Placeholders:{" "}
-          <code className="rounded bg-line px-1 text-xs">{"{{nome}} {{parcela}} {{valor}} {{vencimento}} {{dias}}"}</code>
-        </p>
-      </header>
+      <PageHeader
+        eyebrow="Configuração · Cobrança"
+        title="Régua de cobrança"
+        description={<>O sistema cobra automaticamente conforme estas regras (lembretes antes do vencimento e cobranças após). Placeholders:{" "} <code className="rounded bg-line px-1 text-xs">{"{{nome}} {{parcela}} {{valor}} {{vencimento}} {{dias}}"}</code></>}
+      />
 
       <DunningClient initialRules={data?.items ?? []} />
     </div>

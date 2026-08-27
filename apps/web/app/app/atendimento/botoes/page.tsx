@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { PageHeader } from "../../../../components/PageHeader";
 
 const BUTTONS: Array<{ key: string; label: string; desc: string }> = [
   { key: "vender", label: "Vender", desc: "Vender pelo chat (PDV no atendimento)." },
@@ -50,11 +51,11 @@ export default function CallcenterButtonsConfig() {
 
   return (
     <main className="max-w-2xl">
-      <header className="mb-8">
-        <p className="text-xs font-semibold uppercase tracking-wider text-brand">Atendimento</p>
-        <h1 className="mt-1 text-3xl font-semibold">Botões do Atendimento</h1>
-        <p className="mt-2 text-muted">Escolha quais ações aparecem no atendimento desta empresa. Útil por nicho (ex.: loja esportiva sem "Agenda").</p>
-      </header>
+      <PageHeader
+        eyebrow="Atendimento"
+        title="Botões do Atendimento"
+        description={<>Escolha quais ações aparecem no atendimento desta empresa. Útil por nicho (ex.: loja esportiva sem "Agenda").</>}
+      />
       {!loaded ? <p className="text-sm text-muted">Carregando…</p> : (
         <div className="space-y-3">
           {BUTTONS.map((b) => (

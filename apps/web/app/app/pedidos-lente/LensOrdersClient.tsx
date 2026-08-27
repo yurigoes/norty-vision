@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SeletorCliente } from "../../../components/SeletorCliente";
 import { useDialog } from "../../../components/SystemDialog";
 
 interface Supplier { id: string; name: string; type: string }
-interface Customer { id: string; name: string; document: string | null }
 interface ProductLite { id: string; name: string; category: string | null; priceCashCents: number | null; costCents: number | null }
 interface Order {
   id: string;
@@ -60,13 +60,12 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 export function LensOrdersClient({
-  initialOrders, initialBatches, doctors, labs, customers, products = [],
+  initialOrders, initialBatches, doctors, labs, products = [],
 }: {
   initialOrders: Order[];
   initialBatches: Batch[];
   doctors: Supplier[];
   labs: Supplier[];
-  customers: Customer[];
   products?: ProductLite[];
 }) {
   const router = useRouter();
@@ -96,7 +95,7 @@ export function LensOrdersClient({
       {err && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{err}</p>}
 
       {tab === "pedidos" ? (
-        <OrdersTab orders={initialOrders} doctors={doctors} labs={labs} customers={customers} products={products} act={act} />
+        <OrdersTab orders={initialOrders} doctors={doctors} labs={labs} products={products} act={act} />
       ) : (
         <BatchesTab batches={initialBatches} orders={initialOrders} labs={labs} act={act} />
       )}
@@ -112,8 +111,8 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 
-function OrdersTab({ orders, doctors, labs, customers, products, act }: {
-  orders: Order[]; doctors: Supplier[]; labs: Supplier[]; customers: Customer[]; products: ProductLite[];
+function OrdersTab({ orders, doctors, labs, products, act }: {
+  orders: Order[]; doctors: Supplier[]; labs: Supplier[]; products: ProductLite[];
   act: (url: string, method?: string, body?: any) => Promise<boolean>;
 }) {
   const router = useRouter();
@@ -157,7 +156,7 @@ function OrdersTab({ orders, doctors, labs, customers, products, act }: {
       </div>
 
       {creating && (
-        <OrderForm doctors={doctors} labs={labs} customers={customers} products={products} onCancel={() => setCreating(false)}
+        <OrderForm doctors={doctors} labs={labs} products={products} onCancel={() => setCreating(false)}
           onSaved={() => { setCreating(false); router.refresh(); }} />
       )}
 
@@ -269,11 +268,10 @@ function NfButton({ order, act }: { order: Order; act: (url: string, method?: st
   );
 }
 
-function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
-  doctors: Supplier[]; labs: Supplier[]; customers: Customer[]; products: ProductLite[];
+function OrderForm({ doctors, labs, products, onCancel, onSaved }: {
+  doctors: Supplier[]; labs: Supplier[]; products: ProductLite[];
   onCancel: () => void; onSaved: () => void;
 }) {
-  const [custQuery, setCustQuery] = useState("");
   const [customerId, setCustomerId] = useState<string>("");
   const [customerName, setCustomerName] = useState<string>("");
   const [doctorId, setDoctorId] = useState("");
@@ -328,14 +326,6 @@ function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const matches = useMemo(() => {
-    const q = custQuery.trim().toLowerCase();
-    if (q.length < 2) return [];
-    const d = q.replace(/\D/g, "");
-    return customers.filter((c) =>
-      c.name.toLowerCase().includes(q) || (d.length >= 3 && (c.document ?? "").replace(/\D/g, "").includes(d)),
-    ).slice(0, 8);
-  }, [custQuery, customers]);
 
   async function save() {
     setBusy(true); setErr(null);
@@ -380,27 +370,15 @@ function OrderForm({ doctors, labs, customers, products, onCancel, onSaved }: {
       {/* cliente */}
       <div>
         <span className="mb-1 block text-[10px] uppercase text-muted">Cliente</span>
-        {customerId ? (
-          <div className="flex items-center justify-between gap-2 rounded border border-brand/40 bg-brand/10 px-3 py-2 text-sm">
-            <span>{customerName}</span>
-            <button onClick={() => { setCustomerId(""); setCustomerName(""); }} className="text-muted hover:text-red-300">×</button>
-          </div>
-        ) : (
-          <div className="relative">
-            <input value={custQuery} onChange={(e) => setCustQuery(e.target.value)} placeholder="Buscar por nome ou CPF" className="input-base" />
-            {matches.length > 0 && (
-              <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-lg border border-line bg-bg shadow-xl">
-                {matches.map((c) => (
-                  <li key={c.id}>
-                    <button onClick={() => { setCustomerId(c.id); setCustomerName(c.name); setCustQuery(""); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-line">
-                      {c.name}{c.document ? <span className="text-xs text-muted"> · {c.document}</span> : null}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
+        {/* busca no banco inteiro; se o cliente nao existe mesmo, cadastra aqui
+            e o pedido continua de onde parou */}
+        <SeletorCliente
+          escolhido={customerId ? { id: customerId, name: customerName } : null}
+          aoEscolher={(c) => { setCustomerId(c.id); setCustomerName(c.name); }}
+          aoLimpar={() => { setCustomerId(""); setCustomerName(""); }}
+          permitirCadastro
+          placeholder="Buscar por nome, CPF ou telefone"
+        />
       </div>
 
       {/* Puxar a compra (auto-preenche óculos + lente + lab) */}

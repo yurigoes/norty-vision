@@ -5,6 +5,7 @@ import {
   ResponsiveContainer, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, CartesianGrid,
 } from "recharts";
+import { PageHeader } from "../../../../components/PageHeader";
 
 const PALETTE = ["#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#06b6d4", "#a855f7", "#ec4899", "#84cc16"];
 const BRAND = "rgb(var(--brand))";
@@ -44,18 +45,18 @@ export default function PainelOtica() {
 
   return (
     <main className="max-w-6xl">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-brand">Painel · Ótica</p>
-          <h1 className="mt-1 text-3xl font-semibold">Acompanhamento</h1>
-          <p className="mt-1 text-muted">Agenda, vendas e projeção — atualiza em tempo real.</p>
-        </div>
-        <div className="flex gap-1 rounded-lg border border-line bg-surface-2 p-1 text-sm">
-          {[30, 90, 180].map((d) => (
-            <button key={d} onClick={() => setDays(d)} className={`rounded-md px-3 py-1 ${days === d ? "bg-brand text-white" : "text-muted hover:text-fg"}`}>{d}d</button>
-          ))}
-        </div>
-      </header>
+      <PageHeader
+        eyebrow="Painel · Ótica"
+        title="Acompanhamento"
+        description="Agenda, vendas e projeção — atualiza em tempo real."
+        actions={
+          <div className="flex gap-1 rounded-lg border border-line bg-surface-2 p-1 text-sm">
+            {[30, 90, 180].map((d) => (
+              <button key={d} onClick={() => setDays(d)} className={`rounded-md px-3 py-1 ${days === d ? "bg-brand text-white" : "text-muted hover:text-fg"}`}>{d}d</button>
+            ))}
+          </div>
+        }
+      />
 
       {loading && !data ? <p className="text-sm text-muted">Carregando…</p> : !data ? <p className="text-sm text-muted">Sem dados.</p> : (
         <>

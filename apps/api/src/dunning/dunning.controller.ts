@@ -3,6 +3,7 @@ import { z } from "zod";
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { DunningService } from "./dunning.service";
+import { RequireModule } from "../common/modulo.guard";
 
 const RuleSchema = z.object({
   id: z.string().uuid().optional(),
@@ -14,6 +15,7 @@ const RuleSchema = z.object({
 });
 
 @Controller("dunning")
+@RequireModule("cobranca")
 export class DunningController {
   constructor(private readonly svc: DunningService) {}
 

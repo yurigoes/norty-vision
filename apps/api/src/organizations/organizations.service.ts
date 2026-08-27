@@ -3,6 +3,8 @@ import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { ArgonService } from "../auth/argon.service";
 import { ProvisioningService } from "../integrations/provisioning.service";
+import { ShellLoader } from "../bootstrap/shell.loader";
+import { SessionCacheService } from "../auth/session-cache.service";
 import type { RequestContext } from "../auth/session.middleware";
 
 interface FirstUserInput {
@@ -56,6 +58,8 @@ export class OrganizationsService {
     private readonly prisma: PrismaService,
     private readonly argon: ArgonService,
     private readonly provisioning: ProvisioningService,
+    private readonly shell: ShellLoader,
+    private readonly cache: SessionCacheService,
   ) {}
 
   /**
@@ -80,119 +84,27 @@ export class OrganizationsService {
   }
 
   /**
-   * Branding da organizacao atual (logo do contratante + cor principal).
-   * Qualquer usuario autenticado da org pode ler.
+   * A empresa do usuário, com os módulos do plano já resolvidos.
+   *
+   * Isto custava cinco transações (empresa, plano, aditivos, nicho,
+   * sub-módulos) = vinte idas ao Postgres. Agora sai da mesma consulta única
+   * que monta a casca do painel — uma ida — e da mesma função de resolução de
+   * módulos, então as duas telas nunca discordam sobre o que está liberado.
    */
   async getMine(ctx: RequestContext) {
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
-    const org = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.organization.findFirst({
-        where: { id: ctx.orgId!, deletedAt: null },
-        select: {
-          id: true,
-          name: true,
-          slug: true,
-          status: true,
-          niche: true,
-          logoUrl: true,
-          primaryColor: true,
-          themeMode: true,
-          portalConfig: true,
-          callcenterConfig: true,
-          planCode: true,
-          vitrineHeadline: true,
-          vitrineSubheadline: true,
-          vitrineAbout: true,
-          bannerImageUrl: true,
-          bannerLinkUrl: true,
-          bannerEnabled: true,
-          bannerStartsAt: true,
-          bannerEndsAt: true,
-          vitrineAddress: true,
-          vitrineMapsUrl: true,
-          vitrineHours: true,
-          socialInstagram: true,
-          socialFacebook: true,
-          socialWhatsapp: true,
-          socialWebsite: true,
-          productSkin: true,
-        },
-      }),
-    );
-    if (!org) throw new AppError(ErrorCode.NotFound, "Organizacao nao encontrada", 404);
 
-    // módulos habilitados pelo plano (features). Convenção: features é uma lista
-    // de chaves de módulo. Vazio/sem plano = null → tudo liberado (sem cadeado).
-    let enabledModules: string[] | null = null;
-    if (org.planCode) {
-      const plan = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
-        tx.plan.findUnique({ where: { slug: org.planCode! }, select: { features: true } }),
-      );
-      const feats = plan?.features;
-      if (Array.isArray(feats) && feats.length > 0) {
-        enabledModules = feats.filter((f): f is string => typeof f === "string");
-      }
-    }
+    // A resposta é a mesma pra todo mundo da empresa, então o cache é POR
+    // EMPRESA: dez pessoas trabalhando na loja pedem a mesma coisa e o banco vê
+    // uma consulta só. Chegar aqui já significa ter provado, pela sessão, que
+    // se pertence a esta empresa.
+    const emCache = await this.cache.getOrg<Record<string, unknown>>(ctx.orgId);
+    if (emCache) return emCache;
 
-    // aditivos à la carte: módulos liberados fora do plano (trial/alacarte/cortesia).
-    // Ativo = não bloqueado E (pago OU sem expiração OU ainda dentro do prazo).
-    if (enabledModules !== null) {
-      const now = new Date();
-      const grants = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
-        tx.orgModuleGrant.findMany({ where: { organizationId: ctx.orgId! } }),
-      );
-      const active = grants
-        .filter((g) => !g.blocked && (g.paid || g.expiresAt == null || g.expiresAt > now))
-        .map((g) => g.moduleKey);
-      if (active.length) enabledModules = [...new Set([...enabledModules, ...active])];
-      // BLOQUEIO por empresa: grant com blocked=true REMOVE o módulo mesmo que o
-      // plano inclua (override do master pra empresa específica). Só funciona
-      // quando o plano restringe (enabledModules != null) — plano sem features
-      // libera tudo e a UI avisa pra definir os módulos do plano antes.
-      const blockedKeys = grants.filter((g) => g.blocked).map((g) => g.moduleKey);
-      if (blockedKeys.length) enabledModules = enabledModules.filter((k) => !blockedKeys.includes(k));
-    }
-
-    // Deny-list de módulos do NICHO da empresa (tabela `niches`, editável no
-    // master). Módulos aqui não aparecem pra esse nicho — o front filtra por isto
-    // em vez do antigo mapa MODULE_NICHES chumbado. [] se nicho desconhecido.
-    let nicheHiddenModules: string[] = [];
-    if (org.niche) {
-      const nicheRow = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
-        tx.niche.findFirst({ where: { key: org.niche!.toLowerCase() }, select: { hiddenModuleKeys: true } }),
-      ).catch(() => null);
-      const h = nicheRow?.hiddenModuleKeys;
-      if (Array.isArray(h)) nicheHiddenModules = h.filter((x): x is string => typeof x === "string");
-    }
-
-    // Sub-módulos por empresa (Fase 2 + extensão): overrides do master no mapa
-    // genérico submodule_features { "<modulo>.<sub>": false } — ausência = ligado
-    // (default-on). `productionFeatures` é mantido (chaves "soltas") por
-    // compatibilidade com o gating já existente da Produção.
-    let submoduleFeatures: Record<string, boolean> = {};
-    let productionFeatures: Record<string, boolean> = {};
-    const ccs = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.callCenterSettings.findFirst({ where: { organizationId: ctx.orgId! }, select: { submoduleFeatures: true, productionFeatures: true } }),
-    ).catch(() => null);
-    const sf = (ccs as any)?.submoduleFeatures;
-    if (sf && typeof sf === "object" && !Array.isArray(sf)) {
-      for (const [k, v] of Object.entries(sf)) {
-        const on = v !== false;
-        submoduleFeatures[k] = on;
-        if (k.startsWith("producao.")) productionFeatures[k.slice("producao.".length)] = on;
-      }
-    }
-    // fallback: se ainda não migrou pro mapa genérico, lê o legado da Produção
-    const pf = (ccs as any)?.productionFeatures;
-    if (!sf && pf && typeof pf === "object" && !Array.isArray(pf)) {
-      for (const [k, v] of Object.entries(pf)) {
-        const on = v !== false;
-        productionFeatures[k] = on;
-        submoduleFeatures[`producao.${k}`] = on;
-      }
-    }
-
-    return { ...org, enabledModules, nicheHiddenModules, productionFeatures, submoduleFeatures };
+    const { organization } = await this.shell.load(ctx);
+    if (!organization) throw new AppError(ErrorCode.NotFound, "Organizacao nao encontrada", 404);
+    await this.cache.setOrg(ctx.orgId, organization);
+    return organization;
   }
 
   /**
@@ -400,6 +312,7 @@ export class OrganizationsService {
         },
       }),
     );
+    await this.cache.dropOrg(ctx.orgId);
     return org;
   }
 
@@ -419,39 +332,45 @@ export class OrganizationsService {
     if (input.logoUrl !== undefined) data.logoUrl = input.logoUrl;
     if (input.primaryColor !== undefined) data.primaryColor = input.primaryColor;
     if (input.themeMode !== undefined) data.themeMode = input.themeMode;
-    return this.prisma.runWithContext(this.rls(ctx), (tx) =>
+    const r = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.organization.update({
         where: { id: ctx.orgId! },
         data,
         select: { id: true, name: true, logoUrl: true, primaryColor: true, themeMode: true },
       }),
     );
+    await this.cache.dropOrg(ctx.orgId);
+    return r;
   }
 
   /** Configura os recursos do portal do cliente (null = padrão, mostra todos). */
   async updatePortal(ctx: RequestContext, features: string[] | null) {
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
     if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
-    return this.prisma.runWithContext(this.rls(ctx), (tx) =>
+    const r = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.organization.update({
         where: { id: ctx.orgId! },
         data: { portalConfig: features === null ? null : (features as any) },
         select: { id: true, portalConfig: true },
       }),
     );
+    await this.cache.dropOrg(ctx.orgId);
+    return r;
   }
 
   /** Configura os botões do call center (null = padrão, segue os módulos). */
   async updateCallcenter(ctx: RequestContext, buttons: string[] | null) {
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
     if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
-    return this.prisma.runWithContext(this.rls(ctx), (tx) =>
+    const r = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.organization.update({
         where: { id: ctx.orgId! },
         data: { callcenterConfig: buttons === null ? null : (buttons as any) },
         select: { id: true, callcenterConfig: true },
       }),
     );
+    await this.cache.dropOrg(ctx.orgId);
+    return r;
   }
 
   /**
@@ -494,9 +413,11 @@ export class OrganizationsService {
     if (typeof data.slug === "string") {
       data.slug = (data.slug as string).trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
     }
-    return this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
+    const r = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.organization.update({ where: { id }, data }),
     );
+    await this.cache.dropOrg(id);
+    return r;
   }
 
   /**
@@ -612,6 +533,7 @@ export class OrganizationsService {
           },
         });
 
+        // cache-ok: empresa e usuário acabaram de nascer; ninguém tem sessão
         const membership = await tx.membership.create({
           data: {
             userId: user.id,

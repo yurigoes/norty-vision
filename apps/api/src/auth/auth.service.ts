@@ -5,6 +5,7 @@ import { SessionService } from "./session.service";
 import { MfaService } from "./mfa.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { ProvisioningService } from "../integrations/provisioning.service";
+import { SessionCacheService } from "./session-cache.service";
 
 @Injectable()
 export class AuthService {
@@ -14,6 +15,7 @@ export class AuthService {
     private readonly session: SessionService,
     private readonly mfa: MfaService,
     private readonly provisioning: ProvisioningService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   /** Troca a própria senha (autenticado). Limpa a flag must_reset. */
@@ -31,6 +33,8 @@ export class AuthService {
     await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.user.update({ where: { id: userId }, data: { passwordHash, mustResetPassword: false } }),
     );
+    // some com o "precisa trocar a senha" na hora, senão a tela volta a pedir
+    await this.cache.dropByUser(userId);
     // propaga a senha pro Chatwoot + GLPI (best-effort, não bloqueia)
     await this.provisioning.syncUserPassword(userId, newPassword).catch(() => undefined);
     return { ok: true };
@@ -164,7 +168,7 @@ export class AuthService {
 
     // isolamento por slug: o login SEMPRE é escopado a uma empresa.
     //  - pelo endereço de uma empresa (subdomínio/rota): escopa àquele slug.
-    //  - no apex (yugochat.com.br, sem slug): escopa à empresa dona do SaaS
+    //  - no apex (sem slug): escopa à empresa dona do SaaS
     //    (PLATFORM_ORG_SLUG = "yugo"). Assim só a equipe da yugo loga no apex;
     //    cada empresa cliente entra pelo endereço do seu próprio slug.
     // Quem não tem membership ativo na empresa escopada recebe "Credenciais

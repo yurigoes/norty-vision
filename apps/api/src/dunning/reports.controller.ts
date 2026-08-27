@@ -3,8 +3,10 @@ import type { FastifyReply } from "fastify";
 import { CurrentContext } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { ReportsService } from "./reports.service";
+import { RequireModule } from "../common/modulo.guard";
 
 @Controller("reports")
+@RequireModule("relatorios")
 export class ReportsController {
   constructor(private readonly svc: ReportsService) {}
 

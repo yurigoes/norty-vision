@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useDialog } from "../../../../components/SystemDialog";
+import { PageHeader } from "../../../../components/PageHeader";
 
 type Kb = { id: string; topic: string | null; question: string; answer: string; status: string; aiGenerated: boolean; usageCount: number };
 
@@ -47,15 +47,17 @@ export default function PainelAjuda() {
 
   return (
     <div className="max-w-3xl">
-      <header className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <Link href="/app/atendimento" className="text-sm text-brand hover:underline">← Atendimento</Link>
-          <p className="mt-1 text-xs font-semibold uppercase tracking-wider text-brand">Atendimento</p>
-          <h1 className="mt-1 text-3xl font-semibold">Central de ajuda</h1>
-          <p className="mt-2 text-muted">Perguntas + respostas que a equipe usa e que o cliente vê no portal. Publique pra aparecer no portal do cliente.</p>
-        </div>
-        <button onClick={() => setEditing({ status: "draft" })} className="btn-grad">+ Pergunta</button>
-      </header>
+      <PageHeader
+        eyebrow="Atendimento"
+        title="Central de ajuda"
+        description="Perguntas + respostas que a equipe usa e que o cliente vê no portal. Publique pra aparecer no portal do cliente."
+        back={{ href: "/app/atendimento", label: "Atendimento" }}
+        actions={
+          <button onClick={() => setEditing({ status: "draft" })} className="btn-grad">
+            + Pergunta
+          </button>
+        }
+      />
 
       <div className="space-y-2">
         {items.length === 0 ? (

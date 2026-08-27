@@ -52,6 +52,10 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  // sem viewport-fit=cover os env(safe-area-inset-*) valem 0 — e o app
+  // instalado (statusBarStyle black-translucent) fica com conteúdo embaixo
+  // da barra de status do iPhone.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

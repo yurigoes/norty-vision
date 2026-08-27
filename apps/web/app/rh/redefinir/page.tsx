@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { goToLogin } from "../../../lib/orgMemory";
 
 export default function RedefinirSenha() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function RedefinirSenha() {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ password }),
       });
       const data = await res.json();
-      if (!res.ok) { if (res.status === 401) { router.push("/rh/login"); return; } throw new Error(data?.error?.message ?? "Falha"); }
+      if (!res.ok) { if (res.status === 401) { goToLogin("funcionario"); return; } throw new Error(data?.error?.message ?? "Falha"); }
       router.push("/rh");
     } catch (e: any) { setErr(e.message); } finally { setBusy(false); }
   }

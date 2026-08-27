@@ -8,6 +8,7 @@ import { MercadoPagoOrgAdapter } from "../payments/mercadopago-org.adapter";
 import { PlatformContractsService } from "../platform-contracts/platform-contracts.service";
 import { SubscriptionInvoicesService } from "../subscription-invoices/subscription-invoices.service";
 import type { RequestContext } from "../auth/session.middleware";
+import { SessionCacheService } from "../auth/session-cache.service";
 
 interface StartCheckoutInput {
   planId?: string;
@@ -24,6 +25,7 @@ export class SubscriptionsService {
     private readonly integrations: IntegrationsService,
     private readonly platformContracts: PlatformContractsService,
     private readonly subscriptionInvoices: SubscriptionInvoicesService,
+    private readonly cache: SessionCacheService,
   ) {}
 
   /** Retorna assinatura da org atual (cria trial default se nao existir). */
@@ -89,6 +91,10 @@ export class SubscriptionsService {
         where: { id: opts.organizationId },
         data: { planCode: plan.slug },
       });
+      return sub;
+    }).then(async (sub) => {
+      // trocou de plano = trocou o conjunto de módulos liberados
+      await this.cache.dropOrg(opts.organizationId);
       return sub;
     });
   }
@@ -157,7 +163,7 @@ export class SubscriptionsService {
     // cria preapproval no MP
     const adapter = new MercadoPagoAdapter({ accessToken: mp.apiToken });
     const backUrl =
-      input.backUrl ?? `https://${process.env.DOMAIN ?? "yugochat.com.br"}/app/billing?status=back`;
+      input.backUrl ?? `https://${process.env.DOMAIN ?? "vision.norty.com.br"}/app/billing?status=back`;
 
     const r = await adapter.createPreapproval({
       reason: `${plan.name} — ${org.name}`,
@@ -221,7 +227,7 @@ export class SubscriptionsService {
 
     const sub = await this.assignPlan({ organizationId: ctx.orgId, planSlug: plan.slug });
     const adapter = new MercadoPagoOrgAdapter(mp.apiToken);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const notificationUrl = `https://${domain}/api/subscriptions/webhooks/mercadopago`;
 
     if (input.method === "pix") {
@@ -261,7 +267,7 @@ export class SubscriptionsService {
     return { method: "card" as const, amountCents: plan.priceCents, initPoint: r.body?.init_point ?? null, subscriptionId: sub.id };
   }
 
-  // ===== COMPRA DE MÓDULO À LA CARTE (empresa paga a Yugochat) =====
+  // ===== COMPRA DE MÓDULO À LA CARTE (empresa paga a plataforma) =====
   /** Módulos à la carte que o master precificou pra esta empresa e ainda não
    *  foram pagos — a empresa pode comprar pra desbloquear. */
   async listMyModuleOffers(ctx: RequestContext) {
@@ -289,6 +295,7 @@ export class SubscriptionsService {
       grant = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
         tx.orgModuleGrant.create({ data: { organizationId: ctx.orgId!, moduleKey: input.moduleKey, kind: "alacarte", priceCents: price.priceCents, blocked: false, paid: false } }),
       );
+      await this.cache.dropOrg(ctx.orgId!);
     }
     if (grant.kind !== "alacarte") throw new AppError(ErrorCode.NotFound, "Módulo não está disponível para compra", 404);
     if (grant.paid) throw new AppError(ErrorCode.Conflict, "Módulo já está pago", 409);
@@ -303,7 +310,7 @@ export class SubscriptionsService {
     if (!payerEmail) throw new AppError(ErrorCode.ValidationFailed, "Cadastre um email de contato na organizacao antes", 400);
 
     const adapter = new MercadoPagoOrgAdapter(mp.apiToken);
-    const domain = process.env.DOMAIN ?? "yugochat.com.br";
+    const domain = process.env.DOMAIN ?? "vision.norty.com.br";
     const notificationUrl = `https://${domain}/api/subscriptions/webhooks/mercadopago`;
     const extRef = `mod:${grant.id}`;
     const label = `Módulo ${input.moduleKey} — ${org.name}`;
@@ -481,7 +488,11 @@ export class SubscriptionsService {
         const grant = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
           tx.orgModuleGrant.findUnique({ where: { id: modGrantId! }, select: { organizationId: true, moduleKey: true } }),
         );
-        if (grant) await this.platformContracts.autoAssignModuleAddendum(grant.organizationId, grant.moduleKey);
+        if (grant) {
+          // módulo pago = módulo liberado: o cadeado tem que cair na hora
+          await this.cache.dropOrg(grant.organizationId);
+          await this.platformContracts.autoAssignModuleAddendum(grant.organizationId, grant.moduleKey);
+        }
       } catch { /* best-effort */ }
     }
 

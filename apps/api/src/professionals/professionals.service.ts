@@ -72,6 +72,7 @@ export class ProfessionalsService {
       }
       const existing = await tx.membership.findFirst({ where: { userId: user.id, organizationId: orgId } });
       if (!existing) {
+        // cache-ok: usuário recém-criado pro profissional; não tem sessão
         await tx.membership.create({
           data: { userId: user.id, organizationId: orgId, storeId, roleId: role.id, status: "active", acceptedAt: new Date() },
         });

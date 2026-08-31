@@ -21,6 +21,21 @@ import { fileURLToPath } from "node:url";
 const web = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const raiz = join(web, "app", "app");
 
+/**
+ * Listas que NÃO podem virar `<option>` de um `<select>`.
+ *
+ * O filtro na memória não era o único jeito de a tela mentir. O pedido de
+ * lente escolhia produto num `<select>` montado sobre a lista que a página
+ * tinha baixado — e `<select>` nem filtra, então ninguém percebia. Com 521
+ * produtos e teto de 500, **21 eram inescolhíveis**: não apareciam, e não
+ * havia como procurá-los.
+ *
+ * Cadastro que cresce (cliente, produto, fornecedor) se escolhe pelo seletor
+ * que pergunta ao servidor, não por uma lista baixada. Médico e laboratório
+ * ficam de fora: são dezenas, vêm inteiros, e não crescem sozinhos.
+ */
+const NAO_PODEM_SER_SELECT = ["products", "customers"];
+
 /** Telas que PODEM filtrar texto na memória, e por quê. */
 const ISENTAS: Record<string, string> = {
   "ponto/page.tsx":
@@ -54,6 +69,7 @@ const naMemoria: string[] = [];
 const usadas = new Set<string>();
 let comHook = 0;
 let isentas = 0;
+const comSelect: string[] = [];
 
 for (const arquivo of walk(raiz)) {
   const src = readFileSync(arquivo, "utf8");
@@ -92,7 +108,9 @@ for (const arquivo of walk(raiz)) {
     semUsar.push(`${rel} — chama o hook mas nunca lê \`.itens\``);
   } else if (comBusca && !/doServidor/.test(src)) {
     semUsar.push(`${rel} — busca no servidor mas não avisa na tela de onde veio o resultado`);
-  } else if (!/<CarregarMais\b/.test(src)) {
+  }
+
+  if (!/<CarregarMais\b/.test(src)) {
     // sem isto o usuário continua sem saber que existe mais do que está vendo:
     // era exatamente o teto silencioso
     semUsar.push(`${rel} — carrega do servidor mas não mostra o total nem o "carregar mais"`);
@@ -101,16 +119,38 @@ for (const arquivo of walk(raiz)) {
   }
 }
 
+// A terceira metade: escolher de uma lista BAIXADA, num <select>. Aqui o
+// filtro na memória nem aparece — `<select>` não filtra —, e é justamente por
+// isso que passou despercebido no pedido de lente por tanto tempo.
+for (const arquivo of walk(raiz)) {
+  const src = readFileSync(arquivo, "utf8");
+  const rel = relative(raiz, arquivo).replace(/\\/g, "/");
+  for (const lista of NAO_PODEM_SER_SELECT) {
+    const re = new RegExp(`\\b${lista}\\.map\\(\\s*\\(?\\w+\\)?\\s*=>\\s*<option`);
+    if (re.test(src)) {
+      comSelect.push(`${rel} — monta <option> a partir de \`${lista}\`, que vem com teto do servidor`);
+    }
+  }
+}
+
 // Isenção que não vale mais é isenção esquecida: some com ela.
 const sobrando = Object.keys(ISENTAS).filter((k) => !usadas.has(k));
 
 console.log(`telas que perguntam ao servidor:      ${comHook}`);
+console.log(`listas grandes viradas <select>:      ${comSelect.length}`);
 console.log(`filtros na memória isentos (com motivo): ${isentas}`);
 
 if (sobrando.length) {
   console.log(`\nFALHA — ${sobrando.length} isenção(ões) que não valem mais (a tela não filtra mais texto na memória):`);
   sobrando.forEach((t) => console.log("  " + t));
   console.log("\nApague a linha correspondente neste arquivo.");
+  process.exit(1);
+}
+
+if (comSelect.length) {
+  console.log(`\nFALHA — ${comSelect.length} tela(s) escolhendo de uma lista baixada, num <select>:`);
+  comSelect.forEach((t) => console.log("  " + t));
+  console.log("\nUse `SeletorProduto` ou `SeletorCliente` (components/), que buscam no servidor.");
   process.exit(1);
 }
 

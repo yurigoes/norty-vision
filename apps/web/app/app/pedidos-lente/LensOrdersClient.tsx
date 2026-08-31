@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { SeletorProduto, type ProdutoEscolhido } from "../../../components/SeletorProduto";
 import { SeletorCliente } from "../../../components/SeletorCliente";
 import { useDialog } from "../../../components/SystemDialog";
 
 interface Supplier { id: string; name: string; type: string }
-interface ProductLite { id: string; name: string; category: string | null; priceCashCents: number | null; costCents: number | null }
 interface Order {
   id: string;
   status: string;
@@ -60,13 +60,12 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 export function LensOrdersClient({
-  initialOrders, initialBatches, doctors, labs, products = [],
+  initialOrders, initialBatches, doctors, labs,
 }: {
   initialOrders: Order[];
   initialBatches: Batch[];
   doctors: Supplier[];
   labs: Supplier[];
-  products?: ProductLite[];
 }) {
   const router = useRouter();
   const [tab, setTab] = useState<"pedidos" | "lotes">("pedidos");
@@ -95,7 +94,7 @@ export function LensOrdersClient({
       {err && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{err}</p>}
 
       {tab === "pedidos" ? (
-        <OrdersTab orders={initialOrders} doctors={doctors} labs={labs} products={products} act={act} />
+        <OrdersTab orders={initialOrders} doctors={doctors} labs={labs} act={act} />
       ) : (
         <BatchesTab batches={initialBatches} orders={initialOrders} labs={labs} act={act} />
       )}
@@ -111,8 +110,8 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 
-function OrdersTab({ orders, doctors, labs, products, act }: {
-  orders: Order[]; doctors: Supplier[]; labs: Supplier[]; products: ProductLite[];
+function OrdersTab({ orders, doctors, labs, act }: {
+  orders: Order[]; doctors: Supplier[]; labs: Supplier[];
   act: (url: string, method?: string, body?: any) => Promise<boolean>;
 }) {
   const router = useRouter();
@@ -156,7 +155,7 @@ function OrdersTab({ orders, doctors, labs, products, act }: {
       </div>
 
       {creating && (
-        <OrderForm doctors={doctors} labs={labs} products={products} onCancel={() => setCreating(false)}
+        <OrderForm doctors={doctors} labs={labs} onCancel={() => setCreating(false)}
           onSaved={() => { setCreating(false); router.refresh(); }} />
       )}
 
@@ -268,8 +267,8 @@ function NfButton({ order, act }: { order: Order; act: (url: string, method?: st
   );
 }
 
-function OrderForm({ doctors, labs, products, onCancel, onSaved }: {
-  doctors: Supplier[]; labs: Supplier[]; products: ProductLite[];
+function OrderForm({ doctors, labs, onCancel, onSaved }: {
+  doctors: Supplier[]; labs: Supplier[];
   onCancel: () => void; onSaved: () => void;
 }) {
   const [customerId, setCustomerId] = useState<string>("");
@@ -280,23 +279,26 @@ function OrderForm({ doctors, labs, products, onCancel, onSaved }: {
   const [price, setPrice] = useState("");
   const [cost, setCost] = useState("");
   const [notes, setNotes] = useState("");
-  const [frameProductId, setFrameProductId] = useState("");
-  const [lensProductId, setLensProductId] = useState("");
+  // guarda o produto INTEIRO, não só o id: o seletor busca no servidor, então
+  // a tela não tem mais uma lista local onde procurar o nome depois.
+  const [frame, setFrame] = useState<ProdutoEscolhido | null>(null);
+  const [lens, setLens] = useState<ProdutoEscolhido | null>(null);
+  const frameProductId = frame?.id ?? "";
+  const lensProductId = lens?.id ?? "";
   const [outroValor, setOutroValor] = useState(false);
   const [osNumber, setOsNumber] = useState("");
   // automação: vendas pagas do cliente p/ puxar a compra
   const [eligibleSales, setEligibleSales] = useState<any[]>([]);
   const [saleId, setSaleId] = useState("");
 
-  // ao escolher a lente (produto), puxa preço e custo — salvo se "outro valor"
-  function pickLens(id: string) {
-    setLensProductId(id);
-    if (!outroValor) {
-      const p = products.find((x) => x.id === id);
-      if (p) {
-        if (p.priceCashCents != null) setPrice((p.priceCashCents / 100).toFixed(2));
-        if (p.costCents != null) setCost((p.costCents / 100).toFixed(2));
-      }
+  // ao escolher a lente (produto), puxa preço e custo — salvo se "outro valor".
+  // O produto vem inteiro do seletor, então não precisa procurar em lista
+  // nenhuma: vale igual pra lente achada na busca e pra recém-cadastrada.
+  function pickLens(p: ProdutoEscolhido | null) {
+    setLens(p);
+    if (!outroValor && p) {
+      if (p.priceCashCents != null) setPrice((p.priceCashCents / 100).toFixed(2));
+      if (p.costCents != null) setCost((p.costCents / 100).toFixed(2));
     }
   }
 
@@ -309,11 +311,21 @@ function OrderForm({ doctors, labs, products, onCancel, onSaved }: {
       .catch(() => setEligibleSales([]));
   }, [customerId]);
 
-  // puxa óculos + lente + lab da compra escolhida (auto-preenche, evita erro)
-  function pickSale(s: any) {
+  // puxa óculos + lente + lab da compra escolhida (auto-preenche, evita erro).
+  // A venda traz só `{ id, name }`; o preço e o custo vêm do produto, então
+  // busca o produto inteiro pra lente — que é a que preenche os dois valores.
+  async function pickSale(s: any) {
     setSaleId(s.id);
-    if (s.frame?.id) setFrameProductId(s.frame.id);
-    if (s.lens?.id) { pickLens(s.lens.id); if (s.lens.labSupplierId) setLabId(s.lens.labSupplierId); }
+    if (s.frame?.id) setFrame({ id: s.frame.id, name: s.frame.name });
+    if (s.lens?.id) {
+      if (s.lens.labSupplierId) setLabId(s.lens.labSupplierId);
+      pickLens({ id: s.lens.id, name: s.lens.name });
+      const completo = await fetch(`/api/products/${s.lens.id}`, { credentials: "include", cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((d) => d?.product ?? null)
+        .catch(() => null);
+      if (completo) pickLens(completo as ProdutoEscolhido);
+    }
   }
   const [od, setOd] = useState({ esf: "", cil: "", eixo: "", dnp: "", altura: "", adicao: "" });
   const [oe, setOe] = useState({ esf: "", cil: "", eixo: "", dnp: "", altura: "", adicao: "" });
@@ -438,22 +450,32 @@ function OrderForm({ doctors, labs, products, onCancel, onSaved }: {
 
       {/* produtos: óculos (estoque) + lente (preço/custo) + OS */}
       <div className="grid gap-3 sm:grid-cols-3">
-        <label className="block">
+        <div className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Óculos / armação (estoque)</span>
-          <select value={frameProductId} onChange={(e) => setFrameProductId(e.target.value)} className="input-base">
-            <option value="">—</option>
-            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          <SeletorProduto
+            escolhido={frame}
+            aoEscolher={setFrame}
+            aoLimpar={() => setFrame(null)}
+            permitirCadastro
+            categoriaSugerida="Armação"
+            rotulo="armação"
+            placeholder="Código ou nome da armação"
+          />
           <span className="mt-0.5 block text-[10px] text-muted">baixa 1 do estoque ao salvar</span>
-        </label>
-        <label className="block">
+        </div>
+        <div className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">Lente (produto)</span>
-          <select value={lensProductId} onChange={(e) => pickLens(e.target.value)} className="input-base">
-            <option value="">—</option>
-            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          <SeletorProduto
+            escolhido={lens}
+            aoEscolher={pickLens}
+            aoLimpar={() => pickLens(null)}
+            permitirCadastro
+            categoriaSugerida="Lente"
+            rotulo="lente"
+            placeholder="Código ou nome da lente"
+          />
           <span className="mt-0.5 block text-[10px] text-muted">puxa preço e custo automaticamente</span>
-        </label>
+        </div>
         <label className="block">
           <span className="mb-1 block text-[10px] uppercase text-muted">OS manual (opcional)</span>
           <input value={osNumber} onChange={(e) => setOsNumber(e.target.value)} placeholder="nº da OS feita à mão" className="input-base" />

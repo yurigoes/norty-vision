@@ -5,5 +5,17 @@
       "Bash(git checkout:*)",
       "Bash(git merge:*)"
     ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash infra/scripts/claude-sessao-tailscale.sh"
+          }
+        ]
+      }
+    ]
   }
 }

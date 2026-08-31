@@ -65,20 +65,6 @@ ok()   { printf '%s[OK]%s %s\n' "$C_OK" "$C_0" "$*"; }
 aviso(){ printf '%s[!]%s %s\n' "$C_AV" "$C_0" "$*" >&2; }
 morre(){ printf '%s[ERRO]%s %s\n' "$C_ER" "$C_0" "$*" >&2; exit 1; }
 
-# --- 0. não deixar o script ser trocado embaixo de si mesmo ------------------
-# O bash lê o arquivo aos poucos, conforme executa. Como o passo 3 faz
-# `git checkout` dentro de $FONTE, um script rodado DE DENTRO de $FONTE teria o
-# próprio arquivo reescrito no meio da execução — e o bash continuaria lendo do
-# offset antigo, num arquivo novo. Falha bizarra e difícil de diagnosticar.
-# Então: se estou dentro do clone, me copio pra fora e re-executo de lá.
-EU="$(readlink -f "${BASH_SOURCE[0]}")"
-if [[ "$EU" == "$FONTE"/* && "${NV_REEXEC:-}" != "1" ]]; then
-  COPIA="$(mktemp /tmp/deploy-nv-thor.XXXXXX.sh)"
-  cp "$EU" "$COPIA"
-  export NV_REEXEC=1
-  exec bash "$COPIA" "$@"
-fi
-
 [[ $EUID -eq 0 ]] || morre "precisa ser root (pct e docker do CT pedem root)"
 command -v pct >/dev/null || morre "sem \`pct\` — este script roda NA THOR, não dentro do CT"
 [[ -d "$DESTINO" ]] || morre "$DESTINO não existe. Esta não é a máquina certa."
@@ -121,9 +107,21 @@ else
   git clone --origin origin "$REPO" "$FONTE"
   git -C "$FONTE" fetch origin "$REF"
 fi
-git -C "$FONTE" checkout -q --detach "origin/$REF"
-COMMIT=$(git -C "$FONTE" log -1 --format='%h %ad %s' --date=short)
+COMMIT=$(git -C "$FONTE" log -1 --format='%h %ad %s' --date=short "origin/$REF")
 ok "vai subir: $COMMIT"
+
+# O código sai por `git archive` num diretório temporário, NÃO por checkout.
+#
+# A primeira versão daqui fazia `git checkout --detach origin/$REF` dentro de
+# $FONTE — e como este script vive numa branch que não é a `main`, o checkout
+# APAGAVA O PRÓPRIO SCRIPT do disco. Rodou uma vez e sumiu.
+#
+# `git archive` não move o HEAD nem toca no diretório de trabalho: o clone fica
+# exatamente onde você o deixou, com o script no lugar. E o que vai pra
+# produção sai do objeto do git, não de uma árvore que alguém pode ter sujado.
+ARVORE="$(mktemp -d /tmp/nv-deploy.XXXXXX)"
+trap 'rm -rf "$ARVORE"' EXIT
+git -C "$FONTE" archive "origin/$REF" | tar -x -C "$ARVORE"
 
 # --- 4. sincronizar SÓ o que o build precisa ---------------------------------
 # Lista explícita. `infra/` fora — é onde moram o compose e os .env locais.
@@ -137,15 +135,66 @@ CAMINHOS=(
   turbo.json
   .dockerignore
 )
+# --- 4a. o que existe SÓ na produção -----------------------------------------
+#
+# Achado rodando o primeiro ensaio: a produção tinha código que NUNCA esteve no
+# git — um módulo `api/src/collab/` inteiro e a tela `agenda/recepcao`, escritos
+# direto na thor e nunca commitados. Com `--delete`, o deploy os apagaria; o
+# build passaria; e a funcionalidade sumiria sem uma linha de erro.
+#
+# Então antes de escrever qualquer coisa: descobrir o que sumiria, separar o
+# que é lixo conhecido do que é código, e PARAR se for código.
+DESCARTAVEIS='\.bak($|-)|\.bak-|~$|\.orig$|\.rej$|\.swp$'
+declare -a SOME_CODIGO=() SOME_LIXO=()
+
+log "vendo o que a sincronia apagaria"
+for c in "${CAMINHOS[@]}"; do
+  [[ -d "$ARVORE/$c" ]] || continue
+  while IFS= read -r linha; do
+    alvo="${linha#*deleting}"; alvo="${alvo#"${alvo%%[![:space:]]*}"}"   # tira o rótulo e os espaços
+    [[ -n "$alvo" && "$alvo" != */ ]] || continue
+    if [[ "$alvo" =~ $DESCARTAVEIS ]]; then
+      SOME_LIXO+=("$c/$alvo")
+    else
+      SOME_CODIGO+=("$c/$alvo")
+    fi
+  done < <(rsync -an --delete --out-format='%i %n' "$ARVORE/$c/" "$DESTINO/$c/" 2>/dev/null | grep '^\*deleting' || true)
+done
+
+if [[ ${#SOME_LIXO[@]} -gt 0 ]]; then
+  printf '    (%d arquivo(s) de backup/rascunho, some sem dó)\n' "${#SOME_LIXO[@]}"
+fi
+
+if [[ ${#SOME_CODIGO[@]} -gt 0 ]]; then
+  aviso "ATENÇÃO: ${#SOME_CODIGO[@]} arquivo(s) de CÓDIGO existem só aqui e sumiriam:"
+  printf '      %s\n' "${SOME_CODIGO[@]}" >&2
+  if [[ "${PERMITIR_REMOCOES:-0}" != "1" ]]; then
+    cat >&2 <<FIM
+
+  Isto é código que não está no repositório — escrito direto na produção e
+  nunca commitado. Apagar significa perder a funcionalidade, e o build ainda
+  vai passar, então ninguém percebe na hora.
+
+  Decida antes de seguir:
+
+    · em uso  → traga pro git primeiro (commit + push), e rode de novo;
+    · morto   → PERMITIR_REMOCOES=1 bash $0 ${DRY:+--dry-run}
+
+FIM
+    morre "parando de propósito. Nada foi alterado."
+  fi
+  aviso "PERMITIR_REMOCOES=1 — seguindo e apagando os arquivos acima."
+fi
+
 log "sincronizando o código (infra/ e docs/ ficam de fora)"
 RSYNC_ARGS=(-a --delete --human-readable --info=stats2)
 [[ $DRY -eq 1 ]] && RSYNC_ARGS+=(--dry-run --itemize-changes)
 for c in "${CAMINHOS[@]}"; do
-  [[ -e "$FONTE/$c" ]] || { aviso "$c não existe no repositório — pulando"; continue; }
-  if [[ -d "$FONTE/$c" ]]; then
-    rsync "${RSYNC_ARGS[@]}" "$FONTE/$c/" "$DESTINO/$c/"
+  [[ -e "$ARVORE/$c" ]] || { aviso "$c não existe no repositório — pulando"; continue; }
+  if [[ -d "$ARVORE/$c" ]]; then
+    rsync "${RSYNC_ARGS[@]}" "$ARVORE/$c/" "$DESTINO/$c/"
   else
-    rsync "${RSYNC_ARGS[@]}" "$FONTE/$c" "$DESTINO/$c"
+    rsync "${RSYNC_ARGS[@]}" "$ARVORE/$c" "$DESTINO/$c"
   fi
 done
 

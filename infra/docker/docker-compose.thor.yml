@@ -1,0 +1,126 @@
+# ==============================================================================
+# Norty Vision na thor (Proxmox, CT 105 · Asgard).
+#
+# Este arquivo é a CÓPIA VERSIONADA do compose que roda em produção. Até agora
+# ele existia só em /srv/apps-fase3/norty-vision/infra/docker/docker-compose.yml
+# — num diretório que não é clone git, sem histórico e sem cópia, ao lado de um
+# `/root/deploy-norty-vision.sh` que na verdade restaura o dump de julho por
+# cima do banco. Um `rsync` distraído apagava tudo isso sem erro nenhum na hora.
+#
+# Mantenha os dois em sincronia. O que está aqui é a verdade; o que está lá é a
+# execução.
+#
+# DIFERENÇA PARA O QUE RODAVA ANTES: o `nv-caddy`.
+#
+# A instalação subiu em julho com dois containers e nada na frente. As telas
+# funcionavam e as imagens ficaram quebradas desde o primeiro dia: a app publica
+# os arquivos em `https://vision.norty.com.br/storage/...` e não havia ninguém
+# atendendo esse caminho — o Next respondia 404. Agora o Caddy assume a porta
+# 3030 e roteia por caminho.
+#
+# O TÚNEL DO CLOUDFLARE NÃO MUDA. Ele continua apontando para
+# 192.168.15.75:3030; quem está atrás dessa porta é que passou a ser o Caddy.
+# O `nv-web` deixou de publicar porta e é alcançado só pela rede interna.
+#
+# A porta 3031 do `nv-api` continua publicada de propósito: o túnel tem uma
+# regra `/api/*` apontando direto pra ela. Mexer nisso agora seria mudança sem
+# necessidade — o Caddy também roteia `/api/*`, então os dois caminhos servem.
+#
+# Subir:
+#   cd /opt/fase3/norty-vision/infra/docker
+#   docker compose up -d          # sem --build: nada de apps/ mudou
+# ==============================================================================
+
+name: norty-vision
+
+networks:
+  internal:
+    name: norty-vision-internal
+    driver: bridge
+
+services:
+  nv-api:
+    image: norty-vision/api:latest
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    container_name: nv-api
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      NODE_ENV: production
+      TZ: America/Sao_Paulo
+      API_PORT: "3001"
+      SESSION_COOKIE_NAME: nv2_session
+      SESSION_COOKIE_DOMAIN: ""
+      SESSION_DURATION_DAYS: "30"
+      MASTER_COOKIE_NAME: nv2_master
+      CUSTOMER_COOKIE_NAME: nv2_customer
+      EMPLOYEE_COOKIE_NAME: nv2_employee
+      SUPPLIER_COOKIE_NAME: nv2_supplier
+      COOKIE_SECRET: ${AUTH_SECRET}
+      MINIO_REGION: us-east-1
+      DOMAIN: ${NORTY_ROOT_DOMAIN}
+      LOG_LEVEL: info
+    ports:
+      - "3031:3001"
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3001/api/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  nv-web:
+    image: norty-vision/web:latest
+    build:
+      context: ../..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_ROOT_DOMAIN: norty.com.br
+    container_name: nv-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      TZ: America/Sao_Paulo
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      API_INTERNAL_URL: "http://nv-api:3001"
+    # SEM `ports`: quem atende a 3030 agora é o nv-caddy. O nv-web é alcançado
+    # só pela rede interna do Docker.
+    networks:
+      - internal
+    depends_on:
+      nv-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:3000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  nv-caddy:
+    image: caddy:2.8-alpine
+    container_name: nv-caddy
+    restart: unless-stopped
+    environment:
+      TZ: America/Sao_Paulo
+    ports:
+      # a mesma porta que o túnel já usa — por isso ele não precisa mudar
+      - "3030:80"
+    volumes:
+      - ./Caddyfile.vision:/etc/caddy/Caddyfile:ro
+    networks:
+      - internal
+    depends_on:
+      nv-web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:80/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

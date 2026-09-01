@@ -1,0 +1,83 @@
+# ==============================================================================
+# Norty Vision na thor (CT 105) — roteamento por caminho.
+#
+# POR QUE ESTE ARQUIVO EXISTE
+#
+# A instalação da thor subiu em julho com dois containers e nada na frente:
+# o túnel do Cloudflare entregava tudo direto no `nv-web`. Funcionava para as
+# telas — e as IMAGENS ficaram quebradas desde o primeiro dia, porque
+# `MINIO_PUBLIC_BASE_URL` aponta para `https://vision.norty.com.br/storage` e
+# não havia ninguém para atender esse caminho. O Next respondia 404.
+#
+# O `Caddyfile.norty` deste repositório já descrevia o desenho certo; ele é que
+# nunca foi instalado. Este arquivo é aquele desenho, adaptado à thor.
+#
+#   /api/*      -> nv-api:3001              (NestJS)
+#   /storage/*  -> 192.168.15.72:9000       (MinIO compartilhado, CT 102)
+#   resto       -> nv-web:3000              (Next.js)
+#
+# DUAS DIFERENÇAS EM RELAÇÃO AO Caddyfile.norty, ambas de propósito:
+#
+# 1. `minio:9000` virou `192.168.15.72:9000`. O MinIO mora no CT 102 e não é
+#    serviço deste compose. O `nv-api` já fala com o Postgres nesse mesmo IP.
+#
+# 2. SEM o bloco de cabeçalhos de segurança. O `next.config.mjs` já manda
+#    Referrer-Policy e Permissions-Policy, mas NÃO manda Content-Security-Policy
+#    — e o `Caddyfile.norty` manda uma bem restritiva. Adotá-la provavelmente é
+#    boa ideia, mas é mudança de comportamento que quebra de formas silenciosas
+#    (script embutido, iframe de terceiro, Mercado Pago). Não entra junto com o
+#    conserto das imagens, logo depois de um incidente. Uma coisa de cada vez.
+# ==============================================================================
+
+{
+    admin off
+    auto_https off
+
+    log default {
+        output stdout
+        format json {
+            time_format iso8601
+        }
+        level INFO
+    }
+
+    servers {
+        # o TLS termina na borda da Cloudflare; aqui é HTTP simples
+        trusted_proxies static 172.16.0.0/12 192.168.0.0/16 10.0.0.0/8
+        protocols h1 h2c
+    }
+}
+
+:80 {
+    encode zstd gzip
+
+    # O CONSERTO. `handle_path` tira o `/storage` do caminho e deixa
+    # `/norty-vision-public/org-branding/...`, que é o formato que o MinIO
+    # espera: primeiro segmento = nome do bucket. É o mesmo padrão que o Caddy
+    # do Yugo usa com `/yugo-public/`.
+    handle_path /storage/* {
+        reverse_proxy 192.168.15.72:9000 {
+            header_up Host {upstream_hostport}
+        }
+    }
+
+    handle /api/* {
+        reverse_proxy nv-api:3001 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+            header_up X-Forwarded-Proto https
+            header_up Host {host}
+        }
+    }
+
+    # Atende o apex (vision.norty.com.br) e qualquer slug de empresa
+    # (<slug>.vision.norty.com.br) — quem resolve a empresa pelo Host é a app.
+    handle {
+        reverse_proxy nv-web:3000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {http.request.header.CF-Connecting-IP}
+            header_up X-Forwarded-Proto https
+            header_up Host {host}
+        }
+    }
+}

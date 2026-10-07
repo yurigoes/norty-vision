@@ -56,8 +56,15 @@ export class PontoSignService {
     return { key, cert };
   }
 
-  // ----- ADMIN: gerenciar o certificado -----
-  async uploadCert(ctx: RequestContext, pfxBase64: string, password: string) {
+  /** Resolve o empregador alvo (o explícito, senão o DEFAULT). */
+  private async resolveEmployerId(tx: any, explicit?: string | null): Promise<string | null> {
+    if (explicit) return explicit;
+    const def = await tx.pontoEmployer.findFirst({ where: { isDefault: true }, select: { id: true } });
+    return def?.id ?? null;
+  }
+
+  // ----- ADMIN: gerenciar o certificado (POR EMPREGADOR) -----
+  async uploadCert(ctx: RequestContext, pfxBase64: string, password: string, employerId?: string | null) {
     this.requireAdmin(ctx);
     const orgId = ctx.orgId!;
     const b64 = (pfxBase64 || "").replace(/^data:[^;]+;base64,/, "");
@@ -68,33 +75,60 @@ export class PontoSignService {
     const cn = cert.subject.getField("CN")?.value ?? "Certificado";
     const notAfter = cert.validity.notAfter;
     const { key } = await this.storage.putPrivate({ keyPrefix: `ponto/cert/${orgId}`, contentType: "application/x-pkcs12", body: pfx });
-    await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.upsert({
-      where: { organizationId: orgId },
-      update: { a1CertKey: key, a1PassEnc: this.enc(password ?? ""), a1Subject: cn, a1NotAfter: notAfter },
-      create: { organizationId: orgId, a1CertKey: key, a1PassEnc: this.enc(password ?? ""), a1Subject: cn, a1NotAfter: notAfter },
-    }));
+    const data = { a1CertKey: key, a1PassEnc: this.enc(password ?? ""), a1Subject: cn, a1NotAfter: notAfter };
+    await this.prisma.runWithContext(this.rls(ctx), async (tx) => {
+      const empId = await this.resolveEmployerId(tx, employerId);
+      if (empId) {
+        await tx.pontoEmployer.update({ where: { id: empId }, data });
+        const def = await tx.pontoEmployer.findFirst({ where: { id: empId }, select: { isDefault: true } });
+        if (def?.isDefault) await tx.pontoConfig.upsert({ where: { organizationId: orgId }, update: data, create: { organizationId: orgId, ...data } }); // espelha no default (compat)
+      } else {
+        await tx.pontoConfig.upsert({ where: { organizationId: orgId }, update: data, create: { organizationId: orgId, ...data } });
+      }
+    });
     return { subject: cn, notAfter };
   }
 
-  async status(ctx: RequestContext) {
+  async status(ctx: RequestContext, employerId?: string | null) {
     this.requireAdmin(ctx);
-    const c = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.findFirst({ where: {}, select: { a1CertKey: true, a1Subject: true, a1NotAfter: true } }));
+    const c = await this.prisma.runWithContext(this.rls(ctx), async (tx) => {
+      const empId = await this.resolveEmployerId(tx, employerId);
+      if (empId) return tx.pontoEmployer.findFirst({ where: { id: empId }, select: { a1CertKey: true, a1Subject: true, a1NotAfter: true } });
+      return tx.pontoConfig.findFirst({ where: {}, select: { a1CertKey: true, a1Subject: true, a1NotAfter: true } });
+    });
     return { configured: !!c?.a1CertKey, subject: c?.a1Subject ?? null, notAfter: c?.a1NotAfter ?? null, expired: c?.a1NotAfter ? new Date(c.a1NotAfter) < new Date() : false };
   }
 
-  async removeCert(ctx: RequestContext) {
+  async removeCert(ctx: RequestContext, employerId?: string | null) {
     this.requireAdmin(ctx);
-    await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.update({ where: { organizationId: ctx.orgId! }, data: { a1CertKey: null, a1PassEnc: null, a1Subject: null, a1NotAfter: null } }));
+    await this.prisma.runWithContext(this.rls(ctx), async (tx) => {
+      const empId = await this.resolveEmployerId(tx, employerId);
+      const data = { a1CertKey: null, a1PassEnc: null, a1Subject: null, a1NotAfter: null };
+      if (empId) {
+        await tx.pontoEmployer.update({ where: { id: empId }, data });
+        const def = await tx.pontoEmployer.findFirst({ where: { id: empId }, select: { isDefault: true } });
+        if (def?.isDefault) await tx.pontoConfig.update({ where: { organizationId: ctx.orgId! }, data }).catch(() => undefined);
+      } else {
+        await tx.pontoConfig.update({ where: { organizationId: ctx.orgId! }, data });
+      }
+    });
     return { ok: true };
   }
 
-  /** Assina um conteúdo e devolve o .p7s (DER) destacado. null se não há cert. */
-  async sign(orgId: string, content: Buffer): Promise<Buffer | null> {
-    const c = await this.prisma.runWithContext({ orgId }, (tx) => tx.pontoConfig.findFirst({ where: {}, select: { a1CertKey: true, a1PassEnc: true } }));
-    if (!c?.a1CertKey || !c?.a1PassEnc) return null;
+  /** Assina um conteúdo e devolve o .p7s (DER) destacado, com o A1 do EMPREGADOR
+   *  (cada CNPJ usa o seu); cai no certificado da conta (ponto_config) se faltar. */
+  async sign(orgId: string, content: Buffer, employerId?: string | null): Promise<Buffer | null> {
+    const cred = await this.prisma.runWithContext({ orgId }, async (tx) => {
+      if (employerId) {
+        const e = await tx.pontoEmployer.findFirst({ where: { id: employerId }, select: { a1CertKey: true, a1PassEnc: true } });
+        if (e?.a1CertKey && e?.a1PassEnc) return e;
+      }
+      return tx.pontoConfig.findFirst({ where: {}, select: { a1CertKey: true, a1PassEnc: true } });
+    });
+    if (!cred?.a1CertKey || !cred?.a1PassEnc) return null;
     let pfx: Buffer;
-    try { pfx = (await this.storage.getPrivate(c.a1CertKey)).body; } catch { return null; }
-    const { key, cert } = this.openPfx(pfx, this.dec(c.a1PassEnc));
+    try { pfx = (await this.storage.getPrivate(cred.a1CertKey)).body; } catch { return null; }
+    const { key, cert } = this.openPfx(pfx, this.dec(cred.a1PassEnc));
     const p7 = forge.pkcs7.createSignedData();
     p7.content = forge.util.createBuffer(content.toString("binary"));
     p7.addCertificate(cert);

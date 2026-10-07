@@ -13,6 +13,14 @@ const ADMIN = { isPlatformAdmin: true as const };
  *   • às segundas, alerta hora extra da semana anterior acima do limite.
  * Dedupe por ponto_alert_log; resumo via ponto_config.alertSummaryLast.
  */
+/**
+ * NOTA DO PORTE: o agendador do RH também disparava lembrete de
+ * entrevista (ATS) e notificações proativas por IA (aiCapability /
+ * aiNotificationLog). Esses dois módulos são do RH do RH e NÃO fazem
+ * parte do ponto eletrônico — não foram portados, e as chamadas saíram daqui
+ * em vez de ficarem quebradas. O que sobrou é o alerta de ponto, que é o que
+ * este arquivo deveria ter sido desde sempre.
+ */
 @Injectable()
 export class PontoAlertsScheduler implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger("PontoAlerts");
@@ -21,13 +29,33 @@ export class PontoAlertsScheduler implements OnModuleInit, OnModuleDestroy {
 
   constructor(private readonly prisma: PrismaService, private readonly notifications: NotificationService, private readonly jornada: JornadaService) {}
 
+  private demoTimer: NodeJS.Timeout | null = null;
   onModuleInit() {
     if (process.env.DISABLE_SCHEDULER === "1") return;
     setTimeout(() => this.tick(), 260_000);
     this.timer = setInterval(() => this.tick(), 60 * 60_000);
-    this.logger.log("PontoAlerts iniciado (tick 1h)");
+    // purga empresas demo expiradas (a cada 10 min)
+    setTimeout(() => this.purgeDemos(), 30_000);
+    this.demoTimer = setInterval(() => this.purgeDemos(), 10 * 60_000);
+    this.logger.log("PontoAlerts iniciado (tick 1h · purge demo 10min)");
   }
-  onModuleDestroy() { if (this.timer) clearInterval(this.timer); }
+  onModuleDestroy() { if (this.timer) clearInterval(this.timer); if (this.demoTimer) clearInterval(this.demoTimer); }
+
+  /** Apaga empresas demo expiradas (CASCADE limpa todos os dados) + usuários demo. */
+  private async purgeDemos() {
+    try {
+      const rows = await this.prisma.runWithContext(ADMIN, (tx) =>
+        tx.$queryRawUnsafe<Array<{ organization_id: string; slug: string }>>(`SELECT organization_id, slug FROM demo_org WHERE expires_at < now()`),
+      ).catch(() => [] as any[]);
+      for (const r of rows) {
+        await this.prisma.runWithContext(ADMIN, async (tx) => {
+          await tx.$executeRawUnsafe(`DELETE FROM users WHERE email LIKE $1`, `%@${r.slug}.demo.local`).catch(() => undefined);
+          await tx.$executeRawUnsafe(`DELETE FROM organizations WHERE id = $1::uuid`, r.organization_id);
+        }).catch((e: any) => this.logger.warn(`purge demo ${r.slug} falhou: ${e?.message}`));
+      }
+      if (rows.length) this.logger.log(`demo purgadas: ${rows.length}`);
+    } catch (e: any) { this.logger.warn(`purgeDemos falhou: ${e?.message}`); }
+  }
 
   private offMin(tz: string) { const s = tz.startsWith("-") ? -1 : 1; return s * (Number(tz.slice(1, 3)) * 60 + Number(tz.slice(3, 5))); }
   private hhmm(s: string): number { const [h, m] = (s || "0:0").split(":").map(Number); return (h || 0) * 60 + (m || 0); }
@@ -40,6 +68,9 @@ export class PontoAlertsScheduler implements OnModuleInit, OnModuleDestroy {
     finally { this.running = false; }
   }
 
+  /** Lembrete de entrevista (ATS): avisa o candidato ~24h antes, uma vez. */
+  /** Notificações proativas da IA (empresas com a capacidade "notifications" ligada). */
+  /** Envia 1x (dedup por ai_notification_log) ao funcionário (WhatsApp/e-mail do cadastro). */
   private async run() {
     const configs = await this.prisma.runWithContext(ADMIN, (tx) => tx.pontoConfig.findMany({
       where: { alertsEnabled: true },

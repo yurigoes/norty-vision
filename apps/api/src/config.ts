@@ -25,6 +25,11 @@ const EnvSchema = z.object({
 
   // Norty Vision — identidade + API de licenciamento (/api/norty/v1)
   NORTY_SYSTEM_NAME: z.string().default("Norty Vision"),
+  // PTRP — registro 08 do AEJ: quem DESENVOLVE o software de ponto. Vai num
+  // arquivo entregue à fiscalização do trabalho, então é configuração, não
+  // constante de código. Conferir com a contabilidade antes de mudar.
+  PTRP_NAME: z.string().default("Norty Vision"),
+  PTRP_EMAIL: z.string().default(""),
   NORTY_LICENSE_TOKEN: z.string().optional(),
   // slug da empresa "dona do SaaS" (yugo). No domínio raiz (apex), os logins
   // por CPF/documento (funcionário/fornecedor) escopam pra ESTA empresa — assim

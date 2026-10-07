@@ -26,27 +26,6 @@ export class JornadaService {
   private rls(ctx: RequestContext) {
     return ctx.isPlatformAdmin ? { isPlatformAdmin: true as const } : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
   }
-
-  /** Branding da org (nome, logoUrl, cor primária). Usado no PDF do espelho. */
-  private async brandingFor(ctx: RequestContext): Promise<{ name: string; logoUrl: string | null; primaryColor: string | null }> {
-    if (!ctx.orgId) return { name: "", logoUrl: null, primaryColor: null };
-    const org = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.organization.findFirst({ where: { id: ctx.orgId! }, select: { name: true, logoUrl: true, primaryColor: true } }),
-    ).catch(() => null);
-    return { name: org?.name ?? "", logoUrl: org?.logoUrl ?? null, primaryColor: org?.primaryColor ?? null };
-  }
-
-  /** Baixa o logo da org como Buffer (PDFKit não aceita URL direto). null se falhar. */
-  private async fetchLogoBytes(url: string | null): Promise<Buffer | null> {
-    if (!url) return null;
-    try {
-      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 5000);
-      const r = await fetch(url, { signal: ctl.signal }); clearTimeout(t);
-      if (!r.ok) return null;
-      const ab = await r.arrayBuffer();
-      return Buffer.from(ab);
-    } catch { return null; }
-  }
   private requireOrg(ctx: RequestContext) { if (!ctx.orgId && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Sem org", 403); }
   private requireAdmin(ctx: RequestContext) { if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403); if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas gestor", 403); }
   private offMin(tz: string) { const s = tz.startsWith("-") ? -1 : 1; return s * (Number(tz.slice(1, 3)) * 60 + Number(tz.slice(3, 5))); }
@@ -88,7 +67,7 @@ export class JornadaService {
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoSchedule.findMany({ where: {}, orderBy: { name: "asc" } }));
   }
-  async upsertSchedule(ctx: RequestContext, input: { id?: string; code: string; name: string; kind?: string; toleranceMin?: number; nightStart?: string; nightEnd?: string; pattern?: any; active?: boolean }) {
+  async upsertSchedule(ctx: RequestContext, input: { id?: string; code: string; name: string; kind?: string; toleranceMin?: number; nightStart?: string; nightEnd?: string; pattern?: any; active?: boolean; holidayPolicy?: string; holidayPay?: string }) {
     this.requireAdmin(ctx);
     const orgId = ctx.orgId!;
     if (!input.code?.trim() || !input.name?.trim()) throw new AppError(ErrorCode.ValidationFailed, "Código e nome obrigatórios", 400);
@@ -97,6 +76,8 @@ export class JornadaService {
       kind: ["12x36", "plantao", "intermitente", "home_office"].includes(input.kind ?? "") ? input.kind! : "fixa",
       toleranceMin: Math.max(0, Math.min(60, input.toleranceMin ?? 10)),
       nightStart: input.nightStart || "22:00", nightEnd: input.nightEnd || "05:00",
+      holidayPolicy: ["folga", "trabalha", "alterna"].includes(input.holidayPolicy ?? "") ? input.holidayPolicy! : "folga",
+      holidayPay: ["normal", "dobro", "folga_comp"].includes(input.holidayPay ?? "") ? input.holidayPay! : "normal",
       pattern: input.pattern ?? {}, active: input.active ?? true,
     };
     const row = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
@@ -129,8 +110,7 @@ export class JornadaService {
   async upsertHoliday(ctx: RequestContext, input: { id?: string; day: string; name: string; kind?: string; recurring?: boolean; storeId?: string | null }) {
     this.requireAdmin(ctx);
     if (!input.day || !input.name?.trim()) throw new AppError(ErrorCode.ValidationFailed, "Data e nome obrigatórios", 400);
-    const kind = input.kind === "facultativo" ? "facultativo" : "feriado";
-    const data: any = { day: new Date(input.day + "T00:00:00Z"), name: input.name.trim().slice(0, 120), kind, recurring: !!input.recurring, storeId: input.storeId ?? null };
+    const data: any = { day: new Date(input.day + "T00:00:00Z"), name: input.name.trim().slice(0, 120), recurring: !!input.recurring, storeId: input.storeId ?? null };
     const row = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       input.id ? tx.pontoHoliday.update({ where: { id: input.id }, data }) : tx.pontoHoliday.create({ data: { organizationId: ctx.orgId!, ...data } }),
     );
@@ -144,6 +124,10 @@ export class JornadaService {
 
   /** Segmentos esperados (em minutos) de uma escala num dia. [] = folga. */
   private expectedSegments(schedule: any, dayIso: string, wd: number): Seg[] {
+    return this.rawPattern(schedule, dayIso, wd).map((s) => this.seg(s));
+  }
+  /** Segmentos CRUS (["HH:MM","HH:MM"]) esperados pela escala num dia — sem feriado/override. */
+  private rawPattern(schedule: any, dayIso: string, wd: number): [string, string][] {
     const p = (schedule?.pattern ?? {}) as any;
     const kind = schedule?.kind;
     if (kind === "intermitente") return []; // sem jornada fixa — só conta o que bater (não há falta)
@@ -153,7 +137,7 @@ export class JornadaService {
       if (!anchor) return [];
       const days = Math.floor((new Date(dayIso + "T00:00:00Z").getTime() - anchor.getTime()) / 86400000);
       if (((days % 2) + 2) % 2 !== 0) return []; // trabalha em dias pares desde a âncora
-      return (p.segments ?? []).map((s: [string, string]) => this.seg(s));
+      return (p.segments ?? []) as [string, string][];
     }
     if (kind === "plantao") {
       // ciclo: onDays trabalhados + offDays de folga, a partir de uma âncora
@@ -163,10 +147,17 @@ export class JornadaService {
       const days = Math.floor((new Date(dayIso + "T00:00:00Z").getTime() - anchor.getTime()) / 86400000);
       const pos = (((days % (on + off)) + (on + off)) % (on + off));
       if (pos >= on) return []; // dia de folga no ciclo
-      return (p.segments ?? []).map((s: [string, string]) => this.seg(s));
+      return (p.segments ?? []) as [string, string][];
     }
-    const arr = p[String(wd)] ?? [];
-    return arr.map((s: [string, string]) => this.seg(s));
+    return (p[String(wd)] ?? []) as [string, string][];
+  }
+  /** Segmentos crus esperados de um ponto_employee num dia (escala vigente). Para a troca de turno. */
+  async rawSegmentsForDay(ctx: RequestContext, pontoEmployeeId: string, dayIso: string): Promise<[string, string][]> {
+    const rls = this.rls(ctx);
+    const emp = await this.prisma.runWithContext(rls, (tx) => tx.pontoEmployee.findFirst({ where: { id: pontoEmployeeId }, select: { scheduleCode: true } }));
+    const schedule = emp?.scheduleCode ? await this.prisma.runWithContext(rls, (tx) => tx.pontoSchedule.findFirst({ where: { code: emp.scheduleCode! } })) : null;
+    const wd = new Date(dayIso + "T00:00:00Z").getUTCDay();
+    return this.rawPattern(schedule, dayIso, wd);
   }
   /** Minutos-alvo flexíveis (home office): durMinutes nos dias configurados (default seg-sex). */
   private flexTarget(schedule: any, wd: number): number {
@@ -195,6 +186,27 @@ export class JornadaService {
   }
 
   /** Calcula um dia: esperado x trabalhado, atraso, saída antecipada, extra, falta, noturno, saldo. */
+  // feriados nacionais fixos (MM-DD) — aplicados a todas as empresas
+  private static FIXED_NATIONAL: Record<string, string> = {
+    "01-01": "Confraternização Universal", "04-21": "Tiradentes", "05-01": "Dia do Trabalho",
+    "09-07": "Independência", "10-12": "N. Sra. Aparecida", "11-02": "Finados",
+    "11-15": "Proclamação da República", "12-25": "Natal",
+  };
+  /** Domingo de Páscoa (algoritmo de Meeus/Gregoriano). */
+  private easter(year: number): Date {
+    const a = year % 19, b = Math.floor(year / 100), c = year % 100, d = Math.floor(b / 4), e = b % 4;
+    const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(Date.UTC(year, month - 1, day));
+  }
+  /** Feriados nacionais MÓVEIS do ano (Carnaval, Sexta-feira Santa, Corpus Christi). */
+  private movableNational(year: number): Array<{ iso: string; name: string }> {
+    const e = this.easter(year);
+    const add = (days: number) => { const x = new Date(e); x.setUTCDate(x.getUTCDate() + days); return x.toISOString().slice(0, 10); };
+    return [{ iso: add(-47), name: "Carnaval" }, { iso: add(-2), name: "Sexta-feira Santa" }, { iso: add(60), name: "Corpus Christi" }];
+  }
+
   private computeDay(segments: Seg[], punchMins: number[], tol: number, ns: number, ne: number, flexMin = 0, nightRed = true) {
     const pts = [...punchMins].sort((x, y) => x - y);
     let workedMin = 0, nightMin = 0;
@@ -222,10 +234,19 @@ export class JornadaService {
     const expEnd = isWorkDay ? segments[segments.length - 1]![1] : null;
     const lateMin = isWorkDay && firstIn != null && expStart != null ? Math.max(0, firstIn - expStart - tol) : 0;
     const earlyMin = isWorkDay && lastOut != null && expEnd != null ? Math.max(0, expEnd - lastOut - tol) : 0;
+    // contagem de atrasos POR SEGMENTO (entrada, volta do almoço, etc.): cada batida de
+    // ENTRADA de um segmento que chega após o início esperado + tolerância conta 1 atraso.
+    let lateCount = 0;
+    if (isWorkDay) {
+      for (let i = 0; i < segments.length; i++) {
+        const inIdx = 2 * i; if (inIdx >= pts.length) break;
+        if (pts[inIdx]! - segments[i]![0] - tol > 0) lateCount++;
+      }
+    }
     const extraMin = isWorkDay ? Math.max(0, workedMin - expectedMin - tol) : workedMin; // dia de folga: tudo é extra
     const faltaMin = isWorkDay && !hasPunches ? expectedMin : 0;
     const balanceMin = workedMin - expectedMin;
-    return { expectedMin, workedMin, nightMin, nightReducedMin, nightFictaMin, lateMin, earlyMin, extraMin, faltaMin, balanceMin, incomplete, isWorkDay, hasPunches };
+    return { expectedMin, workedMin, nightMin, nightReducedMin, nightFictaMin, lateMin, earlyMin, lateCount, extraMin, faltaMin, balanceMin, incomplete, isWorkDay, hasPunches };
   }
 
   // ----- ESPELHO DE PONTO -----
@@ -240,100 +261,119 @@ export class JornadaService {
     const nightRed = cfg?.nightReducedHour ?? true;
     const dsrOn = cfg?.dsrLossEnabled ?? true;
     const schedule = emp.scheduleCode ? await this.prisma.runWithContext(rls, (tx) => tx.pontoSchedule.findFirst({ where: { code: emp.scheduleCode! } })) : null;
-    // Se o caller mandar from > to (ex.: usuário trocou só o `to` no front pra um mês passado),
-    // a gente normaliza pra não devolver espelho vazio silenciosamente. Sem isso o
-    // loop `for (let t = fromD; t <= toD; ...)` nunca executa e o usuário acha que "sumiu".
-    let fromIso = opts.from, toIso = opts.to;
-    if (fromIso > toIso) { const tmp = fromIso; fromIso = toIso; toIso = tmp; }
-    const fromD = new Date(fromIso + "T00:00:00Z"); const toD = new Date(toIso + "T23:59:59Z");
-    // Filtra anuladas (voided=false) quando a migration 186 já está aplicada;
-    // ambientes antigos sem a coluna fariam o Prisma quebrar — graceful fallback
-    // pra query sem o filtro (todas as batidas, sem distinção) pra não devolver
-    // espelho vazio só por causa de schema desatualizado.
-    const punchWhere = { employeeId: emp.id, punchedAt: { gte: new Date(fromD.getTime() - 86400000), lte: new Date(toD.getTime() + 86400000) } };
-    let punches: { punchedAt: Date }[];
-    try {
-      punches = await this.prisma.runWithContext(rls, (tx) =>
-        tx.pontoPunch.findMany({ where: { ...punchWhere, voided: false }, orderBy: { punchedAt: "asc" }, select: { punchedAt: true } }),
-      );
-    } catch (e: any) {
-      const msg = String(e?.message ?? "");
-      if (/voided/i.test(msg) || /column .* does not exist/i.test(msg) || e?.code === "P2022") {
-        // schema antigo (sem coluna voided) — segue sem o filtro
-        punches = await this.prisma.runWithContext(rls, (tx) =>
-          tx.pontoPunch.findMany({ where: punchWhere, orderBy: { punchedAt: "asc" }, select: { punchedAt: true } }),
-        );
-      } else { throw e; }
-    }
+    const fromD = new Date(opts.from + "T00:00:00Z"); const toD = new Date(opts.to + "T23:59:59Z");
+    const punches = await this.prisma.runWithContext(rls, (tx) =>
+      tx.pontoPunch.findMany({ where: { employeeId: emp.id, voided: false, punchedAt: { gte: new Date(fromD.getTime() - 86400000), lte: new Date(toD.getTime() + 86400000) } }, orderBy: { punchedAt: "asc" }, select: { punchedAt: true } }),
+    );
     const justs = await this.prisma.runWithContext(rls, (tx) =>
       tx.pontoJustification.findMany({ where: { employeeId: emp.id, day: { gte: fromD, lte: toD } }, select: { day: true, kind: true, status: true, reason: true, proposed: true } }),
     );
+    // exceções de escala por dia (troca de turno/folga aplicada, ajuste manual)
+    const overrideRows = await this.prisma.runWithContext(rls, (tx) =>
+      tx.pontoScheduleOverride.findMany({ where: { employeeId: emp.id, day: { gte: fromD, lte: toD } }, select: { day: true, kind: true, segments: true, source: true } }),
+    ).catch(() => [] as any[]);
+    const overrideByDay = new Map<string, any>();
+    for (const o of overrideRows) overrideByDay.set(new Date(o.day).toISOString().slice(0, 10), o);
+    // afastamentos (INSS/maternidade/acidente…): dias afastados não são falta nem previsto
+    const leaveRows = await this.prisma.runWithContext(rls, (tx) =>
+      tx.pontoLeave.findMany({ where: { employeeId: emp.id, startDate: { lte: toD }, OR: [{ endDate: null }, { endDate: { gte: fromD } }] }, select: { type: true, startDate: true, endDate: true } }),
+    ).catch(() => [] as any[]);
+    const leaveByDay = new Map<string, string>();
+    for (const lv of leaveRows) {
+      const s = new Date(lv.startDate); const e = lv.endDate ? new Date(lv.endDate) : toD;
+      for (let tt = Math.max(s.getTime(), fromD.getTime()); tt <= Math.min(e.getTime(), toD.getTime()); tt += 86400000) {
+        leaveByDay.set(new Date(tt).toISOString().slice(0, 10), lv.type);
+      }
+    }
     // feriados (aplicáveis: gerais OU da loja do funcionário). Recorrentes batem por dia/mês.
     const holidayRows = await this.prisma.runWithContext(rls, (tx) =>
       tx.pontoHoliday.findMany({ where: { OR: [{ storeId: null }, ...(emp.storeId ? [{ storeId: emp.storeId } as any] : [])] }, select: { day: true, name: true, kind: true, recurring: true } }),
     ).catch(() => [] as any[]);
-    const holidayByDay = new Map<string, string>();  // "YYYY-MM-DD" → rótulo (Feriado/Facultativo: nome)
-    const holidayByMd = new Map<string, string>();    // "MM-DD" (recorrente) → rótulo
+    const holidayByDay = new Map<string, string>();  // "YYYY-MM-DD" → nome
+    const holidayByMd = new Map<string, string>();    // "MM-DD" (recorrente) → nome
     for (const h of holidayRows) {
       const iso = new Date(h.day).toISOString().slice(0, 10);
+      // "Ponto facultativo" é dia abonado igual a feriado, mas o espelho precisa
+      // dizer qual dos dois foi — a contabilidade trata diferente.
       const label = `${(h as any).kind === "facultativo" ? "Ponto facultativo" : "Feriado"}${h.name ? `: ${h.name}` : ""}`;
       if (h.recurring) holidayByMd.set(iso.slice(5), label); else holidayByDay.set(iso, label);
     }
+    // feriados NACIONAIS (padrão pra todas as empresas): fixos + móveis (Páscoa)
+    for (const [md, name] of Object.entries(JornadaService.FIXED_NATIONAL)) if (!holidayByMd.has(md)) holidayByMd.set(md, name);
+    for (let yy = fromD.getUTCFullYear(); yy <= toD.getUTCFullYear(); yy++) for (const mv of this.movableNational(yy)) if (!holidayByDay.has(mv.iso)) holidayByDay.set(mv.iso, mv.name);
     // agrupa marcações por dia local
     const byDay = new Map<string, number[]>();
     for (const p of punches) { const l = this.local(p.punchedAt, tz); (byDay.get(l.day) ?? byDay.set(l.day, []).get(l.day)!).push(l.min); }
     const ns = this.hhmm(schedule?.nightStart ?? "22:00"), ne = this.hhmm(schedule?.nightEnd ?? "05:00");
     const tol = schedule?.toleranceMin ?? 10;
-    // Dia de HOJE no fuso da empresa: dias DEPOIS de hoje (futuro) ainda não
-    // aconteceram → não podem ser "falta" nem entrar no relatório. Só contam os
-    // dias até a data atual.
     const todayIso = this.local(new Date(), tz).day;
     const days: any[] = [];
-    const tot = { expectedMin: 0, workedMin: 0, nightMin: 0, nightReducedMin: 0, nightFictaMin: 0, lateMin: 0, earlyMin: 0, extraMin: 0, faltaMin: 0, abonoMin: 0, balanceMin: 0, restDays: 0, dsrLostWeeks: 0 };
+    const tot = { expectedMin: 0, workedMin: 0, abonoMin: 0, nightMin: 0, nightReducedMin: 0, nightFictaMin: 0, lateMin: 0, earlyMin: 0, extraMin: 0, faltaMin: 0, balanceMin: 0, restDays: 0, dsrLostWeeks: 0 };
     for (let t = fromD.getTime(); t <= toD.getTime(); t += 86400000) {
       const d = new Date(t); const dayIso = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
       const wd = d.getUTCDay();
-      const isFuture = dayIso > todayIso;
       const holidayName = holidayByDay.get(dayIso) ?? holidayByMd.get(dayIso.slice(5)) ?? null;
+      // Dia que ainda não chegou não é falta nem entra nos totais — senão o
+      // espelho do dia 10 já mostra o mês inteiro em vermelho.
+      const isFuture = dayIso > todayIso;
+      const ov = overrideByDay.get(dayIso);
+      const leaveType = leaveByDay.get(dayIso) ?? null;
       const dayJusts = justs.filter((j) => this.local(j.day, "+0000").day === dayIso);
-      // "justified" = dia inteiro coberto (falta/abono full-day/feriado). Abono
-      // PARCIAL de horas (kind abono com proposed.abonoMinutes) NÃO conta aqui —
-      // ele abate o déficit em horas (tratado mais abaixo via abonoMin).
-      const justified = dayJusts.some((j) => j.status === "approved" && !(j.kind === "abono" && (j.proposed as any)?.abonoMinutes));
-      // DIA ESPECIAL ABONADO: feriado cadastrado OU folga premium / ponto
-      // facultativo / feriado lançado aprovado → esperado vira 0 (não é falta,
-      // não desconta); o que bater conta como extra.
-      const specialOff = !!holidayName || dayJusts.some((j) => j.status === "approved" && ["feriado", "facultativo", "folga_premium"].includes(j.kind));
-      const specialReason = holidayName ?? (dayJusts.find((j) => j.status === "approved" && ["feriado", "facultativo", "folga_premium"].includes(j.kind))?.reason ?? null);
-      const segs = specialOff ? [] : this.expectedSegments(schedule, dayIso, wd);
-      const c = this.computeDay(segs, byDay.get(dayIso) ?? [], tol, ns, ne, specialOff ? 0 : this.flexTarget(schedule, wd), nightRed);
-      // ABONO PARCIAL DE HORAS: ex.: trabalhou 08–13 e o resto do dia foi abonado.
-      // Os minutos abonados (proposed.abonoMinutes de justificativas abono
-      // aprovadas) PAGAM o déficit do dia → abatem saída antecipada/atraso e o
-      // saldo, e entram no total de abono (vai pra folha). Limitado ao déficit.
+      const SPECIAL_KINDS = ["feriado", "facultativo", "folga_premium"];
+      const specialJust = dayJusts.find((j) => j.status === "approved" && SPECIAL_KINDS.includes(j.kind));
+      const specialOff = !!specialJust;
+      // troca aplicada / ajuste manual: a exceção da escala SOBREPÕE feriado e pattern
+      let segs: Seg[];
+      if (leaveType) {
+        segs = []; // afastado: sem jornada esperada
+      } else if (ov) {
+        segs = ov.kind === "folga" ? [] : ((ov.segments ?? []) as [string, string][]).map((s) => this.seg(s));
+      } else if (specialOff) {
+        // folga premium / ponto facultativo / feriado lançado e aprovado:
+        // esperado vira 0 — não é falta, não desconta, e o que bater vira extra.
+        segs = [];
+      } else if (holidayName) {
+        // feriado: aplica a política da escala (folga | trabalha | alterna 1 sim/1 não)
+        const pol = (schedule as any)?.holidayPolicy ?? "folga";
+        const worksHoliday = pol === "trabalha" || (pol === "alterna" && Math.floor(Date.parse(dayIso + "T00:00:00Z") / 604800000) % 2 === 0);
+        segs = worksHoliday ? this.expectedSegments(schedule, dayIso, wd) : [];
+      } else {
+        segs = this.expectedSegments(schedule, dayIso, wd);
+      }
+      const flexH = holidayName && segs.length === 0 ? 0 : this.flexTarget(schedule, wd);
+      const c = this.computeDay(segs, byDay.get(dayIso) ?? [], tol, ns, ne, flexH, nightRed);
+      const justified = dayJusts.some((j) => j.status === "approved");
+      // ABONO: dia com justificativa aprovada não conta atraso/saída antecipada/falta
+      // (foi abonado). Afastamento (leave) também não conta. Mantém trabalhado/extra/noturno.
+      const excused = justified && !leaveType;
+      const lateMin = excused ? 0 : c.lateMin;
+      const earlyMin = excused ? 0 : c.earlyMin;
+      const lateCount = excused ? 0 : c.lateCount;
+      const faltaMin = (justified || leaveType) ? 0 : c.faltaMin;
+      const abonado = excused && (c.faltaMin > 0 || c.lateMin > 0 || c.earlyMin > 0 || c.incomplete);
+      // ABONO PARCIAL DE HORAS: trabalhou 08–13 e o resto do dia foi abonado.
+      // Os minutos abonados PAGAM o déficit — abatem saída antecipada, depois
+      // atraso, e entram no saldo. Nunca passam do déficit do dia.
       const deficitMin = Math.max(0, c.expectedMin - c.workedMin);
       const abonoMin = Math.min(deficitMin, dayJusts
         .filter((j) => j.status === "approved" && j.kind === "abono" && (j.proposed as any)?.abonoMinutes)
-        .reduce((s, j) => s + Math.max(0, Math.trunc(Number((j.proposed as any).abonoMinutes) || 0)), 0));
-      const adjEarly = Math.max(0, c.earlyMin - abonoMin);                          // abono cobre 1º a saída antecipada
-      const adjLate = Math.max(0, c.lateMin - Math.max(0, abonoMin - c.earlyMin));  // sobra cobre o atraso
+        .reduce((acc, j) => acc + Math.max(0, Math.trunc(Number((j.proposed as any).abonoMinutes) || 0)), 0));
+      const adjEarly = Math.max(0, earlyMin - abonoMin);
+      const adjLate = Math.max(0, lateMin - Math.max(0, abonoMin - earlyMin));
       const adjBalance = c.balanceMin + abonoMin;
-      // Futuro NÃO entra nos totais (nem esperado, nem falta) e nunca é vermelho.
-      if (!isFuture) {
-        if (!c.isWorkDay) tot.restDays++;
-        tot.expectedMin += c.expectedMin; tot.workedMin += c.workedMin; tot.nightMin += c.nightMin;
-        tot.nightReducedMin += c.nightReducedMin; tot.nightFictaMin += c.nightFictaMin;
-        tot.lateMin += adjLate; tot.earlyMin += adjEarly; tot.extraMin += c.extraMin;
-        tot.faltaMin += justified ? 0 : c.faltaMin; tot.balanceMin += adjBalance; tot.abonoMin += abonoMin;
-      }
+      if (isFuture) { days.push({ day: dayIso, wd, punches: [], ...c, expectedMin: 0, faltaMin: 0, isFuture: true, special: false, justifications: [], dsrLost: false, unjustifiedFalta: false, divergence: false }); continue; }
+      if (!c.isWorkDay) tot.restDays++;
+      tot.expectedMin += c.expectedMin; tot.workedMin += c.workedMin; tot.nightMin += c.nightMin;
+      tot.nightReducedMin += c.nightReducedMin; tot.nightFictaMin += c.nightFictaMin;
+      tot.lateMin += adjLate; tot.earlyMin += adjEarly; tot.abonoMin += abonoMin; tot.extraMin += c.extraMin;
+      tot.faltaMin += faltaMin; tot.balanceMin += adjBalance;
       days.push({
         day: dayIso, wd, punches: (byDay.get(dayIso) ?? []).sort((a, b) => a - b).map((m) => this.fmtHM(m)),
         shiftStart: segs.length ? this.fmtClock(segs[0]![0]) : null, shiftEnd: segs.length ? this.fmtClock(segs[segs.length - 1]![1]) : null,
-        ...c, isFuture, special: specialOff, specialReason, faltaMin: isFuture ? 0 : c.faltaMin,
-        lateMin: adjLate, earlyMin: adjEarly, balanceMin: adjBalance, abonoMin,
-        justified, justifications: dayJusts, dsrLost: false,
-        unjustifiedFalta: !isFuture && !justified && c.faltaMin > 0,
-        divergence: !isFuture && !justified && (c.faltaMin > 0 || c.incomplete || adjLate > 0 || adjEarly > 0 || c.extraMin > 0),
+        ...c, lateMin: adjLate, earlyMin: adjEarly, lateCount, faltaMin, abonado, abonoMin, balanceMin: adjBalance,
+        isFuture: false, special: specialOff, specialReason: holidayName ?? specialJust?.reason ?? null, holiday: !!holidayName, holidayName, swapped: !!ov, swapKind: ov?.kind ?? null, leave: !!leaveType, leaveType, justified: justified || !!leaveType, justifications: dayJusts, dsrLost: false,
+        unjustifiedFalta: !justified && !specialOff && c.faltaMin > 0,
+        divergence: !justified && !specialOff && (c.faltaMin > 0 || c.incomplete || adjLate > 0 || adjEarly > 0 || c.extraMin > 0),
       });
     }
     // DSR: semana (seg→dom) com falta INJUSTIFICADA perde o descanso semanal remunerado.
@@ -351,11 +391,9 @@ export class JornadaService {
     const fmt = (o: any) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === "number" && k.endsWith("Min") ? this.fmtHM(v as number) : v]));
     return {
       employee: { id: emp.id, name: emp.name, cpf: emp.cpf, matricula: emp.matricula, cargo: emp.cargo },
-      employer: cfg?.razaoOuNome ?? "",
-      branding: await this.brandingFor(ctx),
-      schedule: schedule ? { code: schedule.code, name: schedule.name, kind: schedule.kind } : null,
-      period: { from: fromIso, to: toIso },
-      days: days.map((d) => ({ ...d, hm: fmt({ expectedMin: d.expectedMin, workedMin: d.workedMin, extraMin: d.extraMin, lateMin: d.lateMin, earlyMin: d.earlyMin, faltaMin: d.faltaMin, abonoMin: d.abonoMin, nightMin: d.nightMin, nightReducedMin: d.nightReducedMin, balanceMin: d.balanceMin }) })),
+      employer: cfg?.razaoOuNome ?? "", schedule: schedule ? { code: schedule.code, name: schedule.name, kind: schedule.kind } : null,
+      period: { from: opts.from, to: opts.to },
+      days: days.map((d) => ({ ...d, hm: fmt({ expectedMin: d.expectedMin, workedMin: d.workedMin, extraMin: d.extraMin, lateMin: d.lateMin, earlyMin: d.earlyMin, faltaMin: d.faltaMin, nightMin: d.nightMin, nightReducedMin: d.nightReducedMin, balanceMin: d.balanceMin }) })),
       totals: { ...tot, hm: fmt(tot) },
     };
   }
@@ -374,6 +412,25 @@ export class JornadaService {
     return { items: out };
   }
 
+  // ----- AFASTAMENTOS -----
+  async listLeaves(ctx: RequestContext, employeeId: string) {
+    this.requireOrg(ctx);
+    return this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoLeave.findMany({ where: { employeeId }, orderBy: { startDate: "desc" }, take: 200 }));
+  }
+  async createLeave(ctx: RequestContext, input: { employeeId: string; type: string; startDate: string; endDate?: string | null; reason?: string | null }) {
+    this.requireAdmin(ctx);
+    if (!input.employeeId || !input.type || !input.startDate) throw new AppError(ErrorCode.ValidationFailed, "Funcionário, tipo e início obrigatórios", 400);
+    const types = ["inss_doenca", "acidente", "maternidade", "paternidade", "servico_militar", "licenca_nr", "outro"];
+    const type = types.includes(input.type) ? input.type : "outro";
+    const r = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoLeave.create({ data: { organizationId: ctx.orgId!, employeeId: input.employeeId, type, startDate: new Date(input.startDate), endDate: input.endDate ? new Date(input.endDate) : null, reason: input.reason ?? null, createdBy: ctx.userId ?? null } }));
+    return { id: r.id };
+  }
+  async removeLeave(ctx: RequestContext, id: string) {
+    this.requireAdmin(ctx);
+    await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoLeave.deleteMany({ where: { id } }));
+    return { ok: true };
+  }
+
   // ----- JUSTIFICATIVAS -----
   async listJustifications(ctx: RequestContext, opts: { employeeId?: string; status?: string; from?: string; to?: string }) {
     this.requireOrg(ctx);
@@ -387,24 +444,15 @@ export class JornadaService {
     const nm = new Map(emps.map((e) => [e.id, e.name] as [string, string]));
     return { items: rows.map((r) => ({ ...r, employeeName: nm.get(r.employeeId) ?? "" })) };
   }
-  async createJustification(ctx: RequestContext, input: { employeeId: string; day: string; kind: string; reason: string; attachmentUrl?: string; proposed?: Record<string, string> | null; approve?: boolean }) {
+  async createJustification(ctx: RequestContext, input: { employeeId: string; day: string; kind: string; reason: string; attachmentUrl?: string; proposed?: Record<string, string> | null }) {
     this.requireOrg(ctx);
     const orgId = ctx.orgId!;
     if (!input.employeeId || !input.day || !input.reason?.trim()) throw new AppError(ErrorCode.ValidationFailed, "employeeId, day e motivo obrigatórios", 400);
     // "ajuste" = ajuste de horário (esqueceu de bater): guarda os horários propostos
     // e, ao aprovar, vira batida no espelho.
-    const kinds = ["atraso", "falta", "saida_antecipada", "abono", "feriado", "facultativo", "folga_premium", "extra", "ajuste", "outro"];
-    // approve = lançamento direto do ADMIN (no editar-dia): já entra aprovado,
-    // justificando o dia na hora. Pedido do funcionário NUNCA passa approve.
-    const approved = input.approve === true;
+    const kinds = ["atraso", "falta", "saida_antecipada", "abono", "extra", "ajuste", "outro"];
     const row = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoJustification.create({
-      data: {
-        organizationId: orgId, employeeId: input.employeeId, day: new Date(input.day),
-        kind: kinds.includes(input.kind) ? input.kind : "outro", reason: input.reason.trim(),
-        proposed: (input.proposed ?? undefined) as any, attachmentUrl: input.attachmentUrl ?? null,
-        requestedBy: ctx.userId ?? null,
-        ...(approved ? { status: "approved", reviewedBy: ctx.userId ?? null, reviewedAt: new Date() } : {}),
-      },
+      data: { organizationId: orgId, employeeId: input.employeeId, day: new Date(input.day), kind: kinds.includes(input.kind) ? input.kind : "outro", reason: input.reason.trim(), proposed: (input.proposed ?? undefined) as any, attachmentUrl: input.attachmentUrl ?? null, requestedBy: ctx.userId ?? null },
     }));
     return { id: row.id };
   }
@@ -430,13 +478,7 @@ export class JornadaService {
   async espelhoSignature(ctx: RequestContext, employeeId: string, refMonth: string) {
     this.requireOrg(ctx);
     const { first } = this.monthRange(refMonth);
-    // orderBy signedAt DESC: defensivo. A unique constraint
-    // (organizationId, employeeId, refMonth) garante 1 linha só, mas se por
-    // algum motivo houver duplicata histórica (ex.: data com tz diferente),
-    // sempre devolve a MAIS RECENTE — não a primeira que o engine encontra.
-    const row = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.pontoEspelhoSignature.findFirst({ where: { employeeId, refMonth: first }, orderBy: { signedAt: "desc" } }),
-    );
+    const row = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEspelhoSignature.findFirst({ where: { employeeId, refMonth: first } }));
     return row;
   }
   /** Assina o espelho do mês: A1 (ICP-Brasil) se houver; senão assinatura eletrônica de CONTINGÊNCIA (hash). */
@@ -444,27 +486,17 @@ export class JornadaService {
     this.requireOrg(ctx);
     const orgId = ctx.orgId!;
     const { from, to, first } = this.monthRange(input.refMonth);
-    // GATE: só permite assinar quando o RH FECHOU o mês.
-    // O funcionário assina o mês anterior (fechado). Mês corrente está
-    // aberto até o RH rodar `advanceClosing(to: "closed")`. Antes desse
-    // gate, dava pra assinar qualquer mês — e o funcionário acabou
-    // assinando junho enquanto só maio estava fechado.
-    const closing = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.pontoClosing.findFirst({ where: { refMonth: first }, select: { status: true } }),
-    ).catch(() => null);
-    const status = closing?.status ?? "open";
-    if (status !== "closed") {
-      const monthLabel = input.refMonth.slice(0, 7);
-      throw new AppError(
-        ErrorCode.Conflict,
-        `Mês ${monthLabel} ainda não foi fechado pelo RH (status: ${status}). A folha precisa estar fechada para você assinar — você só assina meses já encerrados.`,
-        409,
-      );
+    // só assina depois que o RH FECHA a folha do mês (status closed)
+    const closing = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoClosing.findFirst({ where: { refMonth: first as any }, select: { status: true } })).catch(() => null);
+    if ((closing?.status ?? "open") !== "closed") {
+      throw new AppError(ErrorCode.ValidationFailed, "A folha de ponto deste mês ainda não foi fechada pelo RH. Você poderá assiná-la quando o período estiver fechado.", 400);
     }
     const esp = await this.espelho(ctx, { employeeId: input.employeeId, from, to });
     const hash = this.espelhoHash(esp);
+    // assina com o A1 do EMPREGADOR (CNPJ) do funcionário
+    const empRow = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findFirst({ where: { id: input.employeeId }, select: { employerId: true } }));
     let a1Signed = false, a1Subject: string | null = null, p7sKey: string | null = null;
-    const p7s = await this.sign.sign(orgId, Buffer.from(hash, "utf8")).catch(() => null);
+    const p7s = await this.sign.sign(orgId, Buffer.from(hash, "utf8"), empRow?.employerId ?? null).catch(() => null);
     if (p7s) {
       a1Signed = true;
       const cfg = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.findFirst({ where: {}, select: { a1Subject: true } })).catch(() => null);
@@ -479,200 +511,93 @@ export class JornadaService {
     }));
     return { ok: true, a1Signed, hash, mode: a1Signed ? "icp_a1" : "contingencia" };
   }
-  /** Desenha UM espelho COMPACTO no PDF — caber em UMA página A4.
-   *
-   *  Layout:
-   *  - Linha colorida fininha (3px) no topo da página (não faixa grande)
-   *  - Cabeçalho discreto: logo pequeno + nome da empresa de um lado, título
-   *    do espelho + competência do outro (1 linha cada)
-   *  - Bloco compacto de identificação do funcionário (2 linhas)
-   *  - Tabela densa: header pequeno, linha de 12px, font 8pt
-   *  - Totais em 1 linha
-   *  - Carimbo de assinatura em 3 linhas
-   *
-   *  IMPORTANTE: muda só APRESENTAÇÃO. Os dados que entram no `espelhoHash`
-   *  (d.day, d.punches, hm.workedMin/faltaMin/extraMin, totals) não mudam —
-   *  assinatura existente continua válida.
-   */
-  private drawEspelhoInto(pdf: any, esp: any, sig: any, hashNow: string, from: string, logoBytes?: Buffer | null) {
-    const M = 36, right = pdf.page.width - M, pageW = pdf.page.width, pageH = pdf.page.height;
-    const brand = (esp.branding?.primaryColor as string) || "#7c3aed";
-    const ink = "#111";
-    const text = "#1f2937";
-    const muted = "#6b7280";
-    const stripeBg = "#f3f4f6";
+  /** Carrega a marca da empresa (nome, cor, logo) p/ o cabeçalho do espelho. */
+  private async loadBrand(ctx: RequestContext): Promise<{ name: string; color: string | null; logoBuf: Buffer | null }> {
+    const org = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.organization.findFirst({ where: {}, select: { name: true, logoUrl: true, primaryColor: true } })).catch(() => null);
+    const logoBuf = await this.loadLogoBuf(org?.logoUrl ?? null);
+    return { name: org?.name || "", color: org?.primaryColor ?? null, logoBuf };
+  }
+  /** Baixa a logo (URL pública) e devolve bytes só se PNG/JPEG (pdfkit não aceita svg/webp). */
+  private async loadLogoBuf(logoUrl: string | null): Promise<Buffer | null> {
+    if (!logoUrl) return null;
+    try {
+      const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 5000);
+      const res = await fetch(logoUrl, { signal: ctl.signal }); clearTimeout(t);
+      if (!res.ok) return null;
+      const buf = Buffer.from(await res.arrayBuffer());
+      const isPng = buf.length > 8 && buf[0] === 0x89 && buf[1] === 0x50;
+      const isJpg = buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8;
+      return isPng || isJpg ? buf : null;
+    } catch { return null; }
+  }
 
-    // ---- LINHA fininha no topo (3px) — não usa faixa grande pra não engolir o logo ----
-    pdf.rect(0, 0, pageW, 3).fillColor(brand).fill();
-
-    // ---- Cabeçalho discreto (logo + nome empresa à esquerda, título à direita) ----
-    // Todas as coordenadas Y são absolutas e o pdf.y final é setado explicitamente
-    // pra evitar o efeito colateral de pdf.text() (que move pdf.y mesmo com lineBreak:false).
-    const headerY = 14;
-    const logoSize = 28;
-    let leftX = M;
-    if (logoBytes) {
-      try { pdf.image(logoBytes, M, headerY, { fit: [logoSize, logoSize] }); leftX = M + logoSize + 8; } catch { /* sem logo */ }
-    }
-    pdf.fillColor(ink).font("Helvetica-Bold").fontSize(11).text(esp.branding?.name || esp.employer || "Empregador", leftX, headerY + (logoBytes ? 3 : 0), { width: 280, lineBreak: false });
-    if (esp.employer && esp.employer !== esp.branding?.name) {
-      pdf.fillColor(muted).font("Helvetica").fontSize(8).text(esp.employer, leftX, headerY + 17, { width: 280, lineBreak: false });
-    }
-    // Lado direito: título + competência
-    pdf.fillColor(brand).font("Helvetica-Bold").fontSize(13).text("Espelho de Ponto", M, headerY, { width: right - M, align: "right", lineBreak: false });
-    pdf.fillColor(muted).font("Helvetica").fontSize(9).text(`Competência ${from.slice(0, 7)}`, M, headerY + 18, { width: right - M, align: "right", lineBreak: false });
-
-    // Linha divisória cinza
-    const dividerY = headerY + logoSize + 8;
-    pdf.moveTo(M, dividerY).lineTo(right, dividerY).strokeColor("#e5e7eb").lineWidth(0.5).stroke();
-
-    // ---- Identificação compacta (2 linhas) ----
-    const idY1 = dividerY + 8;
-    pdf.fillColor(ink).font("Helvetica-Bold").fontSize(10).text(esp.employee.name, M, idY1, { width: right - M, lineBreak: false });
-    const idY2 = idY1 + 13;
-    const idLine = [
-      esp.employee.cargo ? esp.employee.cargo : null,
-      esp.employee.cpf ? `CPF ${esp.employee.cpf}` : null,
-      esp.employee.matricula ? `Matr. ${esp.employee.matricula}` : null,
-      `Escala ${esp.schedule?.name ?? "—"}`,
-    ].filter(Boolean).join("  ·  ");
-    pdf.font("Helvetica").fontSize(8).fillColor(muted).text(idLine, M, idY2, { width: right - M, lineBreak: false });
-    pdf.y = idY2 + 14;
-
-    // ---- TABELA compacta ----
-    const tableW = right - M;
-    const cols = [
-      { t: "Dia",        w: 60 },
-      { t: "Marcações",  w: 240 },
-      { t: "Trab.",      w: 55 },
-      { t: "Extra",      w: 55 },
-      { t: "Falta",      w: 55 },
-    ];
-    // ajusta a largura da coluna Marcações pra preencher exatamente tableW
-    const fixedW = cols[0]!.w + cols[2]!.w + cols[3]!.w + cols[4]!.w;
-    cols[1]!.w = tableW - fixedW;
-
-    const ROW_H = 12;
-    const NOTE_H = 10;
-    const HEAD_H = 14;
-
-    // Header da tabela: linha colorida fina + texto
-    // IMPORTANTE: PDFKit `text()` ATUALIZA pdf.y mesmo com lineBreak:false
-    // (move pra y + lineHeight). Se a gente não congelar pdf.y, os 5 textos
-    // empilham incrementos e a linha cresce 5x — resultado: PDF de 11 páginas
-    // em vez de 1. Sempre salvar o Y do início do bloco e resetar no fim.
-    const tableTopY = pdf.y;
-    const headStartY = pdf.y;
-    pdf.rect(M, headStartY, tableW, HEAD_H).fillColor(brand).fill();
-    pdf.fillColor("#fff").font("Helvetica-Bold").fontSize(7.5);
-    let hx = M;
-    for (const c of cols) {
-      pdf.text(c.t.toUpperCase(), hx + 4, headStartY + 4, { width: c.w - 8, lineBreak: false });
-      hx += c.w;
-    }
-    pdf.y = headStartY + HEAD_H;
-
-    const KIND_LABEL: Record<string, string> = {
-      atraso: "atraso", falta: "falta", saida_antecipada: "saída antecipada",
-      abono: "abono", extra: "extra", outro: "outro",
-    };
-
-    pdf.font("Helvetica").fontSize(8);
-    let rowIdx = 0;
+  /** Desenha UM espelho (tabela + carimbo de assinatura) no documento PDF já aberto. */
+  private drawEspelhoInto(pdf: any, esp: any, sig: any, hashNow: string, from: string, brand?: { name: string; color: string | null; logoBuf: Buffer | null }) {
+    const M = 40, right = pdf.page.width - M;
+    const accent = brand?.color && /^#[0-9a-fA-F]{6}$/.test(brand.color) ? brand.color : "#111827";
+    const company = brand?.name || esp.employer || "Empregador";
+    const topY = pdf.y;
+    // logo (esquerda) — se houver
+    let nameX = M;
+    if (brand?.logoBuf) { try { pdf.image(brand.logoBuf, M, topY, { fit: [120, 32] }); nameX = M + 132; } catch { /* ignora logo inválida */ } }
+    // nome da empresa (esquerda) + título "Espelho de Ponto" (direita, cor da marca)
+    pdf.font("Helvetica-Bold").fontSize(14).fillColor("#111").text(company, nameX, topY + (brand?.logoBuf ? 8 : 0), { width: (right - nameX) * 0.62, lineBreak: false });
+    pdf.font("Helvetica-Bold").fontSize(13).fillColor(accent).text("Espelho de Ponto", M, topY + 4, { width: right - M, align: "right" });
+    // régua na cor da marca
+    pdf.y = topY + 36;
+    pdf.moveTo(M, pdf.y).lineTo(right, pdf.y).lineWidth(2).strokeColor(accent).stroke(); pdf.lineWidth(1);
+    pdf.moveDown(0.5);
+    // identificação do funcionário + empregador (fiscal)
+    pdf.font("Helvetica").fontSize(10).fillColor("#333").text(`${esp.employee.name}${esp.employee.cargo ? " — " + esp.employee.cargo : ""}${esp.employee.cpf ? " · CPF " + esp.employee.cpf : ""}`, M, pdf.y, { align: "left" });
+    pdf.fontSize(9).fillColor("#555").text(`Competência: ${from.slice(0, 7)} · escala ${esp.schedule?.name ?? "—"}`, { align: "left" });
+    if (esp.employer && esp.employer !== company) pdf.fontSize(8).fillColor("#777").text(`Empregador: ${esp.employer}`, { align: "left" });
+    pdf.moveDown(0.5); pdf.moveTo(M, pdf.y).lineTo(right, pdf.y).strokeColor("#ddd").stroke(); pdf.moveDown(0.4);
+    const cols = [{ t: "Dia", w: 70 }, { t: "Marcações", w: 200 }, { t: "Trab.", w: 70 }, { t: "Extra", w: 60 }, { t: "Falta", w: 60 }];
+    const head = () => { let cx = M; pdf.font("Helvetica-Bold").fontSize(8).fillColor("#111"); cols.forEach((c) => { pdf.text(c.t, cx, pdf.y, { width: c.w, lineBreak: false }); cx += c.w; }); pdf.moveDown(0.3); };
+    head(); pdf.font("Helvetica").fontSize(8).fillColor("#333");
     for (const d of esp.days as any[]) {
-      const hasPunches = (d.punches?.length ?? 0) > 0;
-      const isFolga = !d.isWorkDay && !hasPunches;
-      const justified: boolean = !!d.justified;
-      const just: any = (d.justifications ?? []).find((j: any) => j.status === "approved") ?? (d.justifications ?? [])[0] ?? null;
-      const hasNote = justified && just?.reason;
-
-      // Congela o Y do começo da linha — TODOS os 5 textos da linha são desenhados
-      // nessa Y, e no fim resetamos pdf.y = rowStartY + ROW_H. Sem isso, cada
-      // pdf.text() empurra pdf.y, e a "linha" cresce vertical descontroladamente.
-      const rowStartY = pdf.y;
-
-      // Zebra
-      if (rowIdx % 2 === 1) {
-        pdf.rect(M, rowStartY, tableW, ROW_H).fillColor(stripeBg).fill();
-      }
-
-      const showRed = d.divergence && !justified;
-      const rowColor = showRed ? "#b91c1c" : text;
-
+      const hasPunches = !!(d.punches && d.punches.length);
+      const isRest = !d.isWorkDay || d.leave;
+      // rótulo de dias sem jornada esperada (folga/DSR/feriado/afastamento)
+      let restLabel: string | null = null;
+      if (d.leave) restLabel = `Afastamento${d.leaveType ? ` (${d.leaveType})` : ""}`;
+      else if (d.holiday) restLabel = `Feriado${d.holidayName ? ` — ${d.holidayName}` : ""}`;
+      else if (d.swapKind === "folga") restLabel = "Folga (troca)";
+      else if (!d.isWorkDay) restLabel = d.dsrLost ? "Folga — DSR descontado" : "Folga";
+      const reason = (((d.justifications || []).find((j: any) => j.status === "approved")) ?? (d.justifications || [])[0])?.reason || null;
+      const abonado = !!d.abonado;
+      if (pdf.y > pdf.page.height - 120) { pdf.addPage(); head(); pdf.font("Helvetica").fontSize(8).fillColor("#333"); }
+      const y = pdf.y; let cx = M;
       const wd = new Date(d.day + "T12:00:00Z").toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", weekday: "short", timeZone: "UTC" });
-      let marcLabel: string;
-      if (isFolga) {
-        marcLabel = d.dsrLost ? "FOLGA (DSR perdido)" : "FOLGA";
-      } else if (justified && !hasPunches) {
-        marcLabel = `ABONO — ${KIND_LABEL[just?.kind as string] ?? just?.kind ?? "abonado"}`;
-      } else {
-        marcLabel = (d.punches || []).join("  ") || "—";
-      }
-      const trabTxt = isFolga ? "" : (d.hm?.workedMin ?? "");
-      const extraTxt = isFolga ? "" : (d.hm?.extraMin ?? "");
-      const faltaTxt = (isFolga || justified) ? "" : (d.hm?.faltaMin ?? "");
-
-      const marcColor = isFolga ? muted : (justified && !hasPunches ? "#0e7490" : rowColor);
-      const marcFont = (isFolga || (justified && !hasPunches)) ? "Helvetica-Oblique" : "Helvetica";
-
-      const yText = rowStartY + 2.5;
-      let cx = M;
-      pdf.fillColor(rowColor).font("Helvetica").text(wd, cx + 4, yText, { width: cols[0]!.w - 8, lineBreak: false }); cx += cols[0]!.w;
-      pdf.fillColor(marcColor).font(marcFont).text(marcLabel, cx + 4, yText, { width: cols[1]!.w - 8, lineBreak: false }); cx += cols[1]!.w;
-      pdf.fillColor(rowColor).font("Helvetica").text(trabTxt, cx + 4, yText, { width: cols[2]!.w - 8, lineBreak: false }); cx += cols[2]!.w;
-      pdf.text(extraTxt, cx + 4, yText, { width: cols[3]!.w - 8, lineBreak: false }); cx += cols[3]!.w;
-      pdf.fillColor(showRed ? "#b91c1c" : rowColor).text(faltaTxt, cx + 4, yText, { width: cols[4]!.w - 8, lineBreak: false });
-
-      pdf.y = rowStartY + ROW_H;
-
-      // Motivo do abono — em 1 linha super compacta
-      if (hasNote) {
-        const noteStartY = pdf.y;
-        pdf.font("Helvetica-Oblique").fontSize(6.5).fillColor(muted);
-        pdf.text(`abono: ${String(just.reason).slice(0, 120)}`, M + cols[0]!.w + 4, noteStartY + 0.5, { width: cols[1]!.w + cols[2]!.w + cols[3]!.w + cols[4]!.w - 8, lineBreak: false });
-        pdf.font("Helvetica").fontSize(8).fillColor(rowColor);
-        pdf.y = noteStartY + NOTE_H;
-      }
-      rowIdx++;
+      pdf.fillColor(d.divergence ? "#b00" : isRest ? "#888" : "#333");
+      pdf.text(wd, cx, y, { width: cols[0]!.w, lineBreak: false }); cx += cols[0]!.w;
+      // Marcações: batidas, OU rótulo de folga, OU "Abonado: motivo"
+      let marc: string;
+      if (hasPunches) { marc = d.punches.join("  "); if (abonado) marc += `  · Abonado${reason ? ": " + reason : ""}`; }
+      else if (restLabel) marc = restLabel;
+      else if (abonado || d.justified) marc = `Abonado${reason ? ": " + reason : ""}`;
+      else marc = "—";
+      pdf.text(marc, cx, y, { width: cols[1]!.w, lineBreak: false }); cx += cols[1]!.w;
+      const dash = isRest && !hasPunches;
+      pdf.text(dash ? "—" : (d.hm?.workedMin ?? ""), cx, y, { width: cols[2]!.w, lineBreak: false }); cx += cols[2]!.w;
+      pdf.text(dash ? "—" : (d.hm?.extraMin ?? ""), cx, y, { width: cols[3]!.w, lineBreak: false }); cx += cols[3]!.w;
+      const faltaCell = dash ? "—" : abonado ? "Abonado" : (d.hm?.faltaMin ?? "");
+      pdf.text(faltaCell, cx, y, { width: cols[4]!.w, lineBreak: false });
+      pdf.moveDown(0.35);
     }
-
-    // Borda fininha em volta da tabela inteira (header + linhas)
-    const tableEndY = pdf.y;
-    pdf.rect(M, tableTopY, tableW, tableEndY - tableTopY).strokeColor("#e5e7eb").lineWidth(0.5).stroke();
-
-    pdf.y += 8;
-
-    // ---- TOTAIS em 1 linha ----
-    const totalsY = pdf.y;
-    pdf.rect(M, totalsY, tableW, 22).fillColor(stripeBg).fill();
-    pdf.fillColor(brand).font("Helvetica-Bold").fontSize(8).text("TOTAIS DO PERÍODO", M + 6, totalsY + 4, { width: 100, lineBreak: false });
-    pdf.fillColor(text).font("Helvetica").fontSize(8.5).text(
-      `Trab. ${esp.totals.hm.workedMin}   ·   Extra ${esp.totals.hm.extraMin}   ·   Falta ${esp.totals.hm.faltaMin}   ·   Abono ${esp.totals.hm.abonoMin ?? "00:00"}   ·   Not. ${esp.totals.hm.nightReducedMin ?? esp.totals.hm.nightMin ?? "00:00"}   ·   Saldo ${esp.totals.hm.balanceMin}`,
-      M + 6, totalsY + 13, { width: tableW - 12, lineBreak: false },
-    );
-    pdf.y = totalsY + 28;
-
-    // ---- ASSINATURA compacta ----
-    const sigY = pdf.y;
+    pdf.fillColor("#111").moveDown(0.4); pdf.moveTo(M, pdf.y).lineTo(right, pdf.y).strokeColor("#ddd").stroke(); pdf.moveDown(0.3);
+    pdf.font("Helvetica-Bold").fontSize(9).text(`Totais — Trabalhado: ${esp.totals.hm.workedMin}  ·  Extra: ${esp.totals.hm.extraMin}  ·  Falta: ${esp.totals.hm.faltaMin}  ·  Noturno: ${esp.totals.hm.nightMin}  ·  Saldo: ${esp.totals.hm.balanceMin}`);
+    pdf.moveDown(1.2);
     if (sig) {
       const integ = sig.contentHash === hashNow;
-      const sigColor = integ ? "#047857" : "#b91c1c";
-      pdf.fillColor(sigColor).font("Helvetica-Bold").fontSize(9).text(
-        integ ? "✓ Espelho ASSINADO pelo funcionário" : "⚠ ATENÇÃO: o espelho foi alterado após a assinatura",
-        M, sigY, { width: tableW, lineBreak: false },
-      );
-      pdf.fillColor(text).font("Helvetica").fontSize(7.5);
-      const sigLine1 = `Assinado em ${new Date(sig.signedAt).toLocaleString("pt-BR")}${sig.signerIp ? ` · IP ${sig.signerIp}` : ""}`;
-      const sigLine2 = sig.a1Signed
-        ? `Assinatura digital ICP-Brasil (A1)${sig.a1Subject ? ` — ${sig.a1Subject}` : ""} · PKCS#7 anexo (.p7s)`
-        : `Assinatura eletrônica (contingência) — MP 2.200-2/2001. Integridade por hash SHA-256.`;
-      pdf.text(sigLine1, M, sigY + 12, { width: tableW, lineBreak: false });
-      pdf.text(sigLine2, M, sigY + 22, { width: tableW, lineBreak: false });
-      pdf.fontSize(6.5).fillColor(muted).text(`SHA-256: ${sig.contentHash}`, M, sigY + 32, { width: tableW, lineBreak: false });
-      pdf.y = sigY + 42;
+      pdf.font("Helvetica-Bold").fontSize(10).fillColor(integ ? "#0a0" : "#b00").text(integ ? "Espelho ASSINADO pelo funcionário" : "ATENÇÃO: o espelho foi alterado após a assinatura");
+      pdf.font("Helvetica").fontSize(9).fillColor("#333");
+      pdf.text(`Assinado em ${new Date(sig.signedAt).toLocaleString("pt-BR")}${sig.signerIp ? ` · IP ${sig.signerIp}` : ""}`);
+      if (sig.a1Signed) pdf.text(`Assinatura digital ICP-Brasil (A1)${sig.a1Subject ? ` — ${sig.a1Subject}` : ""} · PKCS#7 anexo (.p7s)`);
+      else pdf.text(`Assinatura eletrônica (contingência) — MP 2.200-2/2001. Integridade por hash SHA-256.`);
+      pdf.fontSize(7).fillColor("#666").text(`SHA-256: ${sig.contentHash}`);
     } else {
-      pdf.font("Helvetica-Oblique").fontSize(8.5).fillColor(muted).text("Espelho ainda não assinado pelo funcionário.", M, sigY, { width: tableW, lineBreak: false });
-      pdf.y = sigY + 14;
+      pdf.font("Helvetica").fontSize(9).fillColor("#999").text("Espelho ainda não assinado pelo funcionário.");
     }
   }
 
@@ -683,11 +608,11 @@ export class JornadaService {
     const esp = await this.espelho(ctx, { employeeId, from, to });
     const sig = await this.espelhoSignature(ctx, employeeId, refMonth);
     const hashNow = this.espelhoHash(esp);
-    const logoBytes = await this.fetchLogoBytes(esp.branding?.logoUrl ?? null);
+    const brand = await this.loadBrand(ctx);
     const buffer = await new Promise<Buffer>((resolve, reject) => {
       const pdf = new PDFDocument({ size: "A4", margin: 40 });
       const chunks: Buffer[] = []; pdf.on("data", (c) => chunks.push(c as Buffer)); pdf.on("end", () => resolve(Buffer.concat(chunks))); pdf.on("error", reject);
-      this.drawEspelhoInto(pdf, esp, sig, hashNow, from, logoBytes);
+      this.drawEspelhoInto(pdf, esp, sig, hashNow, from, brand);
       pdf.end();
     });
     return { buffer, filename: `espelho-${esp.employee.name.split(" ")[0]}-${from.slice(0, 7)}.pdf` };
@@ -705,10 +630,10 @@ export class JornadaService {
   }
 
   /** PDF único (lote) com o espelho de todos os funcionários ativos do mês — para a contabilidade. */
-  async espelhoBatchPdf(ctx: RequestContext, refMonth: string, opts?: { onlySigned?: boolean }): Promise<{ buffer: Buffer; filename: string; count: number }> {
+  async espelhoBatchPdf(ctx: RequestContext, refMonth: string, opts?: { onlySigned?: boolean; storeId?: string | null }): Promise<{ buffer: Buffer; filename: string; count: number }> {
     this.requireOrg(ctx);
     const { from, to, first } = this.monthRange(refMonth);
-    const emps = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true } }));
+    const emps = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findMany({ where: { active: true, ...(opts?.storeId ? { storeId: opts.storeId } : {}) }, orderBy: { name: "asc" }, select: { id: true } }));
     const prepared: Array<{ esp: any; sig: any; hash: string }> = [];
     for (const e of emps) {
       const esp = await this.espelho(ctx, { employeeId: e.id, from, to }).catch(() => null);
@@ -717,13 +642,12 @@ export class JornadaService {
       if (opts?.onlySigned && !sig) continue;
       prepared.push({ esp, sig, hash: this.espelhoHash(esp) });
     }
-    // 1 fetch só por logo (todos os funcionários compartilham a mesma org)
-    const logoBytes = prepared[0]?.esp?.branding?.logoUrl ? await this.fetchLogoBytes(prepared[0]!.esp.branding.logoUrl) : null;
+    const brand = await this.loadBrand(ctx);
     const buffer = await new Promise<Buffer>((resolve, reject) => {
       const pdf = new PDFDocument({ size: "A4", margin: 40 });
       const chunks: Buffer[] = []; pdf.on("data", (c) => chunks.push(c as Buffer)); pdf.on("end", () => resolve(Buffer.concat(chunks))); pdf.on("error", reject);
       if (!prepared.length) { pdf.font("Helvetica").fontSize(11).fillColor("#666").text("Sem funcionários/espelhos no período.", 40, 60); }
-      prepared.forEach((p, i) => { if (i > 0) pdf.addPage(); this.drawEspelhoInto(pdf, p.esp, p.sig, p.hash, from, logoBytes); });
+      prepared.forEach((p, i) => { if (i > 0) pdf.addPage(); this.drawEspelhoInto(pdf, p.esp, p.sig, p.hash, from, brand); });
       pdf.end();
     });
     return { buffer, filename: `espelhos-${from.slice(0, 7)}.pdf`, count: prepared.length };

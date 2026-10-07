@@ -1,5 +1,5 @@
 import {
-  Activity, AlertCircle, Archive, ArrowLeftRight, BadgePercent, BarChart3, Banknote,
+  Activity, AlertCircle, Archive, ArrowLeftRight, Award, BadgePercent, BarChart3, Banknote,
   Blocks, BookOpen, Boxes, Brain, Briefcase, Building2, CalendarDays, ChartPie,
   ClipboardList, Coins, Contact, CreditCard, Factory, FileSignature, FileSpreadsheet,
   FileText, Fingerprint, Gauge, Globe, Handshake, HeartHandshake, KeyRound, LayoutGrid,
@@ -79,6 +79,8 @@ const ICONS: Record<string, LucideIcon> = {
   // ------------------------------------------------------------------ pessoas
   "/app/rh": Users,
   "/app/ponto": Fingerprint,
+  "/app/alocacoes": ArrowLeftRight,
+  "/app/assiduidade": Award,
 
   // ------------------------------------------------------------- configuração
   "/app/lojas": Building2,

@@ -100,6 +100,8 @@ export const NAV_ADMIN: Array<{ title: string; items: NavItem[] }> = [
   { title: "Pessoas", items: [
     { key: "rh", href: "/app/rh", label: "RH & Funcionários" },
     { href: "/app/ponto", label: "Ponto eletrônico" },
+    { href: "/app/alocacoes", label: "Alocações" },
+    { href: "/app/assiduidade", label: "Assiduidade" },
   ] },
   { title: "Configuração", items: [
     { href: "/app/lojas", label: "Lojas", perm: "stores.manage" },

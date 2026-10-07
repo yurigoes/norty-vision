@@ -2,10 +2,10 @@
 
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useDialog } from "../../../components/SystemDialog";
-import { PUNCH_FIELDS, type PunchForm, emptyPunchForm, punchesToForm, formToTimes } from "../../../lib/punch";
 import { PageHeader } from "../../../components/PageHeader";
+import { PUNCH_FIELDS, type PunchForm, emptyPunchForm, punchesToForm, formToTimes } from "../../../lib/punch";
 
-type Emp = { id: string; name: string; cpf: string | null; pis: string | null; matricula: string | null; matEsocial: string | null; cargo: string | null; scheduleCode: string | null; active: boolean; faceEnrolled?: boolean; barcode?: string | null; hrEmployeeId?: string | null };
+type Emp = { id: string; name: string; cpf: string | null; pis: string | null; matricula: string | null; matEsocial: string | null; cargo: string | null; scheduleCode: string | null; active: boolean; faceEnrolled?: boolean; barcode?: string | null; hrEmployeeId?: string | null; allowedDeviceIds?: string[] };
 type Punch = { id: string; nsr: string; employeeId: string; punchedAt: string; origin: string; source: string; offline: boolean; hash: string; photoUrl?: string | null; faceScore?: number | null; faceMatch?: boolean | null; livenessOk?: boolean | null; fraudFlags?: string[] | null };
 
 // ---- EAN-13: codifica em módulos e renderiza SVG (sem dependência) ----
@@ -38,21 +38,24 @@ function printCracha(e: Emp, employer: string) {
 
 export default function PontoPage() {
   const dialog = useDialog();
-  const [tab, setTab] = useState<"bater" | "marcacoes" | "tempo" | "espelho" | "solicitacoes" | "escalas" | "banco" | "ferias" | "fechamento" | "eventos" | "funcionarios" | "dispositivos" | "avisos" | "config">("bater");
+  const [tab, setTab] = useState<"bater" | "marcacoes" | "tempo" | "espelho" | "solicitacoes" | "trocas" | "escalas" | "banco" | "ferias" | "fechamento" | "eventos" | "funcionarios" | "empregadores" | "dispositivos" | "avisos" | "config">("bater");
   const [emps, setEmps] = useState<Emp[]>([]);
   const load = () => fetch("/api/ponto/employees", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setEmps(d?.items ?? [])).catch(() => {});
   useEffect(() => { load(); }, []);
 
   return (
     <main className="max-w-5xl">
+      {/* O RH montava este topo à mão. No Vision o cabeçalho é um
+          componente só — a conferência `pageHeader` cobra isso de todas as
+          101 telas, e foi ela que pegou a diferença no porte. */}
       <PageHeader
         className="print:hidden"
         eyebrow="Pessoas · Ponto"
         title="Ponto eletrônico"
         description="Marcação imutável (horário do servidor + NSR + hash) e jornada derivada — Portaria 671 (Fases 0–1)."
       />
-      <nav className="mb-6 flex flex-wrap gap-1 rounded-xl border border-line bg-surface-2 p-1 text-sm print:hidden">
-        {([["bater", "Bater ponto"], ["marcacoes", "Marcações"], ["tempo", "Tempo real"], ["espelho", "Espelho"], ["solicitacoes", "Solicitações"], ["escalas", "Escalas"], ["banco", "Banco de horas"], ["ferias", "Férias"], ["fechamento", "Fechamento"], ["eventos", "Eventos / Webhook"], ["funcionarios", "Funcionários (marcação)"], ["dispositivos", "Dispositivos"], ["avisos", "Avisos"], ["config", "Empregador"]] as const).map(([k, l]) => (
+      <nav className="mb-6 flex flex-wrap gap-1 rounded-lg border border-line bg-bg/60 p-1 text-sm print:hidden">
+        {([["bater", "Bater ponto"], ["marcacoes", "Marcações"], ["tempo", "Tempo real"], ["espelho", "Espelho"], ["solicitacoes", "Solicitações"], ["trocas", "Trocas"], ["escalas", "Escalas"], ["banco", "Banco de horas"], ["ferias", "Férias"], ["fechamento", "Fechamento"], ["eventos", "Eventos / Webhook"], ["funcionarios", "Funcionários (marcação)"], ["empregadores", "Empregadores"], ["dispositivos", "Dispositivos"], ["avisos", "Avisos"], ["config", "Empregador"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className={`rounded-md px-3 py-1 ${tab === k ? "bg-brand text-white" : "text-muted hover:text-fg"}`}>{l}</button>
         ))}
       </nav>
@@ -62,12 +65,14 @@ export default function PontoPage() {
       {tab === "tempo" && <TempoReal dialog={dialog} />}
       {tab === "espelho" && <><EspelhosContabil dialog={dialog} /><Espelho emps={emps} dialog={dialog} /></>}
       {tab === "solicitacoes" && <SolicitacoesPonto dialog={dialog} />}
+      {tab === "trocas" && <TrocasRh dialog={dialog} />}
       {tab === "escalas" && <Escalas dialog={dialog} />}
       {tab === "banco" && <Banco emps={emps} dialog={dialog} />}
       {tab === "ferias" && <Ferias emps={emps} dialog={dialog} />}
       {tab === "fechamento" && <Fechamento dialog={dialog} />}
       {tab === "eventos" && <Eventos dialog={dialog} />}
       {tab === "funcionarios" && <Funcionarios emps={emps} onChanged={load} dialog={dialog} />}
+      {tab === "empregadores" && <Empregadores dialog={dialog} />}
       {tab === "dispositivos" && <Dispositivos dialog={dialog} />}
       {tab === "avisos" && <Avisos emps={emps} dialog={dialog} />}
       {tab === "config" && <Config dialog={dialog} />}
@@ -104,17 +109,10 @@ function downscaleImage(file: File, maxW: number, quality: number): Promise<stri
     img.src = url;
   });
 }
-function monthRange() { return monthShift(0); }
-/** Janela de mês inteiro, deslocado em N meses (negativo = passado). Usa UTC pra não embaralhar TZ. */
-function monthShift(months: number) {
-  const now = new Date(); const y = now.getFullYear(), m = now.getMonth() + months;
-  const firstDay = new Date(Date.UTC(y, m, 1)); const lastDay = new Date(Date.UTC(y, m + 1, 0));
+function monthRange() {
+  const now = new Date(); const from = new Date(now.getFullYear(), now.getMonth(), 1); const to = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const iso = (d: Date) => d.toISOString().slice(0, 10);
-  return { from: iso(firstDay), to: iso(lastDay) };
-}
-function shiftLabel(months: number): string {
-  const now = new Date(); const d = new Date(Date.UTC(now.getFullYear(), now.getMonth() + months, 1));
-  return d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit", timeZone: "UTC" }).replace(".", "");
+  return { from: iso(from), to: iso(to) };
 }
 
 // ----- parsers do lançamento manual de batidas (ajuste/migração) -----
@@ -167,17 +165,17 @@ function Bater({ emps, dialog }: { emps: Emp[]; dialog: any }) {
     } finally { setBusy(false); }
   }
   return (
-    <section className="card">
+    <section className="rounded-xl border border-line bg-bg/60 p-5">
       <div className="grid gap-3 sm:grid-cols-3">
-        <label className="block sm:col-span-2"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Funcionário</span>
-          <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="input-base">
+        <label className="block sm:col-span-2"><span className="mb-1 block text-[10px] uppercase text-muted">Funcionário</span>
+          <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
             <option value="">— selecione —</option>
             {emps.filter((e) => e.active).map((e) => <option key={e.id} value={e.id}>{e.name}{e.matricula ? ` (${e.matricula})` : ""}</option>)}
           </select></label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">PIN (se exigido)</span>
-          <input value={pin} onChange={(e) => setPin(e.target.value)} inputMode="numeric" type="password" className="input-base" /></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">PIN (se exigido)</span>
+          <input value={pin} onChange={(e) => setPin(e.target.value)} inputMode="numeric" type="password" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
       </div>
-      <button disabled={busy} onClick={punch} className="btn-grad mt-4 w-full py-3 text-base disabled:opacity-50">{busy ? "Registrando…" : "Registrar ponto"}</button>
+      <button disabled={busy} onClick={punch} className="mt-4 w-full rounded-lg bg-brand py-3 text-base font-semibold text-white disabled:opacity-50">{busy ? "Registrando…" : "Registrar ponto"}</button>
       {last && (
         <div className="mt-4 rounded-xl border border-green-500/40 bg-green-500/10 p-4 text-sm">
           <p className="font-semibold text-green-200">Comprovante de marcação</p>
@@ -193,17 +191,23 @@ function Bater({ emps, dialog }: { emps: Emp[]; dialog: any }) {
 function Marcacoes({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   const [items, setItems] = useState<Punch[]>([]);
   const [empId, setEmpId] = useState("");
+  const [employers, setEmployers] = useState<any[]>([]);
+  const [afdEmployer, setAfdEmployer] = useState("");
   const nameOf = (id: string) => emps.find((e) => e.id === id)?.name ?? "—";
   useEffect(() => {
     const q = empId ? `?employeeId=${empId}` : "";
     fetch(`/api/ponto/punches${q}`, { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setItems(d?.items ?? [])).catch(() => {});
   }, [empId]);
+  useEffect(() => { fetch("/api/ponto/employers", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => { const its = d?.items ?? []; setEmployers(its); const def = its.find((e: any) => e.isDefault) ?? its[0]; if (def) setAfdEmployer(def.id); }).catch(() => {}); }, []);
   async function baixarAfd() {
-    const res = await fetch("/api/ponto/afd", { credentials: "include" });
+    // AFD é por empregador (CNPJ). Sem seleção, usa o padrão.
+    const q = afdEmployer ? `?employerId=${afdEmployer}` : "";
+    const res = await fetch(`/api/ponto/afd${q}`, { credentials: "include" });
     const d = await res.json().catch(() => null);
-    if (!res.ok || !d) { dialog.toast("Falha ao gerar AFD", "error"); return; }
+    if (!res.ok || !d) { dialog.toast(d?.error?.message ?? "Falha ao gerar AFD", "error"); return; }
+    const slug = (d.employer?.name ?? "AFD").replace(/[^\w]+/g, "_").slice(0, 30);
     const blob = new Blob([d.content ?? ""], { type: "text/plain;charset=iso-8859-1" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "AFD.txt"; a.click(); URL.revokeObjectURL(a.href);
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `AFD_${slug}.txt`; a.click(); URL.revokeObjectURL(a.href);
     if (d.signed && d.p7s) {
       const bin = atob(d.p7s); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       const sigBlob = new Blob([bytes], { type: "application/pkcs7-signature" });
@@ -214,24 +218,29 @@ function Marcacoes({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="input-base w-auto">
+        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
           <option value="">Todos os funcionários</option>
           {emps.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
-        <button onClick={baixarAfd} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand" title="Registros tipo 7 do AFD (marcações)">Baixar AFD (tipo 7)</button>
+        {employers.length > 1 && (
+          <select value={afdEmployer} onChange={(e) => setAfdEmployer(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" title="AFD é por empregador (CNPJ)">
+            {employers.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}{emp.isDefault ? " (padrão)" : ""}</option>)}
+          </select>
+        )}
+        <button onClick={baixarAfd} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand" title="AFD do empregador selecionado (NSR/hash por CNPJ)">Baixar AFD{employers.length > 1 ? " (por empresa)" : ""}</button>
       </div>
-      {items.length === 0 ? <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Sem marcações.</p> : (
-        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-          <table className="w-full text-sm table-cards">
-            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">NSR</th><th className="px-4 py-3 font-medium">Funcionário</th><th className="px-4 py-3 font-medium">Data/hora</th><th className="px-4 py-3 font-medium">Origem</th><th className="px-4 py-3 font-medium">Verificação</th></tr></thead>
+      {items.length === 0 ? <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Sem marcações.</p> : (
+        <div className="overflow-hidden rounded-xl border border-line">
+          <table className="table-cards w-full text-sm">
+            <thead className="bg-bg/40 text-left text-[10px] uppercase tracking-wider text-muted"><tr><th className="px-3 py-2">NSR</th><th className="px-3 py-2">Funcionário</th><th className="px-3 py-2">Data/hora</th><th className="px-3 py-2">Origem</th><th className="px-3 py-2">Verificação</th></tr></thead>
             <tbody>
               {items.map((p) => (
-                <tr key={p.id} className="border-t border-line transition hover:bg-surface-2">
-                  <td className="px-4 py-3 font-mono">{p.nsr}</td>
-                  <td className="px-4 py-3">{nameOf(p.employeeId)}</td>
-                  <td className="px-4 py-3">{new Date(p.punchedAt).toLocaleString("pt-BR")}{p.offline ? " (offline)" : ""}</td>
-                  <td className="px-4 py-3 text-muted">{p.origin}</td>
-                  <td className="px-4 py-3 text-xs">
+                <tr key={p.id} className="border-t border-line/60">
+                  <td className="px-3 py-2 font-mono">{p.nsr}</td>
+                  <td className="px-3 py-2">{nameOf(p.employeeId)}</td>
+                  <td className="px-3 py-2">{new Date(p.punchedAt).toLocaleString("pt-BR")}{p.offline ? " (offline)" : ""}</td>
+                  <td className="px-3 py-2 text-muted">{p.origin}</td>
+                  <td className="px-3 py-2 text-xs">
                     {p.faceMatch === true && <span className="text-green-300" title={`similaridade ${p.faceScore ?? "?"}%`}>rosto ✓</span>}
                     {p.faceMatch === false && <span className="text-red-300" title={`similaridade ${p.faceScore ?? "?"}%`}>rosto ✗</span>}
                     {p.livenessOk === true && <span className="ml-1 text-green-300">vivo ✓</span>}
@@ -252,6 +261,7 @@ function Marcacoes({ emps, dialog }: { emps: Emp[]; dialog: any }) {
 function Funcionarios({ emps, onChanged, dialog }: { emps: Emp[]; onChanged: () => void; dialog: any }) {
   const [f, setF] = useState({ name: "", cpf: "", pis: "", matricula: "", matEsocial: "", cargo: "", scheduleCode: "", pin: "" });
   const [enrollFor, setEnrollFor] = useState<Emp | null>(null);
+  const [devFor, setDevFor] = useState<Emp | null>(null);
   const set = (k: string, v: string) => setF((s) => ({ ...s, [k]: v }));
   async function save() {
     if (!f.name.trim()) { dialog.toast("Informe o nome", "error"); return; }
@@ -283,11 +293,11 @@ function Funcionarios({ emps, onChanged, dialog }: { emps: Emp[]; onChanged: () 
       <div className="mb-4 flex items-center justify-between gap-2">
         <p className="text-sm font-semibold">Funcionários (marcação)</p>
         <div className="flex items-center gap-2">
-          <button onClick={dedupe} className="rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">Unir duplicados (CPF)</button>
+          <button onClick={dedupe} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand">Unir duplicados (CPF)</button>
           <button onClick={zerarMarcacoes} className="rounded-lg border border-red-500/50 px-3 py-1.5 text-xs text-red-300 hover:border-red-400 hover:bg-red-500/10">Zerar marcações (migração)</button>
         </div>
       </div>
-      <div className="card mb-4">
+      <div className="mb-4 rounded-xl border border-line bg-bg/60 p-5">
         <p className="mb-3 text-sm font-semibold">Novo funcionário</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <Inp label="Nome" v={f.name} on={(v) => set("name", v)} />
@@ -299,22 +309,63 @@ function Funcionarios({ emps, onChanged, dialog }: { emps: Emp[]; onChanged: () 
           <Inp label="Cód. horário contratual" v={f.scheduleCode} on={(v) => set("scheduleCode", v)} />
           <Inp label="PIN (opcional)" v={f.pin} on={(v) => set("pin", v)} />
         </div>
-        <button onClick={save} className="btn-grad mt-3">Salvar</button>
+        <button onClick={save} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Salvar</button>
       </div>
       <div className="space-y-2">
         {emps.map((e) => (
-          <div key={e.id} className="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2 text-sm">
+          <div key={e.id} className="flex items-center justify-between rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
             <span>{e.name} <span className="text-xs text-muted">{e.cargo ?? ""}{e.matricula ? ` · mat ${e.matricula}` : ""}</span>{e.faceEnrolled && <span className="ml-2 text-[10px] text-green-300">rosto ✓</span>}</span>
             <div className="flex items-center gap-2">
               {!e.active && <span className="text-[10px] text-muted">inativo</span>}
+              {e.allowedDeviceIds && e.allowedDeviceIds.length > 0 && <span className="text-[10px] text-amber-300" title="Restrito a terminais liberados">🔒 {e.allowedDeviceIds.length} term.</span>}
               {e.barcode && <button onClick={() => printCracha(e, "")} className="rounded border border-line px-2 py-0.5 text-xs hover:border-brand">Crachá</button>}
+              <button onClick={() => setDevFor(e)} className="rounded border border-line px-2 py-0.5 text-xs hover:border-brand">Terminais</button>
               <button onClick={() => setEnrollFor(e)} className="rounded border border-line px-2 py-0.5 text-xs hover:border-brand">{e.faceEnrolled ? "Refazer rosto" : "Cadastrar rosto"}</button>
             </div>
           </div>
         ))}
       </div>
       {enrollFor && <FaceEnroll emp={enrollFor} onClose={() => setEnrollFor(null)} onDone={() => { setEnrollFor(null); onChanged(); }} dialog={dialog} />}
+      {devFor && <DevicesEditor emp={devFor} onClose={() => setDevFor(null)} onDone={() => { setDevFor(null); onChanged(); }} dialog={dialog} />}
     </section>
+  );
+}
+
+function DevicesEditor({ emp, onClose, onDone, dialog }: { emp: Emp; onClose: () => void; onDone: () => void; dialog: any }) {
+  const [devices, setDevices] = useState<Array<{ id: string; name: string; code?: string | null }>>([]);
+  const [sel, setSel] = useState<Set<string>>(new Set(emp.allowedDeviceIds ?? []));
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    fetch("/api/ponto/devices", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setDevices(d?.items ?? [])).catch(() => {});
+  }, []);
+  function toggle(id: string) { setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
+  async function save() {
+    setBusy(true);
+    const res = await fetch(`/api/ponto/employees/${emp.id}/devices`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ deviceIds: [...sel] }) });
+    setBusy(false);
+    if (!res.ok) { dialog.toast("Falha ao salvar", "error"); return; }
+    dialog.toast(sel.size ? `Restrito a ${sel.size} terminal(is) ✅` : "Sem restrição (todos os terminais) ✅", "success");
+    onDone();
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <div className="w-full max-w-md rounded-2xl border border-line bg-bg p-5" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-base font-semibold">Terminais liberados — {emp.name}</h3>
+        <p className="mt-1 text-xs text-muted">Marque os terminais onde este funcionário <b>pode</b> bater o ponto. Deixe <b>tudo desmarcado</b> = sem restrição (pode bater em qualquer terminal da empresa). Não afeta terminais de empresas onde ele está alocado.</p>
+        <div className="mt-3 max-h-72 space-y-1 overflow-y-auto">
+          {devices.length === 0 ? <p className="text-sm text-muted">Nenhum terminal cadastrado.</p> : devices.map((d) => (
+            <label key={d.id} className="flex items-center gap-2 rounded-lg border border-line px-3 py-2 text-sm">
+              <input type="checkbox" checked={sel.has(d.id)} onChange={() => toggle(d.id)} />
+              <span>{d.name}{d.code ? <span className="text-xs text-muted"> · {d.code}</span> : null}</span>
+            </label>
+          ))}
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm">Cancelar</button>
+          <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Salvar"}</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -339,15 +390,98 @@ function FaceEnroll({ emp, onClose, onDone, dialog }: { emp: Emp; onClose: () =>
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5" onClick={(e) => e.stopPropagation()}>
         <p className="mb-1 text-sm font-semibold">Cadastrar rosto — {emp.name}</p>
         <p className="mb-3 text-[11px] text-muted">Olhe para a câmera com o rosto bem iluminado e centralizado.</p>
         <video ref={videoRef} autoPlay playsInline muted className="aspect-square w-full rounded-xl bg-black object-cover" />
         <div className="mt-3 flex gap-2">
           <button onClick={onClose} className="flex-1 rounded-lg border border-line py-2 text-sm">Cancelar</button>
-          <button disabled={busy} onClick={capture} className="btn-grad flex-1 py-2 disabled:opacity-50">{busy ? "Salvando…" : "Capturar"}</button>
+          <button disabled={busy} onClick={capture} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Salvando…" : "Capturar"}</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function MachinesPanel({ dialog }: { dialog: any }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [label, setLabel] = useState("");
+  const [newKey, setNewKey] = useState<{ label: string; key: string } | null>(null);
+  const load = () => fetch("/api/ponto/machines", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setItems(d?.items ?? [])).catch(() => {});
+  useEffect(() => { load(); }, []);
+  async function create() {
+    if (label.trim().length < 2) { dialog.toast("Informe um nome para a máquina", "error"); return; }
+    const res = await fetch("/api/ponto/machines", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ label: label.trim() }) });
+    const d = await res.json().catch(() => null);
+    if (!res.ok || !d?.key) { dialog.toast("Falha ao criar", "error"); return; }
+    setNewKey({ label: d.label, key: d.key }); setLabel(""); load();
+  }
+  async function revoke(id: string, revoke: boolean) {
+    const res = await fetch(`/api/ponto/machines/${id}/revoke`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ revoke }) });
+    if (res.ok) load();
+  }
+  return (
+    <div className="mt-3 rounded-xl border border-line bg-bg/60 p-4">
+      <p className="text-sm font-semibold">Computadores homologados</p>
+      <p className="mb-2 text-[11px] text-muted">Gere uma chave por computador, abra o portal nessa máquina e cole a chave em <b>“Homologar este computador”</b>. Só máquinas homologadas (não revogadas) podem enviar solicitações.</p>
+      <div className="flex flex-wrap items-end gap-2">
+        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Nome (ex.: PC Recepção Matriz)" className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+        <button onClick={create} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white">Gerar chave</button>
+      </div>
+      {newKey && (
+        <div className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+          <p className="text-amber-200">Chave de <b>{newKey.label}</b> (copie agora — não será exibida de novo):</p>
+          <code className="mt-1 block break-all rounded bg-bg/60 px-2 py-1 font-mono">{newKey.key}</code>
+          <button onClick={() => { navigator.clipboard?.writeText(newKey.key); dialog.toast("Copiada ✅", "success"); }} className="mt-1 rounded border border-line px-2 py-0.5">Copiar</button>
+        </div>
+      )}
+      <div className="mt-3 space-y-1">
+        {items.length === 0 ? <p className="text-xs text-muted">Nenhuma máquina homologada.</p> : items.map((m) => (
+          <div key={m.id} className={`flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm ${m.revokedAt ? "opacity-60" : ""}`}>
+            <span>{m.label} {m.revokedAt && <span className="ml-1 text-[10px] uppercase text-red-300">revogada</span>}<span className="block text-[11px] text-muted">{m.lastSeenAt ? `visto ${new Date(m.lastSeenAt).toLocaleString("pt-BR")}` : "nunca usado"}</span></span>
+            <button onClick={() => revoke(m.id, !m.revokedAt)} className={`rounded border px-2 py-0.5 text-xs ${m.revokedAt ? "border-green-500/50 text-green-300" : "border-red-500/50 text-red-300"}`}>{m.revokedAt ? "Reativar" : "Revogar"}</button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BankRequestsPanel({ dialog }: { dialog: any }) {
+  const [items, setItems] = useState<any[]>([]);
+  const load = () => fetch("/api/ponto/bank-requests", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setItems(d?.items ?? [])).catch(() => {});
+  useEffect(() => { load(); }, []);
+  async function respond(id: string, approve: boolean) {
+    let note: string | undefined;
+    if (!approve) { const r = await dialog.prompt({ title: "Negar solicitação", message: "Motivo (opcional):" }); if (r === null) return; note = r ?? undefined; }
+    const res = await fetch(`/api/ponto/bank-requests/${id}/respond`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ approve, note }) });
+    if (!res.ok) { dialog.toast("Falha ao responder", "error"); return; }
+    dialog.toast(approve ? "Saldo liberado ao funcionário ✅" : "Solicitação negada", "success"); load();
+  }
+  const pend = items.filter((i) => i.status === "pending");
+  return (
+    <div className="mt-6 rounded-xl border border-line bg-bg/60 p-5">
+      <p className="mb-1 text-sm font-semibold">Solicitações de saldo do banco de horas {pend.length > 0 && <span className="ml-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] text-amber-300">{pend.length} pendente(s)</span>}</p>
+      <p className="mb-3 text-[11px] text-muted">Funcionários pedem para ver o saldo quando a empresa o mantém oculto. Apenas o RH vê e responde aqui (o líder não vê).</p>
+      {items.length === 0 ? <p className="text-sm text-muted">Nenhuma solicitação.</p> : (
+        <div className="space-y-2">
+          {items.map((r) => (
+            <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line px-3 py-2 text-sm">
+              <div>
+                <span className="font-medium">{r.employeeName}</span>
+                <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] ${r.status === "pending" ? "bg-amber-500/20 text-amber-300" : r.status === "approved" ? "bg-green-500/20 text-green-300" : "bg-red-500/20 text-red-300"}`}>{r.status === "pending" ? "pendente" : r.status === "approved" ? "liberado" : "negado"}</span>
+                <div className="text-[11px] text-muted">{new Date(r.requestedAt).toLocaleString("pt-BR")}{r.reason ? ` · "${r.reason}"` : ""}{r.responseNote ? ` · RH: ${r.responseNote}` : ""}</div>
+              </div>
+              {r.status === "pending" && (
+                <div className="flex gap-2">
+                  <button onClick={() => respond(r.id, true)} className="rounded border border-green-500/50 px-2 py-0.5 text-xs text-green-300 hover:bg-green-500/10">Liberar saldo</button>
+                  <button onClick={() => respond(r.id, false)} className="rounded border border-red-500/50 px-2 py-0.5 text-xs text-red-300 hover:bg-red-500/10">Negar</button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -362,11 +496,11 @@ function Config({ dialog }: { dialog: any }) {
     dialog.toast("Config salva ✅", "success");
   }
   return (
-    <section className="card">
+    <section className="rounded-xl border border-line bg-bg/60 p-5">
       <p className="mb-3 text-sm font-semibold">Dados do empregador (cabeçalho do AFD/AEJ)</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo</span>
-          <select value={c.tpIdtEmpregador} onChange={(e) => set("tpIdtEmpregador", Number(e.target.value))} className="input-base"><option value={1}>CNPJ</option><option value={2}>CPF</option></select></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Tipo</span>
+          <select value={c.tpIdtEmpregador} onChange={(e) => set("tpIdtEmpregador", Number(e.target.value))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"><option value={1}>CNPJ</option><option value={2}>CPF</option></select></label>
         <Inp label="CNPJ/CPF" v={c.idtEmpregador} on={(v) => set("idtEmpregador", v)} />
         <Inp label="Razão social / nome" v={c.razaoOuNome} on={(v) => set("razaoOuNome", v)} />
         <Inp label="Nº processo convenção/acordo (REP-A)" v={c.repAProcesso} on={(v) => set("repAProcesso", v)} />
@@ -374,18 +508,18 @@ function Config({ dialog }: { dialog: any }) {
         <Inp label="CNO (se houver)" v={c.cno} on={(v) => set("cno", v)} />
         <Inp label="Local de prestação de serviços" v={c.localPrestacao} on={(v) => set("localPrestacao", v)} />
         <Inp label="CPF do responsável (inclusões/alterações)" v={c.responsavelCpf} on={(v) => set("responsavelCpf", v)} />
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo ident. desenvolvedor (PTRP)</span>
-          <select value={c.devTpIdt ?? 1} onChange={(e) => set("devTpIdt", Number(e.target.value))} className="input-base"><option value={1}>CNPJ</option><option value={2}>CPF</option></select></label>
-        <Inp label="CNPJ/CPF do desenvolvedor do sistema (PTRP)" v={c.devIdt} on={(v) => set("devIdt", v)} />
+        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Tipo ident. desenvolvedor (PTRP)</span>
+          <select value={c.devTpIdt ?? 1} onChange={(e) => set("devTpIdt", Number(e.target.value))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"><option value={1}>CNPJ</option><option value={2}>CPF</option></select></label>
+        <Inp label="CNPJ/CPF do desenvolvedor do software" v={c.devIdt} on={(v) => set("devIdt", v)} />
       </div>
-      <p className="mt-2 text-[11px] text-muted">Se não houver convenção/acordo depositado, deixe em branco — o AFD/AEJ usa "9"×17 automaticamente. O CNPJ do desenvolvedor (PTRP) é o da empresa que desenvolve o sistema e vai no cabeçalho do AFD.</p>
+      <p className="mt-2 text-[11px] text-muted">Se não houver convenção/acordo depositado, deixe em branco — o AFD/AEJ usa "9"×17 automaticamente. O CNPJ do desenvolvedor (PTRP) vem da configuração do servidor e vai no cabeçalho do AFD.</p>
 
       <p className="mb-3 mt-6 text-sm font-semibold">Reconhecimento facial e prova de vida (Fase 3)</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Provedor facial</span>
-          <select value={c.faceProvider ?? "none"} onChange={(e) => set("faceProvider", e.target.value)} className="input-base"><option value="none">Desligado</option><option value="http">Serviço HTTP (self-hosted/adaptador)</option></select></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Provedor facial</span>
+          <select value={c.faceProvider ?? "none"} onChange={(e) => set("faceProvider", e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"><option value="none">Desligado</option><option value="http">Serviço HTTP (self-hosted/adaptador)</option></select></label>
         <Inp label="URL do serviço facial" v={c.faceProviderUrl} on={(v) => set("faceProviderUrl", v)} />
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Chave do serviço {c.faceProviderKeySet ? "(definida — deixe vazio p/ manter)" : ""}</span><input type="password" value={c.faceProviderKey ?? ""} onChange={(e) => set("faceProviderKey", e.target.value)} className="input-base" /></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Chave do serviço {c.faceProviderKeySet ? "(definida — deixe vazio p/ manter)" : ""}</span><input type="password" value={c.faceProviderKey ?? ""} onChange={(e) => set("faceProviderKey", e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
         <Inp label="Similaridade mínima (0-100)" v={String(c.faceThreshold ?? 60)} on={(v) => set("faceThreshold", Number(v) || 0)} />
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!c.requireFace} onChange={(e) => set("requireFace", e.target.checked)} /> Exigir reconhecimento facial</label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!c.requireLiveness} onChange={(e) => set("requireLiveness", e.target.checked)} /> Exigir prova de vida (liveness)</label>
@@ -398,7 +532,25 @@ function Config({ dialog }: { dialog: any }) {
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={c.nightReducedHour !== false} onChange={(e) => set("nightReducedHour", e.target.checked)} /> Hora noturna reduzida (52min30s = 1h) — art. 73 §1º</label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={c.dsrLossEnabled !== false} onChange={(e) => set("dsrLossEnabled", e.target.checked)} /> Perder DSR em semana com falta injustificada</label>
         <div className="sm:w-72"><Inp label="Banco de horas: prazo de compensação (meses)" v={String(c.bankExpiryMonths ?? 6)} on={(v) => set("bankExpiryMonths", Number(v) || 0)} /></div>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={c.showBankToEmployee !== false} onChange={(e) => set("showBankToEmployee", e.target.checked)} /> Mostrar o saldo do banco de horas ao funcionário (no portal)</label>
+        <p className="text-[11px] text-muted">Se desligado, o funcionário não vê o saldo no portal e pode <b>solicitar ao RH</b> — só o RH vê e responde (o líder não vê).</p>
       </div>
+
+      <p className="mt-4 mb-1 text-sm font-semibold">Bloqueio de solicitações no portal</p>
+      <p className="mb-2 text-[11px] text-muted">O funcionário sempre pode <b>consultar</b>. Estas regras bloqueiam apenas <b>solicitações</b> (justificativas, férias, trocas, ajuste de ponto, documentos, etc.).</p>
+      <div className="grid gap-2">
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!c.requestsRestrictHours} onChange={(e) => set("requestsRestrictHours", e.target.checked)} /> Permitir solicitações somente em horário definido</label>
+        {c.requestsRestrictHours && (
+          <div className="flex flex-wrap items-end gap-2 pl-6">
+            <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Início</span><input type="time" value={c.requestsWindowStart ?? "08:00"} onChange={(e) => set("requestsWindowStart", e.target.value)} className="rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" /></label>
+            <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Fim</span><input type="time" value={c.requestsWindowEnd ?? "18:00"} onChange={(e) => set("requestsWindowEnd", e.target.value)} className="rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" /></label>
+            <div className="flex items-center gap-1">{["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((d, i) => { const days = String(c.requestsWindowDays ?? "1,2,3,4,5").split(",").filter(Boolean); const on = days.includes(String(i)); return <button key={i} type="button" onClick={() => { const s = new Set(days); on ? s.delete(String(i)) : s.add(String(i)); set("requestsWindowDays", [...s].sort().join(",")); }} className={`rounded px-2 py-1 text-[11px] ${on ? "bg-brand text-white" : "border border-line text-muted"}`}>{d}</button>; })}</div>
+          </div>
+        )}
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={!!c.requestsRestrictMachine} onChange={(e) => set("requestsRestrictMachine", e.target.checked)} /> Permitir solicitações somente em computador homologado da empresa</label>
+      </div>
+      {c.requestsRestrictMachine && <MachinesPanel dialog={dialog} />}
+      <BankRequestsPanel dialog={dialog} />
       <p className="mt-1 text-[11px] text-muted">Desligue se a convenção coletiva (CCT) da categoria dispensar a redução da hora noturna ou tratar o DSR de forma diferente. Afeta o espelho, o fechamento e o AEJ.</p>
 
       <p className="mt-6 mb-1 text-sm font-semibold">Alertas automáticos de ponto</p>
@@ -410,6 +562,7 @@ function Config({ dialog }: { dialog: any }) {
         <Inp label="Limite de hora extra semanal (min)" v={String(c.overtimeWeeklyAlertMin ?? 600)} on={(v) => set("overtimeWeeklyAlertMin", Number(v) || 0)} />
         <Inp label="E-mail da contabilidade (lote de espelhos)" v={c.accountantEmail ?? ""} on={(v) => set("accountantEmail", v)} />
       </div>
+      <p className="mt-1 text-[11px] text-muted">Esse e-mail também libera o <b>Portal do Contador</b> em <code>/contador</code> (login por código de uso único, somente leitura): fechamentos, AFD, AEJ e espelhos por CNPJ.</p>
       <p className="mt-1 text-[11px] text-muted">O funcionário é avisado (WhatsApp/e-mail do cadastro) quando não registra a entrada ou esquece a saída. O gestor recebe um resumo diário das divergências e, às segundas, quem passou do limite de hora extra na semana.</p>
 
       <FaceTestButton dialog={dialog} />
@@ -422,11 +575,11 @@ function Config({ dialog }: { dialog: any }) {
       <p className="mb-3 mt-6 text-sm font-semibold">Webhook de eventos (Fase 5)</p>
       <div className="grid gap-3 sm:grid-cols-2">
         <Inp label="URL do webhook (POST a cada marcação)" v={c.webhookUrl} on={(v) => set("webhookUrl", v)} />
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Segredo {c.webhookSecretSet ? "(definido — vazio mantém)" : ""}</span><input type="password" value={c.webhookSecret ?? ""} onChange={(e) => set("webhookSecret", e.target.value)} className="input-base" /></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Segredo {c.webhookSecretSet ? "(definido — vazio mantém)" : ""}</span><input type="password" value={c.webhookSecret ?? ""} onChange={(e) => set("webhookSecret", e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
       </div>
       <p className="mt-2 text-[11px] text-muted">Enviamos um POST JSON {`{ event, orgId, at, data }`} a cada marcação, assinado em HMAC-SHA256 no header <b>x-ponto-signature</b>. Evento: <code>ponto.punch.created</code>.</p>
 
-      <button onClick={save} className="btn-grad mt-3">Salvar</button>
+      <button onClick={save} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Salvar</button>
     </section>
   );
 }
@@ -459,9 +612,9 @@ function PontoBackground({ c, dialog, onSaved }: { c: any; dialog: any; onSaved:
       <div className="flex flex-wrap items-center gap-3">
         {c.bgImageUrl ? <img src={c.bgImageUrl} alt="fundo" className="h-20 w-36 rounded-lg border border-line object-cover" /> : <div className="flex h-20 w-36 items-center justify-center rounded-lg border border-dashed border-line text-[11px] text-muted">sem fundo</div>}
         <div className="flex flex-col gap-2">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Exibir até (opcional)</span><input type="date" value={until} onChange={(e) => setUntil(e.target.value)} className="input-base w-auto" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Exibir até (opcional)</span><input type="date" value={until} onChange={(e) => setUntil(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
           <div className="flex gap-2">
-            <label className="cursor-pointer rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">{busy ? "Enviando…" : "Subir imagem"}<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onFile} /></label>
+            <label className="cursor-pointer rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">{busy ? "Enviando…" : "Subir imagem"}<input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={onFile} /></label>
             {c.bgImageUrl && <button onClick={remove} className="rounded-lg border border-red-500/50 px-3 py-2 text-sm text-red-300">Remover</button>}
           </div>
           {c.bgUntil && <span className="text-[11px] text-muted">Ativo até {new Date(c.bgUntil).toLocaleDateString("pt-BR")}</span>}
@@ -540,7 +693,7 @@ function printEspelho(data: any, range: { from: string; to: string }) {
   w.document.close();
 }
 
-const JKIND: Record<string, string> = { atraso: "Atraso", falta: "Falta", saida_antecipada: "Saída antecipada", abono: "Abono / atestado", feriado: "Feriado", facultativo: "Ponto facultativo", folga_premium: "Folga premium", extra: "Hora extra", ajuste: "Ajuste de horário", outro: "Correção / outro" };
+const JKIND: Record<string, string> = { atraso: "Atraso", falta: "Falta", saida_antecipada: "Saída antecipada", abono: "Abono / atestado", extra: "Hora extra", ajuste: "Ajuste de horário", outro: "Correção / outro" };
 const PROP_LBL: Record<string, string> = { in: "Entrada", break_in: "Saída intervalo", break_out: "Retorno", out: "Saída" };
 function SolicitacoesPonto({ dialog }: { dialog: any }) {
   const [status, setStatus] = useState("pending");
@@ -568,8 +721,8 @@ function SolicitacoesPonto({ dialog }: { dialog: any }) {
         <span className="ml-auto text-xs text-muted">{loading ? "Carregando…" : `${items.length} solicitação(ões)`}</span>
       </div>
       <div className="space-y-2">
-        {items.length === 0 ? <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nada por aqui.</p> : items.map((j) => (
-          <div key={j.id} className="flex items-start justify-between gap-3 rounded-xl border border-line bg-surface p-3 text-sm">
+        {items.length === 0 ? <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Nada por aqui.</p> : items.map((j) => (
+          <div key={j.id} className="flex items-start justify-between gap-3 rounded-lg border border-line bg-bg/60 p-3 text-sm">
             <div>
               <p className="font-medium">{j.employeeName || "—"} · {JKIND[j.kind] ?? j.kind} · {new Date(j.day).toLocaleDateString("pt-BR", { timeZone: "UTC" })}</p>
               <p className="mt-0.5 whitespace-pre-wrap text-xs text-muted">{j.reason}</p>
@@ -621,20 +774,20 @@ function EspelhosContabil({ dialog }: { dialog: any }) {
     } finally { setBusy(false); }
   }
   return (
-    <section className="card mb-4">
+    <section className="mb-4 rounded-xl border border-line bg-bg/60 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <p className="text-sm font-semibold">Espelhos do mês (contabilidade)</p>
-        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="input-base w-auto" />
-        {data && <span className="rounded-full bg-surface-2 px-3 py-1 text-xs text-muted">{data.signed}/{data.total} assinados</span>}
-        <a href={`/api/ponto/espelho/lote.pdf?refMonth=${month}`} target="_blank" rel="noreferrer" className="ml-auto rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Baixar lote (PDF)</a>
-        <button onClick={enviar} disabled={busy} className="btn-grad disabled:opacity-50">{busy ? "Enviando…" : "Enviar à contabilidade"}</button>
-        <button onClick={() => setOpen((v) => !v)} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">{open ? "ocultar" : "ver lista"}</button>
+        <input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-2 py-1.5 text-sm" />
+        {data && <span className="rounded-full bg-bg/40 px-3 py-1 text-xs text-muted">{data.signed}/{data.total} assinados</span>}
+        <a href={`/api/ponto/espelho/lote.pdf?refMonth=${month}`} target="_blank" rel="noreferrer" className="ml-auto rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Baixar lote (PDF)</a>
+        <button onClick={enviar} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Enviando…" : "Enviar à contabilidade"}</button>
+        <button onClick={() => setOpen((v) => !v)} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">{open ? "ocultar" : "ver lista"}</button>
       </div>
       <p className="mt-1 text-[11px] text-muted">Gera um PDF único com o espelho de todos os funcionários ativos (com carimbo de assinatura e hash). Configure o e-mail do contador no Empregador.</p>
       {open && data && (
         <div className="mt-3 space-y-1">
           {data.items.map((i: any) => (
-            <div key={i.employeeId} className="flex items-center justify-between rounded-lg border border-line bg-surface-2 px-3 py-1.5 text-sm">
+            <div key={i.employeeId} className="flex items-center justify-between rounded border border-line/60 bg-bg/40 px-3 py-1.5 text-sm">
               <span>{i.name}{i.cargo ? <span className="text-xs text-muted"> · {i.cargo}</span> : null}</span>
               <span className={`text-xs ${i.signed ? "text-green-300" : "text-amber-200"}`}>{i.signed ? `assinado${i.a1Signed ? " (A1)" : ""}${i.signedAt ? " · " + new Date(i.signedAt).toLocaleDateString("pt-BR") : ""}` : "pendente"}</span>
             </div>
@@ -658,38 +811,15 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   const [editDay, setEditDay] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<PunchForm>(emptyPunchForm());
   const [editSnack, setEditSnack] = useState(false);
-  const [editMotivo, setEditMotivo] = useState("");          // motivo gravado junto da batida
-  const [jKind, setJKind] = useState("abono");               // abono/motivo lançado no dia
-  const [jReason, setJReason] = useState("");
-  const [jHoras, setJHoras] = useState("");                  // abono PARCIAL de horas (ex.: 03:00 ou 3)
   const [bank, setBank] = useState<any>(null);
   // Pra "Lançar/ajustar batidas" (caixa abaixo do espelho): substitui as do dia
   // por padrão — antes era OFF e duplicava se você relançasse o mesmo dia.
   const [pReplace, setPReplace] = useState(true);
   const [bulkReplace, setBulkReplace] = useState(true);
-  // Estado da busca: "idle" antes de selecionar funcionário; "loading" enquanto
-  // carrega; "error" se o API devolveu erro (com a mensagem pra debugar); "ok"
-  // quando temos data. Antes a UI mostrava "Selecione um funcionário..." pra
-  // QUALQUER `data` falsy, escondendo erros de API.
-  const [loadState, setLoadState] = useState<{ status: "idle" | "loading" | "ok" | "error"; error?: string }>({ status: "idle" });
-  const load = async () => {
-    if (!empId) { setData(null); setLoadState({ status: "idle" }); return; }
-    setLoadState({ status: "loading" });
-    try {
-      const r = await fetch(`/api/ponto/espelho?employeeId=${empId}&from=${range.from}&to=${range.to}`, { credentials: "include", headers: { "x-no-loading": "1" } });
-      const j = await r.json().catch(() => null);
-      if (!r.ok) {
-        const msg = j?.error?.message ?? j?.message ?? `HTTP ${r.status}`;
-        setData(null);
-        setLoadState({ status: "error", error: msg });
-        return;
-      }
-      setData(j);
-      setLoadState({ status: "ok" });
-    } catch (e: any) {
-      setData(null);
-      setLoadState({ status: "error", error: e?.message ?? "erro de rede" });
-    }
+  const load = () => {
+    if (!empId) { setData(null); return; }
+    fetch(`/api/ponto/espelho?employeeId=${empId}&from=${range.from}&to=${range.to}`, { credentials: "include", headers: { "x-no-loading": "1" } })
+      .then((r) => (r.ok ? r.json() : null)).then(setData).catch(() => {});
   };
   const loadBank = () => {
     if (!empId) { setBank(null); return; }
@@ -776,101 +906,51 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
       setBulkText(""); setBulkOpen(false); dialog.toast(`${d?.created ?? total} batida(s) lançada(s) ✅${d?.voided ? ` · ${d.voided} anteriores anuladas` : ""}`, "success"); load();
     } finally { setBusy(false); }
   }
-  function openEdit(d: any) { const { form, snack } = punchesToForm(d.punches ?? []); setEditDay(d.day); setEditForm(form); setEditSnack(snack); setEditMotivo(""); setJKind("abono"); setJReason(""); setJHoras(""); }
-  // "03:00" ou "3" ou "3,5" → minutos
-  function parseAbonoMin(s: string): number {
-    const t = s.trim(); if (!t) return 0;
-    if (t.includes(":")) { const [h, m] = t.split(":"); return (Number(h) || 0) * 60 + (Number(m) || 0); }
-    return Math.round((Number(t.replace(",", ".")) || 0) * 60);
-  }
+  function openEdit(d: any) { const { form, snack } = punchesToForm(d.punches ?? []); setEditDay(d.day); setEditForm(form); setEditSnack(snack); }
   async function saveEdit() {
     const times = formToTimes(editForm, editSnack);
     if (!empId || !editDay || !times.length) { dialog.toast("Informe ao menos a entrada", "error"); return; }
     setBusy(true);
     try {
-      // replaceDay: anula as batidas anteriores do dia (não duplica) e grava só esta edição.
-      // motivo: opcional, fica gravado na batida pra auditoria.
-      const res = await fetch("/api/ponto/punches/manual", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ employeeId: empId, days: [{ day: editDay, times }], replaceDay: true, motivo: editMotivo.trim() || undefined }) });
+      // replaceDay: anula as batidas anteriores do dia (não duplica) e grava só esta edição
+      const res = await fetch("/api/ponto/punches/manual", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ employeeId: empId, days: [{ day: editDay, times }], replaceDay: true }) });
       const d = await res.json().catch(() => null);
       if (!res.ok) { dialog.toast(d?.error?.message ?? "Falha ao alterar", "error"); return; }
       setEditDay(null); dialog.toast("Batidas atualizadas ✅", "success"); load();
     } finally { setBusy(false); }
   }
-  // Lança um abono/motivo direto no dia (do editar-dia) — já entra APROVADO,
-  // justificando a falta/ajuste na hora (sem precisar ir na aba de justificativas).
-  async function lancarMotivoDia(day: string) {
-    if (!empId || !jReason.trim()) { dialog.toast("Descreva o motivo", "error"); return; }
-    // abono PARCIAL de horas: só quando o tipo é "abono" e informou horas
-    const abonoMin = jKind === "abono" ? parseAbonoMin(jHoras) : 0;
-    const proposed = abonoMin > 0 ? { abonoMinutes: abonoMin } : undefined;
-    setBusy(true);
-    try {
-      const res = await fetch("/api/ponto/justificativas", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ employeeId: empId, day, kind: jKind, reason: jReason.trim(), approve: true, proposed }) });
-      const d = await res.json().catch(() => null);
-      if (!res.ok) { dialog.toast(d?.error?.message ?? "Falha ao lançar motivo", "error"); return; }
-      setJReason(""); setJHoras("");
-      dialog.toast(abonoMin > 0 ? `Abonado ${Math.floor(abonoMin / 60)}h${String(abonoMin % 60).padStart(2, "0")} ✅` : "Motivo lançado e dia justificado ✅", "success");
-      load();
-    } finally { setBusy(false); }
-  }
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-end gap-2 print:hidden">
-        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="input-base w-auto">
+        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
           <option value="">— funcionário —</option>
           {emps.filter((e) => e.active).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
-        <label className="text-sm">De <input type="date" value={range.from} onChange={(e) => {
-          const v = e.target.value; setRange((r) => ({ from: v, to: v && r.to && v > r.to ? v : r.to }));
-        }} className="input-base w-auto" /></label>
-        <label className="text-sm">Até <input type="date" value={range.to} onChange={(e) => {
-          const v = e.target.value; setRange((r) => ({ from: v && r.from && v < r.from ? v : r.from, to: v }));
-        }} className="input-base w-auto" /></label>
-        <div className="flex flex-wrap items-center gap-1 text-[11px]">
-          {[0, -1, -2].map((n) => (
-            <button key={n} onClick={() => setRange(monthShift(n))} title={n === 0 ? "Mês atual" : n === -1 ? "Mês anterior" : `${-n} meses atrás`}
-              className={`rounded-md border px-2 py-1 capitalize hover:border-brand ${range.from === monthShift(n).from && range.to === monthShift(n).to ? "border-brand bg-brand/10 text-brand" : "border-line text-muted"}`}>
-              {n === 0 ? "Mês atual" : n === -1 ? "Anterior" : shiftLabel(n)}
-            </button>
-          ))}
-        </div>
-        {data && <button onClick={() => csvEspelho(data, range)} className="ml-auto rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">CSV</button>}
-        {data && <button onClick={() => printEspelho(data, range)} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Imprimir / PDF</button>}
-        {data && empId && <button onClick={() => {
-          // Cache-buster por timestamp: o navegador (ou viewer inline de PDF) ama
-          // cachear PDFs com URL idêntica. Cada clique abre uma URL diferente,
-          // garantindo que se a funcionária reassinou, o PDF novo aparece.
-          const ts = Math.floor(Date.now() / 1000);
-          window.open(`/api/ponto/espelho/recibo.pdf?employeeId=${empId}&refMonth=${range.from.slice(0, 7)}&_ts=${ts}`, "_blank", "noreferrer");
-        }} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Espelho assinado</button>}
+        <label className="text-sm">De <input type="date" value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" /></label>
+        <label className="text-sm">Até <input type="date" value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" /></label>
+        {data && <button onClick={() => csvEspelho(data, range)} className="ml-auto rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">CSV</button>}
+        {data && <button onClick={() => printEspelho(data, range)} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Imprimir / PDF</button>}
+        {data && empId && <a href={`/api/ponto/espelho/recibo.pdf?employeeId=${empId}&refMonth=${range.from.slice(0, 7)}`} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Espelho assinado</a>}
       </div>
 
-      {loadState.status === "loading" ? (
-        <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Carregando espelho…</p>
-      ) : loadState.status === "error" ? (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/5 p-4 text-sm">
-          <p className="font-semibold text-red-300">Falha ao carregar o espelho</p>
-          <p className="mt-1 text-muted">{loadState.error}</p>
-          <p className="mt-2 text-[11px] text-muted">Se o erro menciona a coluna <code>voided</code>, aplique a migration <code>186_ponto_punch_voided.sql</code> no banco.</p>
-        </div>
-      ) : !data ? <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Selecione um funcionário e o período.</p> : (
-        <div className="rounded-2xl border border-line bg-surface p-4 shadow-sm print:border-0 print:bg-white print:text-black">
+      {!data ? <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Selecione um funcionário e o período.</p> : (
+        <div className="rounded-xl border border-line bg-bg/60 p-4 print:border-0 print:bg-white print:text-black">
           <div className="mb-3">
             <p className="text-lg font-semibold">Espelho de ponto</p>
             <p className="text-sm text-muted print:text-black">{data.employer} · {data.employee.name}{data.employee.cargo ? ` — ${data.employee.cargo}` : ""}{data.schedule ? ` · escala ${data.schedule.name}` : " · sem escala"}</p>
             <p className="text-xs text-muted print:text-black">Período {range.from} a {range.to}</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm table-cards">
+            <table className="table-cards w-full text-sm">
               <thead className="text-left text-[10px] uppercase tracking-wider text-muted print:text-black"><tr>
                 <th className="px-2 py-1">Dia</th><th className="px-2 py-1">Marcações</th><th className="px-2 py-1">Prev.</th><th className="px-2 py-1">Trab.</th><th className="px-2 py-1">Extra</th><th className="px-2 py-1">Atraso</th><th className="px-2 py-1">Falta</th><th className="px-2 py-1">Not.</th><th className="px-2 py-1">Saldo</th><th className="px-2 py-1 print:hidden"></th>
               </tr></thead>
               <tbody>
                 {data.days.map((d: any) => (
                   <Fragment key={d.day}>
-                  <tr className={`border-t border-line/60 ${d.divergence ? "bg-amber-500/10" : ""} ${d.faltaMin && !d.justified && !d.isFuture ? "bg-red-500/5" : ""} ${!d.isWorkDay || d.isFuture ? "text-muted" : ""}`}>
-                    <td className="px-2 py-1 whitespace-nowrap">{d.day.slice(8)}/{d.day.slice(5, 7)} <span className="text-[10px]">{WD[d.wd]}</span>{d.justified ? " ✅" : ""}{d.isFuture ? <span className="ml-1 text-[9px] text-muted">futuro</span> : null}{d.dsrLost ? <span title="DSR perdido (falta injustificada na semana)" className="ml-1 rounded bg-red-500/20 px-1 text-[9px] font-semibold text-red-300">DSR</span> : null}</td>
-                    <td className="px-2 py-1 font-mono text-xs">{d.punches.join(" ") || (d.isFuture ? "·" : d.special ? <span className="rounded bg-sky-500/15 px-1.5 py-0.5 text-[10px] not-italic text-sky-300" title={d.specialReason || ""}>{d.specialReason || "abonado"}</span> : d.isWorkDay ? "—" : "folga")}{d.abonoMin > 0 ? <span className="ml-1 rounded bg-green-500/15 px-1 py-0.5 text-[9px] not-italic text-green-300" title="abono de horas (pago)">ab {d.hm.abonoMin}</span> : null}</td>
+                  <tr className={`border-t border-line/60 ${d.divergence ? "bg-amber-500/10" : ""} ${d.faltaMin && !d.justified ? "bg-red-500/5" : ""} ${!d.isWorkDay ? "text-muted" : ""}`}>
+                    <td className="px-2 py-1 whitespace-nowrap">{d.day.slice(8)}/{d.day.slice(5, 7)} <span className="text-[10px]">{WD[d.wd]}</span>{d.justified ? " ✅" : ""}{d.dsrLost ? <span title="DSR perdido (falta injustificada na semana)" className="ml-1 rounded bg-red-500/20 px-1 text-[9px] font-semibold text-red-300">DSR</span> : null}</td>
+                    <td className="px-2 py-1 font-mono text-xs">{d.punches.join(" ") || (d.isWorkDay ? "—" : "folga")}</td>
                     <td className="px-2 py-1">{d.hm.expectedMin}</td>
                     <td className="px-2 py-1">{d.hm.workedMin}</td>
                     <td className="px-2 py-1">{d.extraMin ? d.hm.extraMin : ""}</td>
@@ -885,7 +965,7 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
                     </td>
                   </tr>
                   {editDay === d.day && (
-                    <tr className="border-t border-line/40 bg-surface-2 print:hidden">
+                    <tr className="border-t border-line/40 bg-bg/40 print:hidden">
                       <td colSpan={10} className="px-2 py-3">
                         <div className="flex flex-wrap items-end gap-3">
                           <span className="w-full text-xs text-muted">Batidas do dia {d.day.slice(8)}/{d.day.slice(5, 7)}:</span>
@@ -900,44 +980,9 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
                             <input type="checkbox" checked={editSnack} onChange={(e) => setEditSnack(e.target.checked)} className="h-3.5 w-3.5 rounded border-line" />
                             tem lanche (BH 2h)
                           </label>
-                          <label className="text-[10px] uppercase text-muted">Motivo da batida (opcional)
-                            <input value={editMotivo} onChange={(e) => setEditMotivo(e.target.value)} placeholder="ex.: esqueceu de bater" className="mt-0.5 block w-[200px] rounded-lg border border-line bg-bg/60 px-2 py-1.5 text-sm outline-none focus:border-brand" />
-                          </label>
-                          <button onClick={saveEdit} disabled={busy} className="btn-grad ml-auto px-4 py-1.5 disabled:opacity-50">{busy ? "Salvando…" : "Alterar"}</button>
+                          <button onClick={saveEdit} disabled={busy} className="ml-auto rounded-lg bg-brand px-4 py-1.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50">{busy ? "Salvando…" : "Alterar"}</button>
                         </div>
                         <p className="mt-1.5 text-[11px] text-muted">Reajustar substitui as batidas anteriores do dia (não duplica). As anuladas ficam guardadas para auditoria (Portaria 671 — nada é apagado).</p>
-
-                        {/* Motivos / abonos do dia (#3): mostra os já lançados e permite lançar inline (já aprovado) */}
-                        <div className="mt-2 border-t border-line/30 pt-2">
-                          <p className="text-[11px] font-medium text-muted">Motivos / abonos deste dia</p>
-                          {(d.justifications ?? []).length > 0 ? (
-                            <div className="mt-1 flex flex-wrap gap-1.5">
-                              {(d.justifications ?? []).map((j: any, idx: number) => (
-                                <span key={idx} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] ${j.status === "approved" ? "bg-green-500/15 text-green-300" : j.status === "rejected" ? "bg-red-500/15 text-red-300" : "bg-line text-muted"}`}>
-                                  <b>{JKIND[j.kind] ?? j.kind}</b>: {j.reason}{j.status !== "approved" ? ` (${j.status === "rejected" ? "recusado" : "pendente"})` : ""}
-                                </span>
-                              ))}
-                            </div>
-                          ) : <p className="mt-0.5 text-[11px] text-muted">Nenhum motivo lançado neste dia.</p>}
-                          <div className="mt-2 flex flex-wrap items-end gap-2">
-                            <select value={jKind} onChange={(e) => setJKind(e.target.value)} className="rounded-lg border border-line bg-bg/60 px-2 py-1.5 text-sm">
-                              <option value="abono">Abono / atestado</option>
-                              <option value="feriado">Feriado</option>
-                              <option value="facultativo">Ponto facultativo</option>
-                              <option value="folga_premium">Folga premium</option>
-                              <option value="ajuste">Ajuste</option>
-                              <option value="outro">Outro</option>
-                            </select>
-                            <input value={jReason} onChange={(e) => setJReason(e.target.value)} placeholder="Motivo (ex.: atestado, feriado municipal, ponte de feriado…)" className="min-w-[200px] flex-1 rounded-lg border border-line bg-bg/60 px-2 py-1.5 text-sm outline-none focus:border-brand" />
-                            {jKind === "abono" && (
-                              <label className="text-[10px] uppercase text-muted">Abonar horas (opcional)
-                                <input value={jHoras} onChange={(e) => setJHoras(e.target.value)} placeholder="ex.: 03:00 ou 3" className="mt-0.5 block w-[110px] rounded-lg border border-line bg-bg/60 px-2 py-1.5 text-sm outline-none focus:border-brand" />
-                              </label>
-                            )}
-                            <button onClick={() => lancarMotivoDia(d.day)} disabled={busy} className="rounded-lg border border-brand/50 px-3 py-1.5 text-sm font-medium text-brand hover:bg-brand/10 disabled:opacity-50">Lançar</button>
-                          </div>
-                          <p className="mt-1 text-[11px] text-muted">Já entra <b>aprovado</b>. <b>Abono</b> sem horas = dia inteiro abonado; <b>com horas</b> = abono parcial (ex.: trabalhou 08–13 e abona o resto) — paga o déficit e vai pra folha como abono.</p>
-                        </div>
                         {(() => {
                           const moves = (bankByDay.get(d.day) ?? []).filter((m: any) => m.kind !== "expiry");
                           const avail = bank?.balanceMin ?? 0;
@@ -1010,19 +1055,19 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
       )}
 
       {empId && (
-        <div className="card mt-4 print:hidden">
+        <div className="mt-4 rounded-xl border border-line bg-bg/60 p-4 print:hidden">
           <div className="mb-2 flex items-center justify-between gap-2">
             <p className="text-sm font-semibold">Lançar / ajustar batidas</p>
-            <button onClick={() => setBulkOpen((v) => !v)} className="rounded-xl border border-line px-3 py-1.5 text-xs transition hover:border-brand/60 hover:text-brand">{bulkOpen ? "Fechar lançamento em massa" : "Lançamento em massa (migração)"}</button>
+            <button onClick={() => setBulkOpen((v) => !v)} className="rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand">{bulkOpen ? "Fechar lançamento em massa" : "Lançamento em massa (migração)"}</button>
           </div>
           {!bulkOpen ? (
             <>
               <div className="grid gap-2 sm:grid-cols-4">
-                <input type="date" value={pday} onChange={(e) => setPday(e.target.value)} className="input-base" />
-                <input value={ptimes} onChange={(e) => setPtimes(e.target.value)} placeholder="Horários: 08:00 12:00 13:00 18:00" className="input-base sm:col-span-3" />
+                <input type="date" value={pday} onChange={(e) => setPday(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" />
+                <input value={ptimes} onChange={(e) => setPtimes(e.target.value)} placeholder="Horários: 08:00 12:00 13:00 18:00" className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm sm:col-span-3" />
               </div>
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                <button onClick={lancarDia} disabled={busy} className="btn-grad disabled:opacity-50">Lançar batidas do dia</button>
+                <button onClick={lancarDia} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Lançar batidas do dia</button>
                 <label className="flex items-center gap-1.5 text-xs text-muted">
                   <input type="checkbox" checked={pReplace} onChange={(e) => setPReplace(e.target.checked)} className="h-3.5 w-3.5 rounded border-line" />
                   substituir as batidas anteriores do dia (recomendado)
@@ -1033,10 +1078,10 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
           ) : (
             <>
               <p className="mb-1 text-[11px] text-muted">Uma linha por dia: <code>DATA hora hora hora hora</code>. DATA = <code>2026-05-01</code> ou <code>01/05/2026</code>. Ex.:</p>
-              <textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={8} placeholder={"2026-05-01 08:00 12:00 13:00 18:00\n2026-05-02 08:00 12:00 13:00 18:00\n02/05/2026 08:00 12:00"} className="input-base font-mono text-xs" />
+              <textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)} rows={8} placeholder={"2026-05-01 08:00 12:00 13:00 18:00\n2026-05-02 08:00 12:00 13:00 18:00\n02/05/2026 08:00 12:00"} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 font-mono text-xs" />
               {(() => { const dd = parseLancamentoMassa(bulkText); const tot = dd.reduce((n, d) => n + d.times.length, 0); return <p className="mt-1 text-[11px] text-muted">Prévia: {dd.length} dia(s), {tot} batida(s).</p>; })()}
               <div className="mt-2 flex flex-wrap items-center gap-3">
-                <button onClick={lancarMassa} disabled={busy} className="btn-grad disabled:opacity-50">Lançar em massa</button>
+                <button onClick={lancarMassa} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Lançar em massa</button>
                 <label className="flex items-center gap-1.5 text-xs text-muted">
                   <input type="checkbox" checked={bulkReplace} onChange={(e) => setBulkReplace(e.target.checked)} className="h-3.5 w-3.5 rounded border-line" />
                   substituir dias com batidas existentes
@@ -1048,20 +1093,66 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
       )}
 
       {empId && (
-        <div className="card mt-4 print:hidden">
+        <div className="mt-4 rounded-xl border border-line bg-bg/60 p-4 print:hidden">
           <p className="mb-2 text-sm font-semibold">Justificar divergência</p>
           <div className="grid gap-2 sm:grid-cols-4">
-            <input type="date" value={just.day} onChange={(e) => setJust((j) => ({ ...j, day: e.target.value }))} className="input-base" />
-            <select value={just.kind} onChange={(e) => setJust((j) => ({ ...j, kind: e.target.value }))} className="input-base">
+            <input type="date" value={just.day} onChange={(e) => setJust((j) => ({ ...j, day: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" />
+            <select value={just.kind} onChange={(e) => setJust((j) => ({ ...j, kind: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm">
               {["atraso", "falta", "saida_antecipada", "abono", "extra", "outro"].map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
-            <input value={just.reason} onChange={(e) => setJust((j) => ({ ...j, reason: e.target.value }))} placeholder="Motivo" className="input-base sm:col-span-2" />
+            <input value={just.reason} onChange={(e) => setJust((j) => ({ ...j, reason: e.target.value }))} placeholder="Motivo" className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm sm:col-span-2" />
           </div>
-          <button onClick={enviarJustificativa} className="btn-grad mt-2">Enviar justificativa</button>
+          <button onClick={enviarJustificativa} className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Enviar justificativa</button>
           <JustList employeeId={empId} dialog={dialog} />
         </div>
       )}
+
+      {empId && (
+        <div className="mt-4 rounded-xl border border-line bg-bg/60 p-4 print:hidden">
+          <Afastamentos employeeId={empId} dialog={dialog} onChanged={load} />
+        </div>
+      )}
     </section>
+  );
+}
+
+const LEAVE_LABEL: Record<string, string> = { inss_doenca: "INSS / Doença", acidente: "Acidente de trabalho", maternidade: "Licença-maternidade", paternidade: "Licença-paternidade", servico_militar: "Serviço militar", licenca_nr: "Licença não remunerada", outro: "Outro" };
+function Afastamentos({ employeeId, dialog, onChanged }: { employeeId: string; dialog: any; onChanged: () => void }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [f, setF] = useState({ type: "inss_doenca", startDate: "", endDate: "", reason: "" });
+  const load = () => fetch(`/api/ponto/afastamentos?employeeId=${employeeId}`, { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setItems(d ?? [])).catch(() => {});
+  useEffect(() => { load(); }, [employeeId]);
+  async function add() {
+    if (!f.startDate) { dialog.toast("Informe a data de início", "error"); return; }
+    const res = await fetch("/api/ponto/afastamentos", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ employeeId, type: f.type, startDate: f.startDate, endDate: f.endDate || null, reason: f.reason || null }) });
+    if (!res.ok) { dialog.toast("Falha", "error"); return; }
+    setF({ type: "inss_doenca", startDate: "", endDate: "", reason: "" }); dialog.toast("Afastamento registrado ✅", "success"); load(); onChanged();
+  }
+  async function rem(id: string) {
+    if (!(await dialog.confirm({ title: "Remover afastamento", message: "Remover este afastamento?", tone: "danger" }))) return;
+    await fetch(`/api/ponto/afastamentos/${id}/delete`, { method: "POST", credentials: "include" }); load(); onChanged();
+  }
+  return (
+    <div>
+      <p className="mb-2 text-sm font-semibold">Afastamentos</p>
+      <div className="grid gap-2 sm:grid-cols-5">
+        <select value={f.type} onChange={(e) => setF({ ...f, type: e.target.value })} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm sm:col-span-2">
+          {Object.entries(LEAVE_LABEL).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </select>
+        <input type="date" value={f.startDate} onChange={(e) => setF({ ...f, startDate: e.target.value })} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" title="Início" />
+        <input type="date" value={f.endDate} onChange={(e) => setF({ ...f, endDate: e.target.value })} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" title="Fim (em aberto se vazio)" />
+        <button onClick={add} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white">Registrar</button>
+      </div>
+      <div className="mt-2 space-y-1">
+        {items.map((l) => (
+          <div key={l.id} className="flex items-center justify-between rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+            <span><b>{LEAVE_LABEL[l.type] ?? l.type}</b> · {String(l.startDate).slice(0, 10)} {l.endDate ? `→ ${String(l.endDate).slice(0, 10)}` : "(em aberto)"}{l.reason ? ` · ${l.reason}` : ""}</span>
+            <button onClick={() => rem(l.id)} className="text-xs text-red-300 hover:underline">remover</button>
+          </div>
+        ))}
+      </div>
+      <p className="mt-1 text-[11px] text-muted">Nos dias do afastamento o espelho não conta falta nem jornada prevista (não infla o absenteísmo).</p>
+    </div>
   );
 }
 
@@ -1078,7 +1169,7 @@ function JustList({ employeeId, dialog }: { employeeId: string; dialog: any }) {
   return (
     <div className="mt-3 space-y-1">
       {items.map((j) => (
-        <div key={j.id} className="flex items-center justify-between rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm">
+        <div key={j.id} className="flex items-center justify-between rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
           <span>{String(j.day).slice(0, 10)} · <b>{j.kind}</b> · {j.reason} <span className={`text-[10px] ${j.status === "approved" ? "text-green-400" : j.status === "rejected" ? "text-red-400" : "text-amber-400"}`}>[{j.status}]</span></span>
           {j.status === "pending" && (
             <span className="flex gap-1">
@@ -1092,9 +1183,217 @@ function JustList({ employeeId, dialog }: { employeeId: string; dialog: any }) {
   );
 }
 
+const SWAP_ST: Record<string, { label: string; cls: string }> = {
+  pending_colleague: { label: "Aguardando colega", cls: "bg-amber-500/15 text-amber-300" },
+  pending_leader: { label: "Aguardando líder/RH", cls: "bg-sky-500/15 text-sky-300" },
+  approved: { label: "Aprovada", cls: "bg-indigo-500/15 text-indigo-300" },
+  applied: { label: "Efetivada", cls: "bg-emerald-500/15 text-emerald-300" },
+  rejected: { label: "Recusada", cls: "bg-red-500/15 text-red-300" },
+  canceled: { label: "Cancelada", cls: "bg-zinc-500/15 text-zinc-300" },
+};
+function swapBr(iso: string | null) { if (!iso) return "—"; const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; }
+
+function Empregadores({ dialog }: { dialog: any }) {
+  const [items, setItems] = useState<any[]>([]);
+  const empty = { id: "", name: "", tpIdtEmpregador: 1, idtEmpregador: "", caepf: "", cnae: "", tpRep: 3, active: true };
+  const [f, setF] = useState<any>(empty);
+  const [busy, setBusy] = useState(false);
+  const [certs, setCerts] = useState<Record<string, any>>({});
+  const loadCerts = (list: any[]) => { for (const e of list) fetch(`/api/ponto/cert?employerId=${e.id}`, { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((s) => s && setCerts((c) => ({ ...c, [e.id]: s }))).catch(() => {}); };
+  const load = () => fetch("/api/ponto/employers", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => { const its = d?.items ?? []; setItems(its); loadCerts(its); }).catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  async function uploadA1(e: any, file: File) {
+    const password = await dialog.prompt({ title: `A1 de ${e.name}`, message: "Senha do certificado (.pfx/.p12):" });
+    if (password === null) return;
+    setBusy(true);
+    try {
+      const pfx = await new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file); });
+      const resp = await fetch("/api/ponto/cert", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ employerId: e.id, pfx, password }) });
+      const d = await resp.json().catch(() => null);
+      if (!resp.ok) { dialog.alert(d?.error?.message ?? "Falha ao enviar o certificado"); return; }
+      dialog.toast(`A1 de ${e.name}: ${d?.subject ?? "ok"} ✅`, "success"); loadCerts([e]);
+    } finally { setBusy(false); }
+  }
+  async function removeA1(e: any) {
+    if (!(await dialog.confirm({ title: "Remover A1", message: `Remover o certificado de "${e.name}"?`, tone: "danger" }))) return;
+    await fetch("/api/ponto/cert/remove", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ employerId: e.id }) });
+    loadCerts([e]); dialog.toast("Certificado removido", "success");
+  }
+
+  async function save() {
+    if (!f.name.trim()) { dialog.toast("Informe a razão social/nome", "error"); return; }
+    setBusy(true);
+    try {
+      const res = await fetch("/api/ponto/employers", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ id: f.id || undefined, name: f.name.trim(), tpIdtEmpregador: Number(f.tpIdtEmpregador), idtEmpregador: f.idtEmpregador || null, caepf: f.caepf || null, cnae: f.cnae || null, tpRep: Number(f.tpRep), active: f.active }) });
+      const d = await res.json().catch(() => null);
+      if (!res.ok) { dialog.toast(d?.error?.message ?? "Falha ao salvar", "error"); return; }
+      setF(empty); dialog.toast("Empregador salvo ✅", "success"); load();
+    } finally { setBusy(false); }
+  }
+  async function remove(e: any) {
+    if (!(await dialog.confirm({ title: "Excluir empregador", message: `Excluir "${e.name}"?`, tone: "danger" }))) return;
+    const res = await fetch(`/api/ponto/employers/${e.id}/delete`, { method: "POST", credentials: "include" });
+    const d = await res.json().catch(() => null);
+    if (!res.ok) { dialog.alert(d?.error?.message ?? "Não foi possível excluir"); return; }
+    dialog.toast("Excluído", "success"); load();
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold">Empregadores (CNPJs)</h2>
+        <p className="text-sm text-muted">Vários empregadores podem bater ponto na mesma matriz (ex.: terceirizadas). Cada funcionário pertence a um empregador; no fechamento dá pra ver tudo junto ou separar por empresa. Cada empregador é uma entidade legal própria (AFD/AEJ/A1 por CNPJ nas próximas fases).</p>
+      </div>
+
+      <div className="rounded-xl border border-line bg-bg/60 p-4">
+        <p className="mb-2 text-sm font-semibold">{f.id ? "Editar empregador" : "Novo empregador"}</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <input className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm sm:col-span-2" placeholder="Razão social / nome" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+          <label className="text-xs text-muted">Tipo de identificação
+            <select className="mt-1 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" value={f.tpIdtEmpregador} onChange={(e) => setF({ ...f, tpIdtEmpregador: e.target.value })}>
+              <option value={1}>CNPJ</option><option value={2}>CPF</option><option value={3}>CAEPF</option>
+            </select>
+          </label>
+          <input className="self-end rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" placeholder="CNPJ/CPF (só números)" value={f.idtEmpregador} onChange={(e) => setF({ ...f, idtEmpregador: e.target.value })} />
+          <input className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" placeholder="CAEPF (opcional)" value={f.caepf} onChange={(e) => setF({ ...f, caepf: e.target.value })} />
+          <input className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" placeholder="CNAE (opcional)" value={f.cnae} onChange={(e) => setF({ ...f, cnae: e.target.value })} />
+          <label className="text-xs text-muted">Tipo de REP
+            <select className="mt-1 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" value={f.tpRep} onChange={(e) => setF({ ...f, tpRep: e.target.value })}>
+              <option value={3}>REP-P (programa)</option><option value={2}>REP-A (alternativo)</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-2 self-end text-sm"><input type="checkbox" checked={f.active} onChange={(e) => setF({ ...f, active: e.target.checked })} className="h-4 w-4 rounded border-line" /> Ativo</label>
+        </div>
+        <div className="mt-2 flex gap-2">
+          <button onClick={save} disabled={busy} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{f.id ? "Salvar" : "Adicionar"}</button>
+          {f.id && <button onClick={() => setF(empty)} className="rounded-lg border border-line px-3 py-2 text-sm text-muted">cancelar</button>}
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        {items.map((e) => (
+          <div key={e.id} className="rounded-xl border border-line bg-bg/40 p-3 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span className="font-medium">{e.name}</span>
+                {e.isDefault && <span className="ml-2 rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">padrão</span>}
+                {!e.active && <span className="ml-2 rounded-full bg-zinc-500/15 px-2 py-0.5 text-[10px] text-zinc-300">inativo</span>}
+                <span className="ml-2 text-xs text-muted">{e.idtEmpregador ? `${e.tpIdtEmpregador === 1 ? "CNPJ" : e.tpIdtEmpregador === 2 ? "CPF" : "CAEPF"} ${e.idtEmpregador}` : "sem documento"} · {e.employees} func.</span>
+              </div>
+              <span className="flex gap-2 text-xs">
+                <button onClick={() => setF({ id: e.id, name: e.name, tpIdtEmpregador: e.tpIdtEmpregador, idtEmpregador: e.idtEmpregador ?? "", caepf: e.caepf ?? "", cnae: e.cnae ?? "", tpRep: e.tpRep, active: e.active })} className="rounded-md border border-line px-2 py-1 hover:border-brand">editar</button>
+                {!e.isDefault && <button onClick={() => remove(e)} className="rounded-md border border-line px-2 py-1 text-red-300 hover:border-red-400">excluir</button>}
+              </span>
+            </div>
+            {/* Certificado A1 (e-CNPJ) por empregador — assina espelho/holerite/AFD desta empresa */}
+            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-line/40 pt-2 text-xs">
+              <span className="text-muted">Certificado A1:</span>
+              {certs[e.id]?.configured
+                ? <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${certs[e.id]?.expired ? "bg-red-500/15 text-red-300" : "bg-emerald-500/15 text-emerald-300"}`}>{certs[e.id]?.expired ? "vencido" : "configurado"}{certs[e.id]?.subject ? ` · ${certs[e.id].subject}` : ""}</span>
+                : <span className="rounded-full bg-zinc-500/15 px-2 py-0.5 text-[10px] text-zinc-300">não configurado</span>}
+              <label className="cursor-pointer rounded-md border border-line px-2 py-1 hover:border-brand">
+                {certs[e.id]?.configured ? "trocar A1" : "enviar A1"}
+                <input type="file" accept=".pfx,.p12,application/x-pkcs12" className="hidden" onChange={(ev) => { const file = ev.target.files?.[0]; if (file) uploadA1(e, file); ev.currentTarget.value = ""; }} disabled={busy} />
+              </label>
+              {certs[e.id]?.configured && <button onClick={() => removeA1(e)} className="rounded-md border border-line px-2 py-1 text-red-300 hover:border-red-400">remover A1</button>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TrocasRh({ dialog }: { dialog: any }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [files, setFiles] = useState<Record<string, string>>({}); // swapId -> attachmentUrl
+  const [uploading, setUploading] = useState<string | null>(null);
+  const load = () => fetch("/api/ponto/shift-swaps", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setItems(d?.items ?? [])).catch(() => {});
+  useEffect(() => { load(); }, []);
+
+  async function upload(id: string, file: File) {
+    setUploading(id);
+    try {
+      const fd = new FormData(); fd.append("file", file); fd.append("purpose", "troca");
+      const res = await fetch("/api/uploads/org", { method: "POST", body: fd, credentials: "include" });
+      const d = await res.json(); if (res.ok) setFiles((f) => ({ ...f, [id]: d.url }));
+      else dialog.alert("Falha no upload do documento.");
+    } finally { setUploading(null); }
+  }
+  async function rhApprove(id: string) {
+    if (!(await dialog.confirm("Aprovar esta troca no lugar do líder? Sua aprovação fica registrada e assinada."))) return;
+    setBusy(id);
+    const res = await fetch(`/api/ponto/shift-swaps/${id}/rh-approve`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({}) });
+    const d = await res.json().catch(() => ({})); setBusy(null);
+    if (!res.ok) { dialog.alert(d?.message ?? "Erro ao aprovar."); return; }
+    dialog.toast("Troca aprovada."); load();
+  }
+  async function apply(id: string) {
+    const att = files[id] ?? null;
+    if (!att && !(await dialog.confirm({ title: "Efetivar sem anexo?", message: "Nenhum documento foi anexado. Deseja efetivar a troca mesmo assim? A escala dos dois funcionários será atualizada na(s) data(s).", tone: "danger", confirmLabel: "Efetivar" }))) return;
+    if (att && !(await dialog.confirm({ title: "Efetivar troca", message: "A escala dos dois funcionários será atualizada na(s) data(s) e o documento será anexado.", confirmLabel: "Efetivar" }))) return;
+    setBusy(id);
+    const res = await fetch(`/api/ponto/shift-swaps/${id}/apply`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ attachmentUrl: att }) });
+    const d = await res.json().catch(() => ({})); setBusy(null);
+    if (!res.ok) { dialog.alert(d?.message ?? "Não foi possível efetivar."); return; }
+    dialog.toast("Troca efetivada — escalas atualizadas."); load();
+  }
+
+  const typeLabel = (t: string) => (t === "folga" ? "Troca de folga" : "Troca de turno");
+  const dot = (on: boolean, a1: boolean, label: string) => (
+    <span className="inline-flex items-center gap-1 text-[11px] text-muted" title={on ? (a1 ? "Assinado (ICP-Brasil A1)" : "Assinado (eletrônico)") : "Pendente"}>
+      <span className={`h-2 w-2 rounded-full ${on ? (a1 ? "bg-emerald-400" : "bg-amber-400") : "bg-zinc-600"}`} />{label}
+    </span>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold">Trocas de turno / folga</h2>
+        <p className="text-sm text-muted">Fluxo com tripla assinatura (solicitante → colega → líder). Quando não há líder direto, o RH aprova. Depois o RH anexa o documento e efetiva — a escala dos dois é trocada automaticamente na(s) data(s).</p>
+      </div>
+      {items.length === 0 ? <p className="text-sm text-muted">Nenhuma troca em andamento.</p> : (
+        <div className="space-y-2">
+          {items.map((s) => {
+            const st = SWAP_ST[s.status] ?? { label: s.status, cls: "bg-zinc-500/15 text-zinc-300" };
+            return (
+              <div key={s.id} className="rounded-xl border border-line bg-bg/40 p-4 text-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span><strong>{s.requesterName}</strong> ↔ <strong>{s.colleagueName}</strong> · {typeLabel(s.swapType)}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${st.cls}`}>{st.label}</span>
+                </div>
+                <p className="mt-1 text-xs text-muted">Data: {swapBr(s.swapDate)}{s.counterpartDate ? ` · contrapartida ${swapBr(s.counterpartDate)}` : ""}{s.leaderName ? ` · líder ${s.leaderName}` : " · sem líder direto"}{s.reason ? ` · ${s.reason}` : ""}</p>
+                {s.ruleWarnings?.length > 0 && <ul className="mt-1 list-disc pl-4 text-[11px] text-amber-300">{s.ruleWarnings.map((w: string, i: number) => <li key={i}>{w}</li>)}</ul>}
+                <div className="mt-2 flex flex-wrap gap-3">{dot(s.requesterSigned, s.requesterA1, "Solicitante")}{dot(s.colleagueSigned, s.colleagueA1, "Colega")}{dot(s.leaderSigned, s.leaderA1, s.approvedByRh ? "RH" : "Líder")}</div>
+                {s.rejectReason && <p className="mt-1 text-[11px] text-red-300">Motivo da recusa ({s.rejectedBy}): {s.rejectReason}</p>}
+                {s.rhAttachmentUrl && <p className="mt-1 text-xs"><a href={s.rhAttachmentUrl} target="_blank" rel="noreferrer" className="text-brand underline">documento anexado</a>{s.appliedAt ? ` · efetivada` : ""}</p>}
+
+                {s.needsRhApproval && (
+                  <button disabled={busy === s.id} onClick={() => rhApprove(s.id)} className="mt-3 rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">Aprovar (sem líder direto)</button>
+                )}
+                {s.readyToApply && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <label className="cursor-pointer rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand">
+                      {uploading === s.id ? "Enviando…" : files[s.id] ? "Documento anexado ✓" : "Anexar documento"}
+                      <input type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(s.id, f); }} />
+                    </label>
+                    <button disabled={busy === s.id} onClick={() => apply(s.id)} className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">Efetivar troca</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Escalas({ dialog }: { dialog: any }) {
   const [items, setItems] = useState<any[]>([]);
-  const empty = { id: "", code: "", name: "", kind: "fixa", toleranceMin: 10, nightStart: "22:00", nightEnd: "05:00", days: WD.map(() => ["", "", "", ""]) as string[][], anchor: "", anchorEnt: "07:00", anchorSai: "19:00", onDays: 1, offDays: 1, dailyHours: "8" };
+  const empty = { id: "", code: "", name: "", kind: "fixa", toleranceMin: 10, nightStart: "22:00", nightEnd: "05:00", holidayPolicy: "folga", holidayPay: "normal", days: WD.map(() => ["", "", "", ""]) as string[][], anchor: "", anchorEnt: "07:00", anchorSai: "19:00", onDays: 1, offDays: 1, dailyHours: "8" };
   const [f, setF] = useState<any>(empty);
   const load = () => fetch("/api/ponto/schedules", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setItems(d?.items ?? [])).catch(() => {});
   useEffect(() => { load(); }, []);
@@ -1111,7 +1410,7 @@ function Escalas({ dialog }: { dialog: any }) {
       if (row[2] && row[3]) segs.push([row[2], row[3]]);
       if (segs.length) pattern[String(wd)] = segs;
     });
-    const body: any = { code: f.code, name: f.name, kind: f.kind, toleranceMin: Number(f.toleranceMin), nightStart: f.nightStart, nightEnd: f.nightEnd, pattern };
+    const body: any = { code: f.code, name: f.name, kind: f.kind, toleranceMin: Number(f.toleranceMin), nightStart: f.nightStart, nightEnd: f.nightEnd, holidayPolicy: f.holidayPolicy, holidayPay: f.holidayPay, pattern };
     if (f.id) body.id = f.id;
     const res = await fetch("/api/ponto/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) });
     if (!res.ok) { const d = await res.json().catch(() => null); dialog.toast(d?.error?.message ?? "Falha", "error"); return; }
@@ -1121,7 +1420,7 @@ function Escalas({ dialog }: { dialog: any }) {
     const p = s.pattern ?? {};
     const days = WD.map((_, wd) => { const segs = p[String(wd)] ?? []; return [segs[0]?.[0] ?? "", segs[0]?.[1] ?? "", segs[1]?.[0] ?? "", segs[1]?.[1] ?? ""]; });
     setF({
-      id: s.id, code: s.code, name: s.name, kind: s.kind, toleranceMin: s.toleranceMin, nightStart: s.nightStart, nightEnd: s.nightEnd, days,
+      id: s.id, code: s.code, name: s.name, kind: s.kind, toleranceMin: s.toleranceMin, nightStart: s.nightStart, nightEnd: s.nightEnd, holidayPolicy: s.holidayPolicy ?? "folga", holidayPay: s.holidayPay ?? "normal", days,
       anchor: p.anchor ?? "", anchorEnt: p.segments?.[0]?.[0] ?? "07:00", anchorSai: p.segments?.[0]?.[1] ?? "19:00",
       onDays: p.onDays ?? 1, offDays: p.offDays ?? 1, dailyHours: p.dailyMinutes ? String(p.dailyMinutes / 60) : "8",
     });
@@ -1135,16 +1434,20 @@ function Escalas({ dialog }: { dialog: any }) {
   const setDay = (wd: number, i: number, v: string) => setF((s: any) => { const days = s.days.map((r: string[]) => [...r]); days[wd][i] = v; return { ...s, days }; });
   return (
     <section>
-      <div className="card mb-4">
+      <div className="mb-4 rounded-xl border border-line bg-bg/60 p-5">
         <p className="mb-3 text-sm font-semibold">{f.id ? `Editar escala ${f.code}` : "Nova escala"}{f.id && <button onClick={() => setF(empty)} className="ml-2 text-xs text-muted hover:text-fg">(cancelar edição)</button>}</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <Inp label="Código (casa com o do funcionário)" v={f.code} on={(v) => setF((s: any) => ({ ...s, code: v }))} />
           <Inp label="Nome" v={f.name} on={(v) => setF((s: any) => ({ ...s, name: v }))} />
-          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo</span>
-            <select value={f.kind} onChange={(e) => setF((s: any) => ({ ...s, kind: e.target.value }))} className="input-base"><option value="fixa">Fixa (semanal)</option><option value="12x36">12x36</option><option value="plantao">Plantão (ciclo)</option><option value="home_office">Home office (flexível)</option><option value="intermitente">Intermitente</option></select></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Tipo</span>
+            <select value={f.kind} onChange={(e) => setF((s: any) => ({ ...s, kind: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"><option value="fixa">Fixa (semanal)</option><option value="12x36">12x36</option><option value="plantao">Plantão (ciclo)</option><option value="home_office">Home office (flexível)</option><option value="intermitente">Intermitente</option></select></label>
           <Inp label="Tolerância (min)" v={String(f.toleranceMin)} on={(v) => setF((s: any) => ({ ...s, toleranceMin: v }))} />
           <Inp label="Início noturno" v={f.nightStart} on={(v) => setF((s: any) => ({ ...s, nightStart: v }))} />
           <Inp label="Fim noturno" v={f.nightEnd} on={(v) => setF((s: any) => ({ ...s, nightEnd: v }))} />
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Feriado</span>
+            <select value={f.holidayPolicy} onChange={(e) => setF((s: any) => ({ ...s, holidayPolicy: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"><option value="folga">Folga (não trabalha)</option><option value="trabalha">Trabalha</option><option value="alterna">Alterna (1 sim / 1 não)</option></select></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Pagamento do feriado trabalhado</span>
+            <select value={f.holidayPay} onChange={(e) => setF((s: any) => ({ ...s, holidayPay: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm"><option value="normal">Como dia normal</option><option value="dobro">Em dobro (CLT)</option><option value="folga_comp">Folga compensatória</option></select></label>
         </div>
         {f.kind === "fixa" ? (
           <div className="mt-3 space-y-1">
@@ -1167,17 +1470,17 @@ function Escalas({ dialog }: { dialog: any }) {
           <p className="mt-3 text-[11px] text-muted">Intermitente: sem jornada fixa. Conta só o que for batido (não gera falta). Use o banco de horas para ajustes.</p>
         ) : (
           <div className="mt-3 grid gap-3 sm:grid-cols-3">
-            <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Âncora (1º dia de trabalho)</span><input type="date" value={f.anchor} onChange={(e) => setF((s: any) => ({ ...s, anchor: e.target.value }))} className="input-base" /></label>
-            <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Entrada</span><input type="time" value={f.anchorEnt} onChange={(e) => setF((s: any) => ({ ...s, anchorEnt: e.target.value }))} className="input-base" /></label>
-            <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Saída</span><input type="time" value={f.anchorSai} onChange={(e) => setF((s: any) => ({ ...s, anchorSai: e.target.value }))} className="input-base" /></label>
+            <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Âncora (1º dia de trabalho)</span><input type="date" value={f.anchor} onChange={(e) => setF((s: any) => ({ ...s, anchor: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+            <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Entrada</span><input type="time" value={f.anchorEnt} onChange={(e) => setF((s: any) => ({ ...s, anchorEnt: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+            <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Saída</span><input type="time" value={f.anchorSai} onChange={(e) => setF((s: any) => ({ ...s, anchorSai: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
             {f.kind === "plantao" && <><Inp label="Dias trabalhados (ciclo)" v={String(f.onDays)} on={(v) => setF((s: any) => ({ ...s, onDays: v }))} /><Inp label="Dias de folga (ciclo)" v={String(f.offDays)} on={(v) => setF((s: any) => ({ ...s, offDays: v }))} /></>}
           </div>
         )}
-        <button onClick={save} className="btn-grad mt-3">{f.id ? "Atualizar escala" : "Salvar escala"}</button>
+        <button onClick={save} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">{f.id ? "Atualizar escala" : "Salvar escala"}</button>
       </div>
       <div className="space-y-2">
         {items.map((s) => (
-          <div key={s.id} className="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2 text-sm">
+          <div key={s.id} className="flex items-center justify-between rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
             <span className={s.active ? "" : "opacity-60"}><b>{s.code}</b> — {s.name} <span className="text-xs text-muted">{s.kind} · tol {s.toleranceMin}min</span>{!s.active && <span className="ml-2 text-[10px] text-muted">inativa</span>}</span>
             <span className="flex items-center gap-3 text-xs">
               <button onClick={() => editar(s)} className="text-brand hover:underline">editar</button>
@@ -1221,33 +1524,33 @@ function AtribuirEscala({ schedules, dialog }: { schedules: any[]; dialog: any }
     setSel({}); load();
   }
   return (
-    <div className="card mt-6">
+    <div className="mt-6 rounded-xl border border-line bg-bg/60 p-5">
       <p className="mb-1 text-sm font-semibold">Aplicar escala em massa</p>
       <p className="mb-3 text-[11px] text-muted">Filtre por loja/cargo, marque os funcionários e aplique a mesma escala a todos. "Sem escala" remove o vínculo.</p>
       <div className="grid gap-3 sm:grid-cols-4">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Escala</span>
-          <select value={code} onChange={(e) => setCode(e.target.value)} className="input-base">
+        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Escala</span>
+          <select value={code} onChange={(e) => setCode(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
             <option value="">— sem escala (remover) —</option>
             {schedules.filter((s) => s.active).map((s) => <option key={s.id} value={s.code}>{s.code} — {s.name}</option>)}
           </select>
         </label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Loja</span>
-          <select value={storeId} onChange={(e) => setStoreId(e.target.value)} className="input-base">
+        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Loja</span>
+          <select value={storeId} onChange={(e) => setStoreId(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
             <option value="">todas</option>
             {stores.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Cargo</span>
-          <select value={cargo} onChange={(e) => setCargo(e.target.value)} className="input-base">
+        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Cargo</span>
+          <select value={cargo} onChange={(e) => setCargo(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
             <option value="">todos</option>
             {cargos.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Buscar nome</span>
-          <input value={q} onChange={(e) => setQ(e.target.value)} className="input-base" /></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Buscar nome</span>
+          <input value={q} onChange={(e) => setQ(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
       </div>
       <div className="mt-3 max-h-64 overflow-y-auto rounded-lg border border-line/60">
-        <div className="flex items-center justify-between border-b border-line/60 bg-surface-2 px-3 py-2 text-xs">
+        <div className="flex items-center justify-between border-b border-line/60 bg-bg/40 px-3 py-2 text-xs">
           <label className="flex items-center gap-2"><input type="checkbox" checked={allVisibleSelected} onChange={toggleAll} /> selecionar todos ({filtered.length})</label>
           <span className="text-muted">{selIds.length} selecionado(s)</span>
         </div>
@@ -1260,43 +1563,37 @@ function AtribuirEscala({ schedules, dialog }: { schedules: any[]; dialog: any }
         ))}
         {filtered.length === 0 && <p className="px-3 py-3 text-sm text-muted">Nenhum funcionário no filtro.</p>}
       </div>
-      <button onClick={apply} className="btn-grad mt-3">Aplicar a {selIds.length} funcionário(s)</button>
+      <button onClick={apply} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Aplicar a {selIds.length} funcionário(s)</button>
     </div>
   );
 }
 
 function Feriados({ dialog }: { dialog: any }) {
   const [items, setItems] = useState<any[]>([]);
-  const [f, setF] = useState({ day: "", name: "", kind: "feriado", recurring: false });
+  const [f, setF] = useState({ day: "", name: "", recurring: false });
   const load = () => fetch("/api/ponto/holidays", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setItems(d?.items ?? [])).catch(() => {});
   useEffect(() => { load(); }, []);
   async function add() {
     if (!f.day || !f.name.trim()) { dialog.toast("Data e nome obrigatórios", "error"); return; }
     const res = await fetch("/api/ponto/holidays", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(f) });
     if (!res.ok) { dialog.toast("Falha", "error"); return; }
-    setF({ day: "", name: "", kind: "feriado", recurring: false }); load(); dialog.toast("Salvo ✅", "success");
+    setF({ day: "", name: "", recurring: false }); load(); dialog.toast("Feriado salvo ✅", "success");
   }
   async function remove(id: string) { await fetch(`/api/ponto/holidays/${id}/delete`, { method: "POST", credentials: "include" }); load(); }
   return (
-    <div className="card mt-6">
-      <p className="mb-1 text-sm font-semibold">Feriados e pontos facultativos</p>
-      <p className="mb-3 text-[11px] text-muted">Valem pra empresa/loja toda. No espelho viram dia abonado: não gera falta, não desconta, e o que for trabalhado conta como hora extra. Recorrente repete todo ano na mesma data. (Para folga premium de uma pessoa só, use "Lançar motivo" no editar-dia do espelho.)</p>
+    <div className="mt-6 rounded-xl border border-line bg-bg/60 p-5">
+      <p className="mb-1 text-sm font-semibold">Feriados</p>
+      <p className="mb-3 text-[11px] text-muted">No espelho, o feriado vira folga: não gera falta e o que for trabalhado no dia conta como hora extra. Recorrente repete todo ano na mesma data.</p>
       <div className="flex flex-wrap items-end gap-2">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Data</span><input type="date" value={f.day} onChange={(e) => setF((s) => ({ ...s, day: e.target.value }))} className="input-base w-auto" /></label>
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Tipo</span>
-          <select value={f.kind} onChange={(e) => setF((s) => ({ ...s, kind: e.target.value }))} className="input-base w-auto">
-            <option value="feriado">Feriado</option>
-            <option value="facultativo">Ponto facultativo</option>
-          </select>
-        </label>
-        <label className="block flex-1 min-w-[180px]"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Nome</span><input value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} placeholder="ex.: Natal, Quarta de cinzas" className="input-base" /></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Data</span><input type="date" value={f.day} onChange={(e) => setF((s) => ({ ...s, day: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+        <label className="block flex-1 min-w-[180px]"><span className="mb-1 block text-[10px] uppercase text-muted">Nome</span><input value={f.name} onChange={(e) => setF((s) => ({ ...s, name: e.target.value }))} placeholder="ex.: Natal, Aniversário da cidade" className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
         <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.recurring} onChange={(e) => setF((s) => ({ ...s, recurring: e.target.checked }))} /> repete todo ano</label>
-        <button onClick={add} className="btn-grad">+ Adicionar</button>
+        <button onClick={add} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">+ Adicionar</button>
       </div>
       <div className="mt-3 space-y-1">
         {items.map((h) => (
-          <div key={h.id} className="flex items-center justify-between rounded-lg border border-line/60 bg-surface-2 px-3 py-2 text-sm">
-            <span>{new Date(h.day).toLocaleDateString("pt-BR", { timeZone: "UTC" })} — {h.name}<span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${h.kind === "facultativo" ? "bg-sky-500/15 text-sky-300" : "bg-amber-500/15 text-amber-300"}`}>{h.kind === "facultativo" ? "facultativo" : "feriado"}</span>{h.recurring && <span className="ml-2 text-[10px] uppercase text-muted">anual</span>}</span>
+          <div key={h.id} className="flex items-center justify-between rounded-lg border border-line/60 bg-bg/40 px-3 py-2 text-sm">
+            <span>{new Date(h.day).toLocaleDateString("pt-BR", { timeZone: "UTC" })} — {h.name}{h.recurring && <span className="ml-2 text-[10px] uppercase text-muted">anual</span>}</span>
             <button onClick={() => remove(h.id)} className="text-xs text-muted hover:text-red-300">remover</button>
           </div>
         ))}
@@ -1308,49 +1605,99 @@ function Feriados({ dialog }: { dialog: any }) {
 
 function Dispositivos({ dialog }: { dialog: any }) {
   const [items, setItems] = useState<any[]>([]);
-  const [f, setF] = useState<any>({ name: "", geoLat: "", geoLng: "", geoRadiusM: 150, requireGeo: false, requireSelfie: false });
+  const [stores, setStores] = useState<any[]>([]);
+  const [employers, setEmployers] = useState<any[]>([]);
+  const empty = { id: "", name: "", code: "", storeId: "", employerId: "", rustdeskId: "", rustdeskPass: "", notes: "", geoLat: "", geoLng: "", geoRadiusM: 150, requireGeo: false, requireSelfie: false };
+  const [f, setF] = useState<any>({ ...empty });
   const [newLink, setNewLink] = useState<string | null>(null);
+  const [punchesOf, setPunchesOf] = useState<{ id: string; items: any[] } | null>(null);
+  const [emps, setEmps] = useState<Emp[]>([]);
   const load = () => fetch("/api/ponto/devices", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setItems(d?.items ?? [])).catch(() => {});
-  useEffect(() => { load(); }, []);
-  async function create() {
-    if (!f.name.trim()) { dialog.toast("Informe um nome", "error"); return; }
-    const body: any = { name: f.name, requireGeo: f.requireGeo, requireSelfie: f.requireSelfie, geoRadiusM: Number(f.geoRadiusM) || 150 };
-    if (f.geoLat && f.geoLng) { body.geoLat = Number(f.geoLat); body.geoLng = Number(f.geoLng); }
-    const res = await fetch("/api/ponto/devices", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) });
-    const d = await res.json().catch(() => null);
-    if (!res.ok || !d?.token) { dialog.toast("Falha ao criar", "error"); return; }
-    setNewLink(`${window.location.origin}/ponto-app?d=${d.token}`);
-    setF({ name: "", geoLat: "", geoLng: "", geoRadiusM: 150, requireGeo: false, requireSelfie: false });
-    load();
+  async function verBatidas(id: string) {
+    if (punchesOf?.id === id) { setPunchesOf(null); return; }
+    const r = await fetch(`/api/ponto/devices/${id}/punches`, { credentials: "include" }); const j = await r.json().catch(() => null);
+    setPunchesOf({ id, items: j?.items ?? [] });
   }
+  useEffect(() => {
+    load();
+    fetch("/api/stores", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setStores(d?.items ?? d ?? [])).catch(() => {});
+    fetch("/api/ponto/employers", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setEmployers(d?.items ?? [])).catch(() => {});
+    fetch("/api/ponto/employees", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setEmps(d?.items ?? [])).catch(() => {});
+  }, []);
+  const storeName = (id: string) => stores.find((s) => s.id === id)?.name ?? "—";
+  const empName = (id: string) => employers.find((e) => e.id === id)?.name ?? "—";
+  const restritos = emps.filter((e) => e.active && (e.allowedDeviceIds?.length ?? 0) > 0);
+  const semRestricao = emps.filter((e) => e.active && (e.allowedDeviceIds?.length ?? 0) === 0).length;
+  const quemPodeBater = (deviceId: string) => {
+    const libs = restritos.filter((e) => e.allowedDeviceIds!.includes(deviceId)).map((e) => e.name);
+    const extras: string[] = [];
+    if (semRestricao > 0) extras.push(`+${semRestricao} sem restrição`);
+    return [libs.length ? libs.join(", ") : null, extras.join(" · ") || null].filter(Boolean).join(" · ") || "ninguém liberado";
+  };
+  async function save() {
+    if (!f.name.trim()) { dialog.toast("Informe um nome", "error"); return; }
+    const body: any = { name: f.name, code: f.code || undefined, storeId: f.storeId || null, employerId: f.employerId || null, rustdeskId: f.rustdeskId || null, notes: f.notes || null, requireGeo: f.requireGeo, requireSelfie: f.requireSelfie, geoRadiusM: Number(f.geoRadiusM) || 150 };
+    if (f.rustdeskPass) body.rustdeskPass = f.rustdeskPass;
+    if (f.geoLat && f.geoLng) { body.geoLat = Number(f.geoLat); body.geoLng = Number(f.geoLng); }
+    const url = f.id ? `/api/ponto/devices/${f.id}` : "/api/ponto/devices";
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) });
+    const d = await res.json().catch(() => null);
+    if (!res.ok) { dialog.toast("Falha ao salvar", "error"); return; }
+    if (!f.id && d?.token) setNewLink(`${window.location.origin}/ponto-app?d=${d.token}`);
+    else { setNewLink(null); dialog.toast("Terminal atualizado ✅", "success"); }
+    setF({ ...empty }); load();
+  }
+  function editar(d: any) { setNewLink(null); setF({ id: d.id, name: d.name, code: d.code ?? "", storeId: d.storeId ?? "", employerId: d.employerId ?? "", rustdeskId: d.rustdeskId ?? "", rustdeskPass: "", notes: d.notes ?? "", geoLat: d.geoLat ?? "", geoLng: d.geoLng ?? "", geoRadiusM: d.geoRadiusM ?? 150, requireGeo: !!d.requireGeo, requireSelfie: !!d.requireSelfie }); }
   async function toggleRevoke(id: string, revoked: boolean) {
     const res = await fetch(`/api/ponto/devices/${id}`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ revoked: !revoked }) });
     if (!res.ok) { dialog.toast("Falha", "error"); return; }
     dialog.toast(revoked ? "Reativado" : "Revogado", "success"); load();
+  }
+  async function conectar(d: any) {
+    const r = await fetch(`/api/ponto/devices/${d.id}/rustdesk`, { credentials: "include" }); const j = await r.json().catch(() => null);
+    if (!j?.rustdeskId) { dialog.toast("Sem RustDesk ID cadastrado neste terminal", "error"); return; }
+    navigator.clipboard?.writeText(j.password ? `${j.rustdeskId} / ${j.password}` : j.rustdeskId);
+    dialog.toast(`RustDesk ${j.rustdeskId}${j.password ? " (id+senha copiados)" : " (id copiado)"}`, "success");
+    try { window.open(`rustdesk://${j.rustdeskId}`, "_blank"); } catch { /* protocolo pode não estar registrado */ }
   }
   function usarMinhaLocalizacao() {
     navigator.geolocation?.getCurrentPosition((p) => setF((s: any) => ({ ...s, geoLat: p.coords.latitude.toFixed(6), geoLng: p.coords.longitude.toFixed(6) })), () => dialog.toast("Não consegui obter a localização", "error"));
   }
   return (
     <section>
-      <div className="card mb-4">
-        <p className="mb-1 text-sm font-semibold">Novo dispositivo (tablet/celular no balcão)</p>
-        <p className="mb-3 text-[11px] text-muted">Gera um link com token. Abra esse link no aparelho da filial e instale como app (PWA). O funcionário bate o ponto por PIN, sem login.</p>
+      <div className="mb-3 flex items-center justify-between">
+        <p className="text-sm font-semibold">Terminais de ponto (REP)</p>
+        <a href="/api/ponto/devices-report" target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-1.5 text-xs hover:border-brand">Relatório (PDF) p/ fiscalização</a>
+      </div>
+      <div className="mb-4 rounded-xl border border-line bg-bg/60 p-5">
+        <p className="mb-1 text-sm font-semibold">{f.id ? "Editar terminal" : "Novo terminal (tablet/celular no balcão)"}</p>
+        <p className="mb-3 text-[11px] text-muted">Cada terminal tem um código único, vínculo de loja/CNPJ e (opcional) o RustDesk pra suporte remoto. O link com token abre o kiosk; o funcionário bate por PIN/rosto, sem login.</p>
         <div className="grid gap-3 sm:grid-cols-3">
-          <Inp label="Nome (ex.: Balcão Loja Centro)" v={f.name} on={(v) => setF((s: any) => ({ ...s, name: v }))} />
+          <Inp label="Nome (ex.: Balcão Caixa 1)" v={f.name} on={(v) => setF((s: any) => ({ ...s, name: v }))} />
+          <Inp label="Código (vazio = automático)" v={f.code} on={(v) => setF((s: any) => ({ ...s, code: v }))} />
+          <label className="text-sm"><span className="mb-1 block text-[10px] uppercase text-muted">Loja</span>
+            <select value={f.storeId} onChange={(e) => setF((s: any) => ({ ...s, storeId: e.target.value }))} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm"><option value="">—</option>{stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
+          </label>
+          {employers.length > 0 && <label className="text-sm"><span className="mb-1 block text-[10px] uppercase text-muted">Empregador (CNPJ)</span>
+            <select value={f.employerId} onChange={(e) => setF((s: any) => ({ ...s, employerId: e.target.value }))} className="w-full rounded border border-line bg-bg/60 px-2 py-1.5 text-sm"><option value="">—</option>{employers.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}</select>
+          </label>}
+          <Inp label="RustDesk ID" v={f.rustdeskId} on={(v) => setF((s: any) => ({ ...s, rustdeskId: v }))} />
+          <Inp label={f.id ? "RustDesk senha (vazio = manter)" : "RustDesk senha (fixa)"} v={f.rustdeskPass} on={(v) => setF((s: any) => ({ ...s, rustdeskPass: v }))} />
           <Inp label="Latitude da filial" v={String(f.geoLat)} on={(v) => setF((s: any) => ({ ...s, geoLat: v }))} />
           <Inp label="Longitude da filial" v={String(f.geoLng)} on={(v) => setF((s: any) => ({ ...s, geoLng: v }))} />
           <Inp label="Raio permitido (m)" v={String(f.geoRadiusM)} on={(v) => setF((s: any) => ({ ...s, geoRadiusM: v }))} />
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.requireGeo} onChange={(e) => setF((s: any) => ({ ...s, requireGeo: e.target.checked }))} /> Exigir GPS dentro do raio</label>
+          <Inp label="Observação (local físico)" v={f.notes} on={(v) => setF((s: any) => ({ ...s, notes: v }))} />
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.requireGeo} onChange={(e) => setF((s: any) => ({ ...s, requireGeo: e.target.checked }))} /> Exigir GPS no raio</label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.requireSelfie} onChange={(e) => setF((s: any) => ({ ...s, requireSelfie: e.target.checked }))} /> Exigir selfie</label>
         </div>
         <div className="mt-3 flex gap-2">
-          <button onClick={usarMinhaLocalizacao} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Usar minha localização</button>
-          <button onClick={create} className="btn-grad">Gerar dispositivo</button>
+          <button onClick={usarMinhaLocalizacao} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Usar minha localização</button>
+          <button onClick={save} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">{f.id ? "Salvar terminal" : "Gerar terminal"}</button>
+          {f.id && <button onClick={() => setF({ ...empty })} className="rounded-lg border border-line px-3 py-2 text-sm text-muted hover:text-fg">cancelar</button>}
         </div>
         {newLink && (
           <div className="mt-3 rounded-xl border border-green-500/40 bg-green-500/10 p-3 text-sm">
-            <p className="font-semibold text-green-200">Link do dispositivo (mostrado só agora):</p>
+            <p className="font-semibold text-green-200">Link do terminal (mostrado só agora):</p>
             <p className="mt-1 break-all font-mono text-xs">{newLink}</p>
             <button onClick={() => { navigator.clipboard?.writeText(newLink); dialog.toast("Link copiado", "success"); }} className="mt-2 rounded border border-line px-2 py-1 text-xs">Copiar link</button>
           </div>
@@ -1358,12 +1705,35 @@ function Dispositivos({ dialog }: { dialog: any }) {
       </div>
       <div className="space-y-2">
         {items.map((d) => (
-          <div key={d.id} className="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2 text-sm">
-            <span>{d.name} <span className="text-xs text-muted">{d.requireGeo ? "· GPS" : ""}{d.requireSelfie ? " · selfie" : ""}{d.lastSeenAt ? ` · visto ${new Date(d.lastSeenAt).toLocaleString("pt-BR")}` : " · nunca usado"}</span></span>
-            <button onClick={() => toggleRevoke(d.id, d.revoked)} className={`rounded border px-2 py-0.5 text-xs ${d.revoked ? "border-green-500/50 text-green-300" : "border-red-500/50 text-red-300"}`}>{d.revoked ? "Reativar" : "Revogar"}</button>
+          <div key={d.id} className="rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="min-w-0">
+                <span title={d.revoked ? "revogado" : d.online ? "online" : "offline"}>{d.revoked ? "🚫" : d.online ? "🟢" : "⚪"}</span>
+                {d.code && <span className="ml-1 font-mono text-xs text-brand">{d.code}</span>}
+                <span className="ml-1 font-medium">{d.name}</span>
+                <div className="text-[11px] text-muted">{[d.storeId ? storeName(d.storeId) : null, d.employerId ? empName(d.employerId) : null, d.rustdeskId ? `RustDesk ${d.rustdeskId}` : null, d.lastSeenAt ? `visto ${new Date(d.lastSeenAt).toLocaleString("pt-BR")}` : "nunca usado", d.appVersion ? `v${d.appVersion}` : null].filter(Boolean).join(" · ")}</div>
+                <div className="mt-0.5 text-[11px] text-muted">👤 Quem pode bater: {quemPodeBater(d.id)}</div>
+              </div>
+              <span className="flex shrink-0 gap-2 text-xs">
+                <button onClick={() => verBatidas(d.id)} className="rounded border border-line px-2 py-0.5 hover:border-brand">{punchesOf?.id === d.id ? "Ocultar" : "Batidas"}</button>
+                {d.rustdeskId && <button onClick={() => conectar(d)} className="rounded border border-line px-2 py-0.5 hover:border-brand">Conectar</button>}
+                <button onClick={() => editar(d)} className="rounded border border-line px-2 py-0.5 hover:border-brand">Editar</button>
+                <button onClick={() => toggleRevoke(d.id, d.revoked)} className={`rounded border px-2 py-0.5 ${d.revoked ? "border-green-500/50 text-green-300" : "border-red-500/50 text-red-300"}`}>{d.revoked ? "Reativar" : "Revogar"}</button>
+              </span>
+            </div>
+            {punchesOf?.id === d.id && (
+              <div className="mt-2 rounded-lg border border-line/60 bg-bg/40 p-2">
+                <p className="mb-1 text-[10px] uppercase text-muted">Últimas batidas neste terminal (visível só aqui no RH)</p>
+                {(punchesOf?.items ?? []).length === 0 ? <p className="text-xs text-muted">Sem batidas.</p> : (
+                  <ul className="space-y-0.5 text-xs">
+                    {(punchesOf?.items ?? []).map((p) => <li key={p.id} className={p.voided ? "text-muted line-through" : ""}>{new Date(p.at).toLocaleString("pt-BR")} — {p.name}{p.voided ? " (anulada)" : ""}</li>)}
+                  </ul>
+                )}
+              </div>
+            )}
           </div>
         ))}
-        {items.length === 0 && <p className="text-sm text-muted">Nenhum dispositivo cadastrado.</p>}
+        {items.length === 0 && <p className="text-sm text-muted">Nenhum terminal cadastrado.</p>}
       </div>
     </section>
   );
@@ -1388,23 +1758,23 @@ function Avisos({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   }
   return (
     <section>
-      <div className="card mb-4">
+      <div className="mb-4 rounded-xl border border-line bg-bg/60 p-5">
         <p className="mb-1 text-sm font-semibold">Novo aviso ao bater o ponto</p>
         <p className="mb-3 text-[11px] text-muted">Aparece no painel quando o funcionário registra o ponto. Escolha um funcionário específico ou deixe "Geral" para todos.</p>
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Destinatário</span>
-            <select value={f.employeeId} onChange={(e) => setF((s) => ({ ...s, employeeId: e.target.value }))} className="input-base">
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Destinatário</span>
+            <select value={f.employeeId} onChange={(e) => setF((s) => ({ ...s, employeeId: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
               <option value="">Geral (todos)</option>
               {emps.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select></label>
-          <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Exibir até (opcional)</span><input type="date" value={f.until} onChange={(e) => setF((s) => ({ ...s, until: e.target.value }))} className="input-base" /></label>
+          <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Exibir até (opcional)</span><input type="date" value={f.until} onChange={(e) => setF((s) => ({ ...s, until: e.target.value }))} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
         </div>
-        <textarea value={f.message} onChange={(e) => setF((s) => ({ ...s, message: e.target.value }))} rows={2} placeholder="Mensagem do aviso" className="input-base mt-3" />
-        <button onClick={create} className="btn-grad mt-3">Publicar aviso</button>
+        <textarea value={f.message} onChange={(e) => setF((s) => ({ ...s, message: e.target.value }))} rows={2} placeholder="Mensagem do aviso" className="mt-3 w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+        <button onClick={create} className="mt-3 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Publicar aviso</button>
       </div>
       <div className="space-y-2">
         {items.filter((n) => n.active).map((n) => (
-          <div key={n.id} className="flex items-start justify-between rounded-xl border border-line bg-surface px-3 py-2 text-sm">
+          <div key={n.id} className="flex items-start justify-between rounded-lg border border-line bg-bg/60 px-3 py-2 text-sm">
             <div><span className="text-xs font-semibold text-brand">{nameOf(n.employeeId)}</span><p>{n.message}</p>{n.until && <span className="text-[10px] text-muted">até {new Date(n.until).toLocaleDateString("pt-BR")}</span>}</div>
             <button onClick={() => del(n.id)} className="rounded border border-red-500/50 px-2 py-0.5 text-xs text-red-300">Remover</button>
           </div>
@@ -1437,13 +1807,13 @@ function TempoReal({ dialog }: { dialog: any }) {
         <Kpi title="Atualiza a cada" value="15s" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="card">
+        <div className="rounded-xl border border-line bg-bg/60 p-4">
           <p className="mb-2 text-sm font-semibold">Trabalhando agora ({rt?.present?.length ?? 0})</p>
           {(rt?.present ?? []).length === 0 ? <p className="text-sm text-muted">Ninguém com ponto aberto.</p> : (
             <ul className="space-y-1 text-sm">{rt.present.map((p: any) => <li key={p.id} className="flex justify-between"><span>🟢 {p.name}</span><span className="text-muted">desde {new Date(p.since).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span></li>)}</ul>
           )}
         </div>
-        <div className="card">
+        <div className="rounded-xl border border-line bg-bg/60 p-4">
           <p className="mb-2 text-sm font-semibold">Últimas marcações</p>
           {(rt?.lastPunches ?? []).length === 0 ? <p className="text-sm text-muted">Sem marcações hoje.</p> : (
             <ul className="space-y-1 text-sm">{rt.lastPunches.map((p: any, i: number) => <li key={i} className="flex justify-between"><span>{p.name} <span className="text-[10px] text-muted">{p.origin}</span></span><span className="text-muted">{new Date(p.at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span></li>)}</ul>
@@ -1453,14 +1823,14 @@ function TempoReal({ dialog }: { dialog: any }) {
       <div className="mt-4 rounded-xl border border-brand/30 bg-brand/5 p-4">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold">IA de absenteísmo — {ref}</p>
-          <button onClick={carregarIa} className="rounded-xl border border-line px-3 py-1 text-sm transition hover:border-brand/60 hover:text-brand">Analisar com IA</button>
+          <button onClick={carregarIa} className="rounded-lg border border-line px-3 py-1 text-sm hover:border-brand">Analisar com IA</button>
         </div>
         {abs?.loading && <p className="mt-2 text-sm text-muted">Analisando…</p>}
         {abs?.insight && <p className="mt-2 text-sm leading-relaxed">{abs.insight}</p>}
         {abs && !abs.loading && !abs.insight && <p className="mt-2 text-sm text-muted">{abs.ranked?.length ? "IA indisponível — mostrando ranking abaixo." : "Sem dados no mês."}</p>}
         {abs?.ranked?.length > 0 && (
           <div className="mt-3 grid gap-1 text-xs sm:grid-cols-2">
-            {abs.ranked.slice(0, 8).map((r: any, i: number) => <div key={i} className="flex justify-between rounded-lg border border-line bg-surface-2 px-2 py-1"><span>{r.name}</span><span className="text-muted">{hmMin(r.faltaMin)} falta · {r.lateMin}min atraso</span></div>)}
+            {abs.ranked.slice(0, 8).map((r: any, i: number) => <div key={i} className="flex justify-between rounded border border-line bg-bg/40 px-2 py-1"><span>{r.name}</span><span className="text-muted">{hmMin(r.faltaMin)} falta · {r.lateMin}min atraso</span></div>)}
           </div>
         )}
       </div>
@@ -1470,7 +1840,7 @@ function TempoReal({ dialog }: { dialog: any }) {
 
 function Kpi({ title, value, tone }: { title: string; value: string; tone?: "green" | "amber" }) {
   const c = tone === "green" ? "text-green-300" : tone === "amber" ? "text-amber-300" : "";
-  return <div className="card"><p className="text-[10px] uppercase tracking-wider text-muted">{title}</p><p className={`mt-1 text-2xl font-semibold ${c}`}>{value}</p></div>;
+  return <div className="rounded-xl border border-line bg-bg/60 p-4"><p className="text-[10px] uppercase tracking-wider text-muted">{title}</p><p className={`mt-1 text-2xl font-semibold ${c}`}>{value}</p></div>;
 }
 
 function hmMin(min: number) { const s = min < 0 ? "-" : ""; const a = Math.abs(min); return `${s}${String(Math.floor(a / 60)).padStart(2, "0")}:${String(a % 60).padStart(2, "0")}`; }
@@ -1500,15 +1870,15 @@ function Banco({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="input-base w-auto">
+        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
           <option value="">Selecione o funcionário</option>
           {emps.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
         {data && <span className={`rounded-full px-3 py-1 text-sm font-semibold ${data.balanceMin >= 0 ? "bg-green-500/15 text-green-300" : "bg-red-500/15 text-red-300"}`}>Saldo: {hmMin(data.balanceMin)}</span>}
-        {data && data.expiringMin > 0 && <><span className="rounded-full bg-amber-500/15 px-3 py-1 text-sm font-semibold text-amber-200" title={`créditos anteriores a ${data.cutoff}`}>A vencer: {hmMin(data.expiringMin)}</span><button onClick={expirar} className="rounded-xl border border-line px-3 py-1 text-xs transition hover:border-brand/60 hover:text-brand">lançar baixa</button></>}
+        {data && data.expiringMin > 0 && <><span className="rounded-full bg-amber-500/15 px-3 py-1 text-sm font-semibold text-amber-200" title={`créditos anteriores a ${data.cutoff}`}>A vencer: {hmMin(data.expiringMin)}</span><button onClick={expirar} className="rounded-lg border border-line px-3 py-1 text-xs hover:border-brand">lançar baixa</button></>}
       </div>
       {empId && (
-        <div className="card mb-4">
+        <div className="mb-4 rounded-xl border border-line bg-bg/60 p-4">
           <p className="mb-2 text-sm font-semibold">Lançar no banco de horas</p>
           <div className="grid gap-2 sm:grid-cols-4">
             <Inp label="Data" v={f.day} on={(v) => setF((s) => ({ ...s, day: v }))} />
@@ -1516,21 +1886,21 @@ function Banco({ emps, dialog }: { emps: Emp[]; dialog: any }) {
             <div className="sm:col-span-2"><Inp label="Motivo" v={f.reason} on={(v) => setF((s) => ({ ...s, reason: v }))} /></div>
           </div>
           <p className="mt-1 text-[11px] text-muted">Ex.: <b>1.5</b> = +1h30 (crédito); <b>-2</b> = compensou 2h (débito).</p>
-          <button onClick={add} className="btn-grad mt-2">Adicionar</button>
+          <button onClick={add} className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Adicionar</button>
         </div>
       )}
       {data?.items?.length > 0 && (
-        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-          <table className="w-full text-sm table-cards">
-            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">Data</th><th className="px-4 py-3 font-medium">Horas</th><th className="px-4 py-3 font-medium">Tipo</th><th className="px-4 py-3 font-medium">Motivo</th><th className="px-4 py-3 font-medium"></th></tr></thead>
+        <div className="overflow-hidden rounded-xl border border-line">
+          <table className="table-cards w-full text-sm">
+            <thead className="bg-bg/40 text-left text-[10px] uppercase tracking-wider text-muted"><tr><th className="px-3 py-2">Data</th><th className="px-3 py-2">Horas</th><th className="px-3 py-2">Tipo</th><th className="px-3 py-2">Motivo</th><th></th></tr></thead>
             <tbody>
               {data.items.map((m: any) => (
-                <tr key={m.id} className="border-t border-line transition hover:bg-surface-2">
-                  <td className="px-4 py-3">{new Date(m.day).toLocaleDateString("pt-BR")}</td>
-                  <td className={`px-4 py-3 ${m.minutes >= 0 ? "text-green-300" : "text-red-300"}`}>{hmMin(m.minutes)}</td>
-                  <td className="px-4 py-3 text-muted">{m.kind}</td>
-                  <td className="px-4 py-3 text-muted">{m.reason ?? ""}</td>
-                  <td className="px-4 py-3 text-right"><button onClick={() => del(m.id)} className="text-xs text-red-300">remover</button></td>
+                <tr key={m.id} className="border-t border-line/60">
+                  <td className="px-3 py-2">{new Date(m.day).toLocaleDateString("pt-BR")}</td>
+                  <td className={`px-3 py-2 ${m.minutes >= 0 ? "text-green-300" : "text-red-300"}`}>{hmMin(m.minutes)}</td>
+                  <td className="px-3 py-2 text-muted">{m.kind}</td>
+                  <td className="px-3 py-2 text-muted">{m.reason ?? ""}</td>
+                  <td className="px-3 py-2 text-right"><button onClick={() => del(m.id)} className="text-xs text-red-300">remover</button></td>
                 </tr>
               ))}
             </tbody>
@@ -1566,21 +1936,21 @@ function Ferias({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="input-base w-auto">
+        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
           <option value="">Selecione o funcionário</option>
           {emps.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
       </div>
       {bal && (
         <div className="mb-4 grid gap-3 sm:grid-cols-4">
-          <div className="card"><p className="text-[10px] uppercase tracking-wider text-muted">Saldo de férias</p><p className={`mt-1 text-xl font-semibold ${bal.balanceDays != null && bal.balanceDays < 0 ? "text-danger" : "text-success"}`}>{bal.balanceDays != null ? `${bal.balanceDays} dias` : "—"}</p></div>
-          <div className="card"><p className="text-[10px] uppercase tracking-wider text-muted">Direito acumulado</p><p className="mt-1 text-xl font-semibold">{bal.accruedDays != null ? `${bal.accruedDays} dias` : "—"}</p><p className="mt-0.5 text-[11px] text-muted">{bal.completedPeriods} período(s)</p></div>
-          <div className="card"><p className="text-[10px] uppercase tracking-wider text-muted">Já agendado/gozado</p><p className="mt-1 text-xl font-semibold">{bal.usedDays} dias</p></div>
-          <div className="card"><p className="text-[10px] uppercase tracking-wider text-muted">Próx. período vence</p><p className="mt-1 text-sm font-semibold">{bal.nextPeriodStart ? new Date(bal.nextPeriodStart).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"}</p>{!bal.admissionDate && <p className="mt-0.5 text-[11px] text-muted">sem admissão no cadastro</p>}</div>
+          <div className="rounded-xl border border-line bg-bg/60 p-4"><p className="text-[10px] uppercase tracking-wider text-muted">Saldo de férias</p><p className={`mt-1 text-xl font-semibold ${bal.balanceDays != null && bal.balanceDays < 0 ? "text-red-300" : "text-green-300"}`}>{bal.balanceDays != null ? `${bal.balanceDays} dias` : "—"}</p></div>
+          <div className="rounded-xl border border-line bg-bg/60 p-4"><p className="text-[10px] uppercase tracking-wider text-muted">Direito acumulado</p><p className="mt-1 text-xl font-semibold">{bal.accruedDays != null ? `${bal.accruedDays} dias` : "—"}</p><p className="mt-0.5 text-[11px] text-muted">{bal.completedPeriods} período(s)</p></div>
+          <div className="rounded-xl border border-line bg-bg/60 p-4"><p className="text-[10px] uppercase tracking-wider text-muted">Já agendado/gozado</p><p className="mt-1 text-xl font-semibold">{bal.usedDays} dias</p></div>
+          <div className="rounded-xl border border-line bg-bg/60 p-4"><p className="text-[10px] uppercase tracking-wider text-muted">Próx. período vence</p><p className="mt-1 text-sm font-semibold">{bal.nextPeriodStart ? new Date(bal.nextPeriodStart).toLocaleDateString("pt-BR", { timeZone: "UTC" }) : "—"}</p>{!bal.admissionDate && <p className="mt-0.5 text-[11px] text-muted">sem admissão no cadastro</p>}</div>
         </div>
       )}
       {empId && (
-        <div className="card mb-4">
+        <div className="mb-4 rounded-xl border border-line bg-bg/60 p-4">
           <p className="mb-2 text-sm font-semibold">Agendar férias</p>
           <div className="grid gap-2 sm:grid-cols-4">
             <Inp label="Início" v={f.startDate} on={(v) => setF((s) => ({ ...s, startDate: v }))} />
@@ -1589,20 +1959,20 @@ function Ferias({ emps, dialog }: { emps: Emp[]; dialog: any }) {
           </div>
           <label className="mt-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={f.thirteenthAdvance} onChange={(e) => setF((s) => ({ ...s, thirteenthAdvance: e.target.checked }))} /> Adiantar 1ª parcela do 13º junto</label>
           <p className="mt-1 text-[11px] text-muted">Período: {f.startDate ? `${new Date(f.startDate + "T00:00:00Z").toLocaleDateString("pt-BR", { timeZone: "UTC" })} até ${endOf(f.startDate, parseInt(f.days || "30", 10) || 30)}` : ""}.</p>
-          <button onClick={add} className="btn-grad mt-2">Agendar</button>
+          <button onClick={add} className="mt-2 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Agendar</button>
         </div>
       )}
       {items.length > 0 && (
-        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-          <table className="w-full text-sm table-cards">
-            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">Período</th><th className="px-4 py-3 font-medium">Dias</th><th className="px-4 py-3 font-medium">Status</th><th className="px-4 py-3 font-medium"></th></tr></thead>
+        <div className="overflow-hidden rounded-xl border border-line">
+          <table className="table-cards w-full text-sm">
+            <thead className="bg-bg/40 text-left text-[10px] uppercase tracking-wider text-muted"><tr><th className="px-3 py-2">Período</th><th className="px-3 py-2">Dias</th><th className="px-3 py-2">Status</th><th className="px-3 py-2"></th></tr></thead>
             <tbody>
               {items.map((v) => (
-                <tr key={v.id} className="border-t border-line transition hover:bg-surface-2">
-                  <td className="px-4 py-3">{new Date(v.startDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })} – {endOf(String(v.startDate).slice(0, 10), v.days)}{v.thirteenthAdvance && <span className="ml-2 text-[10px] uppercase text-muted">+13º</span>}</td>
-                  <td className="px-4 py-3">{v.days}</td>
-                  <td className="px-4 py-3"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${(STATUS[v.status] ?? STATUS.scheduled!).c}`}>{(STATUS[v.status] ?? STATUS.scheduled!).l}</span></td>
-                  <td className="px-4 py-3 text-right">
+                <tr key={v.id} className="border-t border-line/60">
+                  <td className="px-3 py-2">{new Date(v.startDate).toLocaleDateString("pt-BR", { timeZone: "UTC" })} – {endOf(String(v.startDate).slice(0, 10), v.days)}{v.thirteenthAdvance && <span className="ml-2 text-[10px] uppercase text-muted">+13º</span>}</td>
+                  <td className="px-3 py-2">{v.days}</td>
+                  <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ${(STATUS[v.status] ?? STATUS.scheduled!).c}`}>{(STATUS[v.status] ?? STATUS.scheduled!).l}</span></td>
+                  <td className="px-3 py-2 text-right">
                     <span className="flex items-center justify-end gap-3 text-xs">
                       <a href={`/api/ponto/ferias/${v.id}/recibo.pdf`} target="_blank" rel="noreferrer" className="text-brand hover:underline">recibo</a>
                       {v.status === "scheduled" && <button onClick={() => setStatus(v.id, "taken")} className="text-green-300 hover:underline">marcar gozada</button>}
@@ -1625,28 +1995,40 @@ function Fechamento({ dialog }: { dialog: any }) {
   const [ref, setRef] = useState(new Date().toISOString().slice(0, 7));
   const [sum, setSum] = useState<any>(null);
   const [closing, setClosing] = useState<any>(null);
+  const [employers, setEmployers] = useState<any[]>([]);
+  const [empFilter, setEmpFilter] = useState(""); // "" = consolidado (todas)
+  const [layouts, setLayouts] = useState<any[]>([]);
+  const [layout, setLayout] = useState("generic");
   const load = () => {
-    fetch(`/api/ponto/fechamento/${ref}/resumo`, { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then(setSum).catch(() => {});
+    const q = empFilter ? `?employerId=${empFilter}` : "";
+    fetch(`/api/ponto/fechamento/${ref}/resumo${q}`, { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then(setSum).catch(() => {});
     fetch(`/api/ponto/fechamento/${ref}`, { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then(setClosing).catch(() => {});
   };
-  useEffect(() => { load(); }, [ref]);
+  useEffect(() => { load(); }, [ref, empFilter]);
+  useEffect(() => { fetch("/api/ponto/employers", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setEmployers(d?.items ?? [])).catch(() => {}); }, []);
+  useEffect(() => { fetch("/api/ponto/folha/layouts", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setLayouts(d?.items ?? [])).catch(() => {}); }, []);
+  const multi = employers.length > 1;
   async function act(path: string, ok: string) {
     const res = await fetch(`/api/ponto/fechamento/${ref}/${path}`, { method: "POST", credentials: "include" });
     if (!res.ok) { dialog.toast("Falha", "error"); return; }
     dialog.toast(ok, "success"); load();
   }
   async function baixarCsv() {
-    const res = await fetch(`/api/ponto/fechamento/${ref}/export.csv`, { credentials: "include" });
+    const q = new URLSearchParams({ layout, ...(empFilter ? { employerId: empFilter } : {}) });
+    const res = await fetch(`/api/ponto/fechamento/${ref}/export.csv?${q}`, { credentials: "include" });
     const d = await res.json().catch(() => null); if (!res.ok || !d) { dialog.toast("Falha", "error"); return; }
+    const slug = empFilter ? "_" + (employers.find((e) => e.id === empFilter)?.name ?? "").replace(/[^\w]+/g, "_").slice(0, 24) : "_consolidado";
     const blob = new Blob(["﻿" + (d.content ?? "")], { type: "text/csv;charset=utf-8" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `folha-${ref}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `folha-${ref}_${layout}${slug}.csv`; a.click(); URL.revokeObjectURL(a.href);
   }
   async function baixarAej() {
     const r = sum; if (!r) return;
-    const res = await fetch(`/api/ponto/aej?from=${r.from}&to=${r.to}`, { credentials: "include" });
-    const d = await res.json().catch(() => null); if (!res.ok || !d) { dialog.toast("Falha ao gerar AEJ", "error"); return; }
+    const eq = empFilter ? `&employerId=${empFilter}` : "";
+    const res = await fetch(`/api/ponto/aej?from=${r.from}&to=${r.to}${eq}`, { credentials: "include" });
+    const d = await res.json().catch(() => null); if (!res.ok || !d) { dialog.toast(d?.error?.message ?? "Falha ao gerar AEJ", "error"); return; }
+    const slug = (d.employer?.name ?? "").replace(/[^\w]+/g, "_").slice(0, 24);
     const blob = new Blob([d.content ?? ""], { type: "text/plain;charset=iso-8859-1" });
-    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `AEJ-${ref}.txt`; a.click(); URL.revokeObjectURL(a.href);
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `AEJ-${ref}${slug ? "_" + slug : ""}.txt`; a.click(); URL.revokeObjectURL(a.href);
     if (d.signed && d.p7s) {
       const bin = atob(d.p7s); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
       const sa = document.createElement("a"); sa.href = URL.createObjectURL(new Blob([bytes], { type: "application/pkcs7-signature" })); sa.download = `AEJ-${ref}.txt.p7s`; sa.click(); URL.revokeObjectURL(sa.href);
@@ -1657,38 +2039,50 @@ function Fechamento({ dialog }: { dialog: any }) {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <input type="month" value={ref} onChange={(e) => setRef(e.target.value)} className="input-base w-auto" />
-        <span className={`rounded-full px-3 py-1 text-xs ${st === "closed" ? "bg-green-500/15 text-green-300" : st === "manager" ? "bg-amber-500/15 text-amber-300" : "bg-surface-2 text-muted"}`}>{st === "closed" ? "fechado (RH)" : st === "manager" ? "aprovado pelo gestor" : "aberto"}</span>
+        <input type="month" value={ref} onChange={(e) => setRef(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+        {multi && (
+          <select value={empFilter} onChange={(e) => setEmpFilter(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" title="Consolidado (gerencial) ou por empresa (fiscal)">
+            <option value="">Consolidado (todas)</option>
+            {employers.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
+          </select>
+        )}
+        <span className={`rounded-full px-3 py-1 text-xs ${st === "closed" ? "bg-green-500/15 text-green-300" : st === "manager" ? "bg-amber-500/15 text-amber-300" : "bg-bg/60 text-muted"}`}>{st === "closed" ? "fechado (RH)" : st === "manager" ? "aprovado pelo gestor" : "aberto"}</span>
         <div className="ml-auto flex gap-2">
-          {st === "open" && <button onClick={() => act("aprovar-gestor", "Aprovado pelo gestor")} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Aprovar (gestor)</button>}
-          {st === "manager" && <button onClick={() => act("fechar-rh", "Fechado pelo RH")} className="btn-grad px-3">Fechar (RH)</button>}
-          {st !== "open" && <button onClick={() => act("reabrir", "Reaberto")} className="rounded-xl border border-line px-3 py-2 text-sm">Reabrir</button>}
-          <button onClick={baixarCsv} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Export CSV</button>
-          <button onClick={baixarAej} className="rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Gerar AEJ</button>
+          {st === "open" && <button onClick={() => act("aprovar-gestor", "Aprovado pelo gestor")} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Aprovar (gestor)</button>}
+          {st === "manager" && <button onClick={() => act("fechar-rh", "Fechado pelo RH")} className="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white">Fechar (RH)</button>}
+          {st !== "open" && <button onClick={() => act("reabrir", "Reaberto")} className="rounded-lg border border-line px-3 py-2 text-sm">Reabrir</button>}
+          {layouts.length > 0 && (
+            <select value={layout} onChange={(e) => setLayout(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" title="Leiaute do CSV para a folha">
+              {layouts.map((l) => <option key={l.key} value={l.key}>{l.label}</option>)}
+            </select>
+          )}
+          <button onClick={baixarCsv} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Export CSV</button>
+          <button onClick={baixarAej} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Gerar AEJ</button>
         </div>
       </div>
       {sum?.rows?.length > 0 ? (
-        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-          <table className="w-full text-sm table-cards">
-            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">Funcionário</th><th className="px-4 py-3 font-medium">Prev.</th><th className="px-4 py-3 font-medium">Trab.</th><th className="px-4 py-3 font-medium">Extras</th><th className="px-4 py-3 font-medium">Not.</th><th className="px-4 py-3 font-medium">Atraso</th><th className="px-4 py-3 font-medium">Faltas</th><th className="px-4 py-3 font-medium">Saldo</th><th className="px-4 py-3 font-medium">Banco</th></tr></thead>
+        <div className="overflow-x-auto rounded-xl border border-line">
+          <table className="table-cards w-full text-sm">
+            <thead className="bg-bg/40 text-left text-[10px] uppercase tracking-wider text-muted"><tr><th className="px-3 py-2">Funcionário</th>{multi && <th className="px-3 py-2">Empresa</th>}<th className="px-3 py-2">Prev.</th><th className="px-3 py-2">Trab.</th><th className="px-3 py-2">Extras</th><th className="px-3 py-2">Not.</th><th className="px-3 py-2">Atraso</th><th className="px-3 py-2">Faltas</th><th className="px-3 py-2">Saldo</th><th className="px-3 py-2">Banco</th></tr></thead>
             <tbody>
               {sum.rows.map((r: any) => (
-                <tr key={r.employeeId} className="border-t border-line transition hover:bg-surface-2">
-                  <td className="px-4 py-3">{r.name}</td>
-                  <td className="px-4 py-3">{hmMin(r.expectedMin)}</td>
-                  <td className="px-4 py-3">{hmMin(r.workedMin)}</td>
-                  <td className="px-4 py-3 text-green-300">{hmMin(r.extraMin)}</td>
-                  <td className="px-4 py-3">{hmMin(r.nightMin)}</td>
-                  <td className="px-4 py-3 text-amber-300">{hmMin(r.lateMin)}</td>
-                  <td className="px-4 py-3 text-red-300">{hmMin(r.faltaMin)}</td>
-                  <td className={`px-4 py-3 ${r.balanceMin >= 0 ? "text-green-300" : "text-red-300"}`}>{hmMin(r.balanceMin)}</td>
-                  <td className="px-4 py-3">{hmMin(r.bankBalanceMin)}</td>
+                <tr key={r.employeeId} className="border-t border-line/60">
+                  <td className="px-3 py-2">{r.name}</td>
+                  {multi && <td className="px-3 py-2 text-xs text-muted">{r.employerName ?? "—"}</td>}
+                  <td className="px-3 py-2">{hmMin(r.expectedMin)}</td>
+                  <td className="px-3 py-2">{hmMin(r.workedMin)}</td>
+                  <td className="px-3 py-2 text-green-300">{hmMin(r.extraMin)}</td>
+                  <td className="px-3 py-2">{hmMin(r.nightMin)}</td>
+                  <td className="px-3 py-2 text-amber-300">{hmMin(r.lateMin)}</td>
+                  <td className="px-3 py-2 text-red-300">{hmMin(r.faltaMin)}</td>
+                  <td className={`px-3 py-2 ${r.balanceMin >= 0 ? "text-green-300" : "text-red-300"}`}>{hmMin(r.balanceMin)}</td>
+                  <td className="px-3 py-2">{hmMin(r.bankBalanceMin)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-      ) : <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Sem dados no mês.</p>}
+      ) : <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Sem dados no mês.</p>}
       <p className="mt-2 text-[11px] text-muted">Fluxo: gestor aprova → RH fecha → exporta. O <b>AEJ</b> sai assinado em .p7s se o certificado A1 estiver configurado. Conformidade final (DSR, leiaute) deve ser validada no verificador oficial + contador.</p>
     </section>
   );
@@ -1724,7 +2118,7 @@ function PontoCert({ dialog }: { dialog: any }) {
       <p className="mb-1 text-sm font-semibold">Certificado digital A1 (ICP-Brasil) — assinatura do AFD/AEJ</p>
       <p className="mb-3 text-[11px] text-muted">Envie o <b>e-CNPJ A1 (.pfx/.p12)</b> + senha. O arquivo fica cifrado no servidor e assina o AFD/AEJ em <b>.p7s</b> (PKCS#7). A senha nunca é exibida de volta.</p>
       {st.configured ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-2 p-3 text-sm">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-bg/40 p-3 text-sm">
           <span className={st.expired ? "text-red-300" : "text-green-300"}>{st.expired ? "⚠ vencido" : "✓ ativo"}</span>
           <span><b>{st.subject}</b></span>
           {st.notAfter && <span className="text-muted">válido até {new Date(st.notAfter).toLocaleDateString("pt-BR")}</span>}
@@ -1732,8 +2126,8 @@ function PontoCert({ dialog }: { dialog: any }) {
         </div>
       ) : <p className="text-[11px] text-muted">Nenhum certificado configurado — o AFD sai sem assinatura.</p>}
       <div className="mt-3 flex flex-wrap items-end gap-2">
-        <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Senha do certificado</span><input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} className="input-base w-auto" /></label>
-        <label className="cursor-pointer rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">{busy ? "Validando…" : st.configured ? "Trocar .pfx" : "Subir .pfx"}<input type="file" accept=".pfx,.p12,application/x-pkcs12" className="hidden" onChange={onFile} /></label>
+        <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">Senha do certificado</span><input type="password" value={pwd} onChange={(e) => setPwd(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>
+        <label className="cursor-pointer rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">{busy ? "Validando…" : st.configured ? "Trocar .pfx" : "Subir .pfx"}<input type="file" accept=".pfx,.p12,application/x-pkcs12" className="hidden" onChange={onFile} /></label>
       </div>
     </div>
   );
@@ -1760,31 +2154,31 @@ function Eventos({ dialog }: { dialog: any }) {
   const copy = (s: string) => { navigator.clipboard?.writeText(s); dialog.toast("Copiado", "success"); };
   return (
     <section>
-      <div className="card mb-4">
+      <div className="mb-4 rounded-xl border border-line bg-bg/60 p-5">
         <p className="mb-1 text-sm font-semibold">Webhook de eventos — pronto pra esta empresa</p>
         <p className="mb-3 text-[11px] text-muted">Todo evento (ex.: ponto batido) já fica gravado aqui no feed abaixo — você <b>não precisa</b> de servidor externo. Se quiser empurrar pra outro sistema (ex.: seu ERP), informe uma URL externa.</p>
         <div className="grid gap-3">
           <div>
-            <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Segredo (HMAC) desta empresa</span>
+            <span className="mb-1 block text-[10px] uppercase text-muted">Segredo (HMAC) desta empresa</span>
             <div className="flex items-center gap-2">
-              <code className="flex-1 truncate rounded-lg border border-line bg-surface-2 px-3 py-2 text-xs">{info?.secret ?? "…"}</code>
-              <button onClick={() => info?.secret && copy(info.secret)} className="rounded-xl border border-line px-3 py-2 text-xs transition hover:border-brand/60 hover:text-brand">Copiar</button>
-              <button onClick={regen} className="rounded-xl border border-line px-3 py-2 text-xs transition hover:border-brand/60 hover:text-brand">Gerar novo</button>
+              <code className="flex-1 truncate rounded-lg border border-line bg-bg/40 px-3 py-2 text-xs">{info?.secret ?? "…"}</code>
+              <button onClick={() => info?.secret && copy(info.secret)} className="rounded-lg border border-line px-3 py-2 text-xs hover:border-brand">Copiar</button>
+              <button onClick={regen} className="rounded-lg border border-line px-3 py-2 text-xs hover:border-brand">Gerar novo</button>
             </div>
             <p className="mt-1 text-[10px] text-muted">Assinatura enviada no header <code>x-ponto-signature = sha256(segredo + corpo)</code>.</p>
           </div>
           <div>
-            <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Consultar eventos (puxar do seu sistema)</span>
+            <span className="mb-1 block text-[10px] uppercase text-muted">Consultar eventos (puxar do seu sistema)</span>
             <div className="flex items-center gap-2">
-              <code className="flex-1 truncate rounded-lg border border-line bg-surface-2 px-3 py-2 text-xs">GET {origin}/api/ponto/eventos</code>
-              <button onClick={() => copy(`${origin}/api/ponto/eventos`)} className="rounded-xl border border-line px-3 py-2 text-xs transition hover:border-brand/60 hover:text-brand">Copiar</button>
+              <code className="flex-1 truncate rounded-lg border border-line bg-bg/40 px-3 py-2 text-xs">GET {origin}/api/ponto/eventos</code>
+              <button onClick={() => copy(`${origin}/api/ponto/eventos`)} className="rounded-lg border border-line px-3 py-2 text-xs hover:border-brand">Copiar</button>
             </div>
           </div>
           <div>
-            <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">URL externa (opcional — empurra cada evento via POST)</span>
+            <span className="mb-1 block text-[10px] uppercase text-muted">URL externa (opcional — empurra cada evento via POST)</span>
             <div className="flex items-center gap-2">
-              <input value={pushUrl} onChange={(e) => setPushUrl(e.target.value)} placeholder="https://seu-sistema.com/webhook" className="input-base flex-1" />
-              <button onClick={savePush} className="btn-grad">Salvar</button>
+              <input value={pushUrl} onChange={(e) => setPushUrl(e.target.value)} placeholder="https://seu-sistema.com/webhook" className="flex-1 rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+              <button onClick={savePush} className="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white">Salvar</button>
             </div>
             <p className="mt-1 text-[10px] text-muted">Pra testar grátis, gere uma URL em webhook.site e cole aqui.</p>
           </div>
@@ -1792,17 +2186,17 @@ function Eventos({ dialog }: { dialog: any }) {
       </div>
 
       <p className="mb-2 text-sm font-semibold">Feed de eventos (atualiza sozinho)</p>
-      {items.length === 0 ? <p className="rounded-2xl border border-line bg-surface p-6 text-sm text-muted">Nenhum evento ainda. Bata um ponto e ele aparece aqui.</p> : (
-        <div className="overflow-x-auto rounded-2xl border border-line bg-surface shadow-sm">
-          <table className="w-full text-sm table-cards">
-            <thead><tr className="border-b border-line text-left text-xs uppercase tracking-wider text-muted"><th className="px-4 py-3 font-medium">Quando</th><th className="px-4 py-3 font-medium">Evento</th><th className="px-4 py-3 font-medium">Dados</th><th className="px-4 py-3 font-medium">Externo</th></tr></thead>
+      {items.length === 0 ? <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Nenhum evento ainda. Bata um ponto e ele aparece aqui.</p> : (
+        <div className="overflow-hidden rounded-xl border border-line">
+          <table className="table-cards w-full text-sm">
+            <thead className="bg-bg/40 text-left text-[10px] uppercase tracking-wider text-muted"><tr><th className="px-3 py-2">Quando</th><th className="px-3 py-2">Evento</th><th className="px-3 py-2">Dados</th><th className="px-3 py-2">Externo</th></tr></thead>
             <tbody>
               {items.map((e) => (
-                <tr key={e.id} className="border-t border-line transition hover:bg-surface-2">
-                  <td className="px-4 py-3 whitespace-nowrap text-muted">{new Date(e.createdAt).toLocaleString("pt-BR")}</td>
-                  <td className="px-4 py-3"><code className="text-xs">{e.event}</code></td>
-                  <td className="px-4 py-3 text-xs text-muted">{e.payload?.employeeName ?? ""}{e.payload?.nsr ? ` · NSR ${e.payload.nsr}` : ""}</td>
-                  <td className="px-4 py-3 text-xs">{e.targetUrl ? (e.delivered ? <span className="text-green-300">entregue {e.statusCode ?? ""}</span> : <span className="text-red-300">falhou {e.statusCode ?? ""}</span>) : <span className="text-muted">—</span>}</td>
+                <tr key={e.id} className="border-t border-line/60">
+                  <td className="px-3 py-2 whitespace-nowrap text-muted">{new Date(e.createdAt).toLocaleString("pt-BR")}</td>
+                  <td className="px-3 py-2"><code className="text-xs">{e.event}</code></td>
+                  <td className="px-3 py-2 text-xs text-muted">{e.payload?.employeeName ?? ""}{e.payload?.nsr ? ` · NSR ${e.payload.nsr}` : ""}</td>
+                  <td className="px-3 py-2 text-xs">{e.targetUrl ? (e.delivered ? <span className="text-green-300">entregue {e.statusCode ?? ""}</span> : <span className="text-red-300">falhou {e.statusCode ?? ""}</span>) : <span className="text-muted">—</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -1817,7 +2211,7 @@ function FaceTestButton({ dialog }: { dialog: any }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)} className="mt-3 rounded-xl border border-line px-3 py-2 text-sm transition hover:border-brand/60 hover:text-brand">Testar reconhecimento</button>
+      <button onClick={() => setOpen(true)} className="mt-3 rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Testar reconhecimento</button>
       {open && <FaceTestModal onClose={() => setOpen(false)} dialog={dialog} />}
     </>
   );
@@ -1845,7 +2239,7 @@ function FaceTestModal({ onClose, dialog }: { onClose: () => void; dialog: any }
   }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
-      <div className="w-full max-w-sm rounded-2xl border border-line bg-surface p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5" onClick={(e) => e.stopPropagation()}>
         <p className="mb-1 text-sm font-semibold">Testar reconhecimento facial</p>
         <p className="mb-3 text-[11px] text-muted">Não bate ponto — só mostra quem o sistema reconhece e a pontuação ({res ? `${res.candidates} rostos cadastrados` : "calibração"}).</p>
         <video ref={videoRef} autoPlay playsInline muted className="aspect-square w-full rounded-xl bg-black object-cover" />
@@ -1857,7 +2251,7 @@ function FaceTestModal({ onClose, dialog }: { onClose: () => void; dialog: any }
         )}
         <div className="mt-3 flex gap-2">
           <button onClick={onClose} className="flex-1 rounded-lg border border-line py-2 text-sm">Fechar</button>
-          <button disabled={busy} onClick={testar} className="btn-grad flex-1 py-2 disabled:opacity-50">{busy ? "Analisando…" : "Capturar e testar"}</button>
+          <button disabled={busy} onClick={testar} className="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Analisando…" : "Capturar e testar"}</button>
         </div>
       </div>
     </div>
@@ -1865,5 +2259,5 @@ function FaceTestModal({ onClose, dialog }: { onClose: () => void; dialog: any }
 }
 
 function Inp({ label, v, on }: { label: string; v: string; on: (v: string) => void }) {
-  return <label className="block"><span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">{label}</span><input value={v ?? ""} onChange={(e) => on(e.target.value)} className="input-base" /></label>;
+  return <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">{label}</span><input value={v ?? ""} onChange={(e) => on(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>;
 }

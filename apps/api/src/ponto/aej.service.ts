@@ -1,10 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { loadEnv } from "../config";
 import { PontoSignService } from "./sign.service";
 import { JornadaService } from "./jornada.service";
 import type { RequestContext } from "../auth/session.middleware";
-import { loadEnv } from "../config";
 
 /**
  * Gerador do AEJ (Arquivo Eletrônico de Jornada) — Portaria 671.
@@ -39,14 +39,19 @@ export class AejService {
     return { pairs: segs, durMin };
   }
 
-  async generate(ctx: RequestContext, opts: { from: string; to: string }): Promise<{ content: string; counts: Record<string, number>; signed: boolean; p7s: string | null; missing: string[] }> {
+  async generate(ctx: RequestContext, opts: { from: string; to: string; employerId?: string }): Promise<{ content: string; counts: Record<string, number>; signed: boolean; p7s: string | null; missing: string[]; employer?: { id: string; name: string } }> {
     this.requireAdmin(ctx);
     if (!opts.from || !opts.to) throw new AppError(ErrorCode.ValidationFailed, "from e to obrigatórios", 400);
     const orgId = ctx.orgId!;
     const fromD = new Date(opts.from + "T00:00:00Z"), toD = new Date(opts.to + "T23:59:59Z");
     const cfg = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.findFirst({ where: {} }));
+    // AEJ é POR EMPREGADOR (CNPJ). Sem employerId, usa o padrão.
+    const employer = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
+      opts.employerId ? tx.pontoEmployer.findFirst({ where: { id: opts.employerId } }) : tx.pontoEmployer.findFirst({ where: { isDefault: true } }),
+    );
+    if (!employer) throw new AppError(ErrorCode.ValidationFailed, "Empregador não encontrado (cadastre em Empregadores)", 400);
     const tz = cfg?.timezone ?? "-0300";
-    const emps = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, cpf: true, matEsocial: true, scheduleCode: true } }));
+    const emps = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findMany({ where: { active: true, employerId: employer.id }, orderBy: { name: "asc" }, select: { id: true, name: true, cpf: true, matEsocial: true, scheduleCode: true } }));
     const schedules = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoSchedule.findMany({ where: {} }));
     const schedByCode = new Map(schedules.map((s) => [s.code, s]));
     // índice de horário contratual (1..30) por código de escala usado
@@ -58,8 +63,8 @@ export class AejService {
     const lines: string[] = [];
     const push = (t: string, fields: (string | number)[]) => { lines.push(fields.join("|")); counts[t] = (counts[t] ?? 0) + 1; };
 
-    // 01 — cabeçalho
-    push("t01", ["01", cfg?.tpIdtEmpregador ?? 1, this.digits(cfg?.idtEmpregador), this.digits(cfg?.caepf), this.digits(cfg?.cno), (cfg?.razaoOuNome ?? "").slice(0, 150), this.fmtD(fromD, tz), this.fmtD(toD, tz), this.fmtDH(new Date(), tz), "001"]);
+    // 01 — cabeçalho (identidade do EMPREGADOR; equipamento/CNO seguem do ponto_config)
+    push("t01", ["01", employer.tpIdtEmpregador ?? 1, this.digits(employer.idtEmpregador), this.digits(employer.caepf), this.digits(cfg?.cno), (employer.name ?? "").slice(0, 150), this.fmtD(fromD, tz), this.fmtD(toD, tz), this.fmtDH(new Date(), tz), "001"]);
     // 02 — REP-A (1 só)
     const nrRep = this.digits(cfg?.repAProcesso) ? this.digits(cfg?.repAProcesso).padStart(17, "0").slice(-17) : "9".repeat(17);
     push("t02", ["02", 1, 2, nrRep]);
@@ -104,21 +109,19 @@ export class AejService {
       const esp = await this.jornada.espelho(ctx, { employeeId: e.id, from: opts.from, to: opts.to });
       for (const d of esp.days as any[]) if (d.faltaMin > 0 && !d.justified) push("t07", ["07", vinc, 2, d.day]);
     }
-    // 08 — PTRP: identificação do DESENVOLVEDOR do software de ponto. Vai num
-    // arquivo entregue ao Ministério do Trabalho, então nome, CNPJ e contato
-    // têm que ser os da empresa que assina o software — por isso vêm de env
-    // (PTRP_*), com o nome do sistema como último recurso.
-    const ptrpNome = process.env.PTRP_NAME ?? loadEnv().NORTY_SYSTEM_NAME;
-    const ptrpEmail = process.env.PTRP_EMAIL ?? `contato@${process.env.DOMAIN ?? "vision.norty.com.br"}`;
-    const ptrpSoftware = process.env.PTRP_SOFTWARE ?? "norty-ponto";
-    push("t08", ["08", ptrpSoftware, "1.0.0", cfg?.devTpIdt ?? 1, this.digits(cfg?.devIdt), ptrpNome, ptrpEmail]);
+    // 08 — PTRP: identifica quem DESENVOLVE o software de ponto. Este arquivo
+    // é entregue à fiscalização do trabalho, então o nome e o contato vêm da
+    // configuração (PTRP_NAME / PTRP_EMAIL), não cravados no código.
+    const ptrp = loadEnv();
+    push("t08", ["08", ptrp.PTRP_NAME, "1.0.0", cfg?.devTpIdt ?? 1, this.digits(cfg?.devIdt), ptrp.PTRP_NAME, ptrp.PTRP_EMAIL]);
     // 99 — trailer
     lines.push(["99", counts.t01, counts.t02, counts.t03, counts.t04, counts.t05, counts.t06, counts.t07, counts.t08].join("|"));
 
     const content = lines.join("\r\n");
-    const p7s = await this.sign.sign(orgId, Buffer.from(content, "latin1")).catch(() => null);
+    const p7s = await this.sign.sign(orgId, Buffer.from(content, "latin1"), employer.id).catch(() => null);
     return {
       content, counts, signed: !!p7s, p7s: p7s ? p7s.toString("base64") : null,
+      employer: { id: employer.id, name: employer.name },
       missing: ["validar DSR/horário contratual + leiaute no verificador oficial (homologação)", ...(p7s ? [] : ["assinatura A1 (.p7s) — configure o certificado"])],
     };
   }

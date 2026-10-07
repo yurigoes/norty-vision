@@ -2145,6 +2145,11 @@ model Employee {
   updatedAt           DateTime @default(now()) @map("updated_at")
 
   @@map("employees")
+  // --- ponto: paridade com yugo-ponto ---
+  employerId          String?  @map("employer_id") @db.Uuid
+  leaderId            String?  @map("leader_id") @db.Uuid
+  pis                 String?
+  re                  String?  @map("re")
 }
 
 model EmployeeSession {
@@ -3178,6 +3183,19 @@ model PontoConfig {
   updatedAt       DateTime @default(now()) @map("updated_at")
 
   @@map("ponto_config")
+  // --- ponto: paridade com yugo-ponto ---
+  assidBonusCents       BigInt  @default(15000) @map("assid_bonus_cents")
+  assidMaxAtestadoDays  Int     @default(2) @map("assid_max_atestado_days")
+  assidMaxLates         Int     @default(4) @map("assid_max_lates")
+  assidBlockMeasure     Boolean @default(true) @map("assid_block_measure")
+  assidBlockFalta       Boolean @default(true) @map("assid_block_falta")
+  assidProportional     Boolean @default(true) @map("assid_proportional")
+  showBankToEmployee    Boolean @default(true) @map("show_bank_to_employee")
+  requestsRestrictHours   Boolean @default(false) @map("requests_restrict_hours")
+  requestsRestrictMachine Boolean @default(false) @map("requests_restrict_machine")
+  requestsWindowDays      String  @default("1,2,3,4,5") @map("requests_window_days")
+  requestsWindowStart     String  @default("08:00") @map("requests_window_start")
+  requestsWindowEnd       String  @default("18:00") @map("requests_window_end")
 }
 
 model PontoAlertLog {
@@ -3236,6 +3254,9 @@ model PontoEmployee {
   @@index([organizationId])
   @@index([hrEmployeeId])
   @@map("ponto_employee")
+  // --- ponto: paridade com yugo-ponto ---
+  allowedDeviceIds Json      @default("[]") @map("allowed_device_ids")
+  employerId       String?   @map("employer_id") @db.Uuid
 }
 
 model PontoPunch {
@@ -3270,6 +3291,9 @@ model PontoPunch {
   @@unique([organizationId, nsr])
   @@index([employeeId, punchedAt])
   @@map("ponto_punch")
+  // --- ponto: paridade com yugo-ponto ---
+  deviceId         String?   @map("device_id") @db.Uuid
+  employerId       String?   @map("employer_id") @db.Uuid
 }
 
 model PontoAudit {
@@ -3411,6 +3435,13 @@ model PontoDevice {
 
   @@index([organizationId])
   @@map("ponto_device")
+  // --- ponto: paridade com yugo-ponto ---
+  code            String?
+  employerId      String?   @map("employer_id") @db.Uuid
+  rustdeskId      String?   @map("rustdesk_id")
+  rustdeskPassEnc String?   @map("rustdesk_pass_enc")
+  appVersion      String?   @map("app_version")
+  notes           String?
 }
 
 model PontoNotice {
@@ -3997,4 +4028,193 @@ model HistoricalSaleItem {
   @@index([organizationId, importBatchId])
   @@index([organizationId, productName])
   @@map("historical_sale_item")
+}
+
+
+// ===== Ponto: portado de yugo-ponto (paridade do ponto eletrônico) =====
+
+model PontoAllocation {
+  id                 String    @id @default(uuid()) @db.Uuid
+  ownerOrgId         String    @map("owner_org_id") @db.Uuid
+  borrowerOrgId      String    @map("borrower_org_id") @db.Uuid
+  pontoEmployeeId    String    @map("ponto_employee_id") @db.Uuid
+  posto              String?
+  startsAt           DateTime  @map("starts_at") @db.Date
+  endsAt             DateTime? @map("ends_at") @db.Date
+  status             String    @default("active")
+  billRateCents      BigInt?   @map("bill_rate_cents")
+  reason             String?
+  authorizedByUserId String?   @map("authorized_by_user_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @default(now()) @map("updated_at")
+
+  @@index([ownerOrgId, status])
+  @@index([borrowerOrgId, status])
+  @@index([pontoEmployeeId])
+  @@map("ponto_allocation")
+}
+
+model PontoAssiduidade {
+  id                String    @id @default(uuid()) @db.Uuid
+  organizationId    String    @map("organization_id") @db.Uuid
+  pontoEmployeeId   String    @map("ponto_employee_id") @db.Uuid
+  refMonth          DateTime  @map("ref_month") @db.Date
+  eligible          Boolean   @default(false)
+  reason            String?
+  amountCents       BigInt    @default(0) @map("amount_cents")
+  daysWorked        Int?      @map("days_worked")
+  monthDays         Int?      @map("month_days")
+  proportional      Boolean   @default(false)
+  released          Boolean   @default(false)
+  releasedAt        DateTime? @map("released_at")
+  contentHash       String?   @map("content_hash")
+  signatureImageUrl String?   @map("signature_image_url")
+  signerIp          String?   @map("signer_ip")
+  a1Signed          Boolean   @default(false) @map("a1_signed")
+  a1Subject         String?   @map("a1_subject")
+  p7sKey            String?   @map("p7s_key")
+  signedAt          DateTime? @map("signed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @default(now()) @map("updated_at")
+
+  @@unique([organizationId, pontoEmployeeId, refMonth])
+  @@index([organizationId, refMonth])
+  @@map("ponto_assiduidade")
+}
+
+model PontoBankRequest {
+  id                 String    @id @default(uuid()) @db.Uuid
+  organizationId     String    @map("organization_id") @db.Uuid
+  pontoEmployeeId    String    @map("ponto_employee_id") @db.Uuid
+  status             String    @default("pending")
+  reason             String?
+  responseNote       String?   @map("response_note")
+  balanceMin         Int?      @map("balance_min")
+  requestedAt        DateTime  @default(now()) @map("requested_at")
+  respondedAt        DateTime? @map("responded_at")
+  respondedByUserId  String?   @map("responded_by_user_id") @db.Uuid
+
+  @@index([organizationId, status])
+  @@index([pontoEmployeeId])
+  @@map("ponto_bank_request")
+}
+
+model PontoEmployer {
+  id               String   @id @default(uuid()) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  name             String
+  tpIdtEmpregador  Int      @default(1) @map("tp_idt_empregador")
+  idtEmpregador    String?  @map("idt_empregador")
+  caepf            String?
+  cnae             String?
+  tpRep            Int      @default(3) @map("tp_rep")
+  lastNsr          BigInt   @default(0) @map("last_nsr")
+  employerNsr      BigInt?  @map("employer_nsr")
+  employerRecordedAt DateTime? @map("employer_recorded_at")
+  a1CertKey        String?  @map("a1_cert_key")
+  a1PassEnc        String?  @map("a1_pass_enc")
+  a1Subject        String?  @map("a1_subject")
+  a1NotAfter       DateTime? @map("a1_not_after")
+  active           Boolean  @default(true)
+  isDefault        Boolean  @default(false) @map("is_default")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @default(now()) @map("updated_at")
+
+  @@index([organizationId])
+  @@map("ponto_employer")
+}
+
+model PontoHomologatedMachine {
+  id              String    @id @default(uuid()) @db.Uuid
+  organizationId  String    @map("organization_id") @db.Uuid
+  label           String
+  keyHash         String    @map("key_hash")
+  lastSeenAt      DateTime? @map("last_seen_at")
+  lastSeenIp      String?   @map("last_seen_ip")
+  revokedAt       DateTime? @map("revoked_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  @@index([organizationId])
+  @@index([keyHash])
+  @@map("ponto_homologated_machine")
+}
+
+model PontoLeave {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  employeeId      String   @map("employee_id") @db.Uuid
+  type            String
+  startDate       DateTime @map("start_date") @db.Date
+  endDate         DateTime? @map("end_date") @db.Date
+  reason          String?
+  docKey          String?  @map("doc_key")
+  createdBy       String?  @map("created_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  @@index([organizationId, employeeId, startDate])
+  @@map("ponto_leave")
+}
+
+model PontoScheduleOverride {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  employeeId      String   @map("employee_id") @db.Uuid
+  day             DateTime @db.Date
+  kind            String   @default("work")
+  segments        Json     @default("[]")
+  source          String   @default("manual")
+  sourceId        String?  @map("source_id") @db.Uuid
+  note            String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @map("updated_at")
+
+  @@unique([organizationId, employeeId, day])
+  @@index([organizationId, employeeId, day])
+  @@map("ponto_schedule_override")
+}
+
+model PontoShiftSwap {
+  id                  String    @id @default(uuid()) @db.Uuid
+  organizationId      String    @map("organization_id") @db.Uuid
+  requesterEmployeeId String    @map("requester_employee_id") @db.Uuid
+  colleagueEmployeeId String    @map("colleague_employee_id") @db.Uuid
+  leaderEmployeeId    String?   @map("leader_employee_id") @db.Uuid
+  swapType            String    @default("horario") @map("swap_type")
+  swapDate            DateTime  @map("swap_date") @db.Date
+  counterpartDate     DateTime? @map("counterpart_date") @db.Date
+  reason              String?
+  status              String    @default("pending_colleague")
+
+  requesterSignedAt   DateTime? @map("requester_signed_at")
+  requesterSigHash    String?   @map("requester_sig_hash")
+  requesterA1         Boolean   @default(false) @map("requester_a1")
+  requesterP7sKey     String?   @map("requester_p7s_key")
+
+  colleagueSignedAt   DateTime? @map("colleague_signed_at")
+  colleagueSigHash    String?   @map("colleague_sig_hash")
+  colleagueA1         Boolean   @default(false) @map("colleague_a1")
+  colleagueP7sKey     String?   @map("colleague_p7s_key")
+  colleagueNote       String?   @map("colleague_note")
+
+  leaderSignedAt      DateTime? @map("leader_signed_at")
+  leaderSigHash       String?   @map("leader_sig_hash")
+  leaderA1            Boolean   @default(false) @map("leader_a1")
+  leaderP7sKey        String?   @map("leader_p7s_key")
+  leaderNote          String?   @map("leader_note")
+  approvedByRh        Boolean   @default(false) @map("approved_by_rh")
+
+  rhAttachmentUrl     String?   @map("rh_attachment_url")
+  rhUserId            String?   @map("rh_user_id") @db.Uuid
+  appliedAt           DateTime? @map("applied_at")
+  rejectedBy          String?   @map("rejected_by")
+  rejectReason        String?   @map("reject_reason")
+  ruleWarnings        Json      @default("[]") @map("rule_warnings")
+
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @default(now()) @map("updated_at")
+
+  @@index([organizationId, status])
+  @@index([requesterEmployeeId])
+  @@index([colleagueEmployeeId])
+  @@index([leaderEmployeeId])
+  @@map("ponto_shift_swap")
 }

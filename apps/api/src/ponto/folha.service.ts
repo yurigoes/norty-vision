@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { JornadaService } from "./jornada.service";
 import { OrgAiService } from "../ai/org-ai.service";
 import type { RequestContext } from "../auth/session.middleware";
+import { PAYROLL_LAYOUTS, getPayrollLayout, renderPayroll, type PayrollRow } from "./payroll-layouts";
 
 /**
  * Fase 4/5 — Banco de horas, Fechamento de folha, Dashboard em tempo real e IA de absenteísmo.
@@ -22,7 +23,9 @@ export class FolhaService {
   async listBank(ctx: RequestContext, employeeId: string) {
     this.requireAdmin(ctx);
     const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankMovement.findMany({ where: { employeeId }, orderBy: { day: "desc" }, take: 500 }));
-    const balance = rows.reduce((s, r) => s + r.minutes, 0);
+    // "he" = horas extras a pagar (decisão do RH no espelho); NÃO entra no saldo compensável.
+    const balance = rows.filter((r) => r.kind !== "he").reduce((s, r) => s + r.minutes, 0);
+    const heMin = rows.filter((r) => r.kind === "he").reduce((s, r) => s + r.minutes, 0);
     // vencimento (CLT): créditos com mais de N meses ainda não compensados/expirados.
     const cfg = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.findFirst({ where: {}, select: { bankExpiryMonths: true } })).catch(() => null);
     const months = cfg?.bankExpiryMonths ?? 6;
@@ -34,7 +37,7 @@ export class FolhaService {
       const oldNet = rows.filter((r) => new Date(r.day) <= cutoff && r.kind !== "expiry").reduce((s, r) => s + r.minutes, 0);
       expiringMin = Math.max(0, Math.min(balance, oldNet));
     }
-    return { items: rows, balanceMin: balance, expiringMin, expiryMonths: months, cutoff: cutoffIso };
+    return { items: rows, balanceMin: balance, heMin, expiringMin, expiryMonths: months, cutoff: cutoffIso };
   }
 
   /** Baixa por vencimento: lança um débito (expiry) zerando o saldo antigo vencido. */
@@ -47,10 +50,19 @@ export class FolhaService {
     }));
     return { id: row.id, expiredMin: expiringMin };
   }
+  /** Bloqueia lançar/alterar saldo em mês já FECHADO (status closed). */
+  private async assertMonthOpen(ctx: RequestContext, day: Date | string) {
+    const ym = typeof day === "string" ? day.slice(0, 7) : `${day.getUTCFullYear()}-${String(day.getUTCMonth() + 1).padStart(2, "0")}`;
+    if (!/^\d{4}-\d{2}$/.test(ym)) return;
+    const first = new Date(`${ym}-01T00:00:00.000Z`);
+    const c = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoClosing.findFirst({ where: { refMonth: first, status: "closed" }, select: { refMonth: true } })).catch(() => null);
+    if (c) throw new AppError(ErrorCode.Forbidden, "Período fechado: não é possível lançar/alterar saldo deste mês. Reabra o fechamento para editar.", 403);
+  }
   async addBank(ctx: RequestContext, input: { employeeId: string; day: string; minutes: number; kind?: string; reason?: string }) {
     this.requireAdmin(ctx);
     if (!input.employeeId || !input.day || !Number.isFinite(input.minutes) || input.minutes === 0) throw new AppError(ErrorCode.ValidationFailed, "employeeId, day e minutos (≠0) obrigatórios", 400);
-    const kind = ["inclusion", "compensation", "expiry"].includes(input.kind ?? "") ? input.kind! : (input.minutes >= 0 ? "inclusion" : "compensation");
+    await this.assertMonthOpen(ctx, input.day);
+    const kind = ["inclusion", "compensation", "expiry", "he"].includes(input.kind ?? "") ? input.kind! : (input.minutes >= 0 ? "inclusion" : "compensation");
     const row = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankMovement.create({
       data: { organizationId: ctx.orgId!, employeeId: input.employeeId, day: new Date(input.day), minutes: Math.round(input.minutes), kind, reason: (input.reason || "").slice(0, 300) || null, createdByUserId: ctx.userId ?? null },
     }));
@@ -58,6 +70,8 @@ export class FolhaService {
   }
   async removeBank(ctx: RequestContext, id: string) {
     this.requireAdmin(ctx);
+    const mov = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankMovement.findFirst({ where: { id }, select: { day: true } }));
+    if (mov?.day) await this.assertMonthOpen(ctx, mov.day);
     await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankMovement.delete({ where: { id } }));
     return { ok: true };
   }
@@ -185,18 +199,36 @@ export class FolhaService {
     return { items: await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoClosing.findMany({ where: {}, orderBy: { refMonth: "desc" }, take: 24 })) };
   }
   /** Calcula o resumo do mês (totais por funcionário) — base do fechamento e do export. */
-  async summary(ctx: RequestContext, refMonth: string) {
+  async summary(ctx: RequestContext, refMonth: string, opts?: { employerId?: string | null }) {
     this.requireAdmin(ctx);
     const { from, to } = this.monthRange(refMonth);
-    const emps = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findMany({ where: { active: true }, select: { id: true, name: true, cpf: true, matricula: true, matEsocial: true } }));
+    const emps = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findMany({ where: { active: true, ...(opts?.employerId ? { employerId: opts.employerId } : {}) }, select: { id: true, name: true, cpf: true, pis: true, matricula: true, matEsocial: true, employerId: true, storeId: true, cargo: true } }));
+    const employers = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployer.findMany({ where: {}, select: { id: true, name: true } })).catch(() => [] as any[]);
+    const employerName = new Map((employers as any[]).map((e) => [e.id, e.name] as const));
     const rows: any[] = [];
     for (const e of emps) {
       const esp = await this.jornada.espelho(ctx, { employeeId: e.id, from, to });
       const t = esp.totals as any;
       const bank = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankMovement.findMany({ where: { employeeId: e.id }, select: { minutes: true } }));
+      // split HE 50%/100% (domingo/feriado = 100%) — MESMA regra/fonte do holerite:
+      // HE lançada manualmente no espelho (kind="he") tem prioridade; senão, extra automático do dia.
+      const dayInfo = new Map<string, { is100: boolean; extraMin: number }>();
+      for (const d of (esp.days ?? []) as any[]) {
+        const wd = d.wd ?? new Date(d.day + "T00:00:00Z").getUTCDay();
+        dayInfo.set(d.day, { is100: !!d.holiday || wd === 0, extraMin: d.extraMin || 0 });
+      }
+      const heMoves = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankMovement.findMany({ where: { employeeId: e.id, kind: "he", day: { gte: new Date(`${from}T00:00:00Z`), lte: new Date(`${to}T23:59:59Z`) } }, select: { day: true, minutes: true } })).catch(() => [] as any[]);
+      let extra50Min = 0, extra100Min = 0;
+      if (heMoves.length > 0) {
+        for (const m of heMoves as any[]) { const iso = new Date(m.day).toISOString().slice(0, 10); if (dayInfo.get(iso)?.is100) extra100Min += m.minutes; else extra50Min += m.minutes; }
+      } else {
+        for (const info of dayInfo.values()) { if (info.extraMin <= 0) continue; if (info.is100) extra100Min += info.extraMin; else extra50Min += info.extraMin; }
+      }
       rows.push({
-        employeeId: e.id, name: e.name, cpf: e.cpf, matricula: e.matricula, matEsocial: e.matEsocial,
-        expectedMin: t.expectedMin, workedMin: t.workedMin, extraMin: t.extraMin, nightMin: t.nightMin,
+        employeeId: e.id, name: e.name, cpf: e.cpf, pis: e.pis, matricula: e.matricula, matEsocial: e.matEsocial,
+        storeId: e.storeId ?? null, cargo: e.cargo ?? null,
+        employerId: e.employerId ?? null, employerName: e.employerId ? (employerName.get(e.employerId) ?? null) : null,
+        expectedMin: t.expectedMin, workedMin: t.workedMin, extraMin: t.extraMin, extra50Min, extra100Min, nightMin: t.nightMin,
         lateMin: t.lateMin, faltaMin: t.faltaMin, balanceMin: t.balanceMin, bankBalanceMin: bank.reduce((s, b) => s + b.minutes, 0),
       });
     }
@@ -229,14 +261,14 @@ export class FolhaService {
     return this.getClosing(ctx, refMonth);
   }
 
-  /** Export genérico CSV do fechamento (importável; layouts TOTVS/Domínio/Senior são adaptadores futuros). */
-  async exportCsv(ctx: RequestContext, refMonth: string): Promise<string> {
-    const sum = await this.summary(ctx, refMonth);
-    const hm = (m: number) => `${m < 0 ? "-" : ""}${String(Math.floor(Math.abs(m) / 60)).padStart(2, "0")}:${String(Math.abs(m) % 60).padStart(2, "0")}`;
-    const head = ["cpf", "matricula", "mat_esocial", "nome", "previstas", "trabalhadas", "extras", "noturnas", "atrasos", "faltas", "saldo_mes", "banco_horas"].join(";");
-    const lines = sum.rows.map((r: any) => [r.cpf ?? "", r.matricula ?? "", r.matEsocial ?? "", r.name, hm(r.expectedMin), hm(r.workedMin), hm(r.extraMin), hm(r.nightMin), hm(r.lateMin), hm(r.faltaMin), hm(r.balanceMin), hm(r.bankBalanceMin)].join(";"));
-    return [head, ...lines].join("\r\n");
+  /** Export do fechamento por leiaute de folha (generic/dominio/senior/totvs). */
+  async exportCsv(ctx: RequestContext, refMonth: string, opts?: { employerId?: string | null; layout?: string | null }): Promise<string> {
+    const sum = await this.summary(ctx, refMonth, opts);
+    const layout = getPayrollLayout(opts?.layout);
+    return renderPayroll(layout, sum.rows as PayrollRow[]);
   }
+  /** Lista de leiautes disponíveis (para o seletor no RH). */
+  payrollLayouts() { return PAYROLL_LAYOUTS.map((l) => ({ key: l.key, label: l.label, description: l.description, ext: l.ext })); }
 
   // ----- DASHBOARD EM TEMPO REAL -----
   /** Quem está trabalhando agora, atrasos do dia e feed das últimas marcações. */

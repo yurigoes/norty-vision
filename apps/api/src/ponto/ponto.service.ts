@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { createHash, randomBytes } from "crypto";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { NotificationService } from "../notifications/notification.service";
 import type { RequestContext } from "../auth/session.middleware";
 
 export type PunchInput = { employeeId: string; pin?: string; origin?: string; device?: string; deviceAt?: string; offline?: boolean; lat?: number; lng?: number; accuracy?: number; photoUrl?: string; faceScore?: number | null; faceMatch?: boolean | null; livenessOk?: boolean | null; fraudFlags?: string[] };
@@ -15,13 +16,20 @@ export type PunchInput = { employeeId: string; pin?: string; origin?: string; de
 @Injectable()
 export class PontoService {
   private readonly logger = new Logger("Ponto");
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService, private readonly notifications: NotificationService) {}
 
   private rls(ctx: RequestContext) {
     return ctx.isPlatformAdmin ? { isPlatformAdmin: true as const } : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
   }
   private requireOrg(ctx: RequestContext) { if (!ctx.orgId && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Sem org", 403); }
   private requireAdmin(ctx: RequestContext) { if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403); if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403); }
+  /** Bloqueia alteração de ponto em meses já FECHADOS (status closed). Reabra o fechamento para editar. */
+  private async assertDaysNotClosed(ctx: RequestContext, days: string[]) {
+    const firsts = [...new Set(days.map((d) => (d || "").slice(0, 7)).filter((m) => /^\d{4}-\d{2}$/.test(m)))].map((m) => new Date(`${m}-01T00:00:00.000Z`));
+    if (!firsts.length) return;
+    const closed = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoClosing.findFirst({ where: { refMonth: { in: firsts }, status: "closed" }, select: { refMonth: true } })).catch(() => null);
+    if (closed) throw new AppError(ErrorCode.Forbidden, "Período fechado: não é possível alterar o ponto deste mês. Reabra o fechamento (RH) para editar.", 403);
+  }
   private sha(s: string) { return createHash("sha256").update(s, "utf8").digest("hex"); }
   private digits(s?: string | null) { return (s ?? "").replace(/\D/g, ""); }
 
@@ -46,9 +54,22 @@ export class PontoService {
 
   /** Consome um NSR da sequência única da empresa (atômico). Todo registro do AFD
    *  com NSR próprio (empregador tipo 2, empregado tipo 5, marcação tipo 7) usa isto. */
-  private async consumeNsr(tx: any, orgId: string): Promise<bigint> {
-    const cfg = await tx.pontoConfig.upsert({ where: { organizationId: orgId }, update: { lastNsr: { increment: 1 } }, create: { organizationId: orgId, lastNsr: 1 }, select: { lastNsr: true } });
-    return cfg.lastNsr as bigint;
+  /** NSR sequencial POR EMPREGADOR (cada CNPJ tem a sua sequência, sem gaps). */
+  private async consumeNsr(tx: any, employerId: string): Promise<bigint> {
+    const e = await tx.pontoEmployer.update({ where: { id: employerId }, data: { lastNsr: { increment: 1 } }, select: { lastNsr: true } });
+    return e.lastNsr as bigint;
+  }
+  /** Resolve o empregador para a marcação/registro: o explícito, senão o DEFAULT
+   *  da org (cria um a partir do ponto_config se ainda não existir). Nunca retorna null. */
+  private async resolveEmployerId(tx: any, orgId: string, explicit?: string | null): Promise<string> {
+    if (explicit) return explicit;
+    const def = await tx.pontoEmployer.findFirst({ where: { isDefault: true }, select: { id: true } });
+    if (def) return def.id;
+    const any = await tx.pontoEmployer.findFirst({ select: { id: true } });
+    if (any) return any.id;
+    const cfg = await tx.pontoConfig.findFirst({ select: { razaoOuNome: true, tpIdtEmpregador: true, idtEmpregador: true, caepf: true, lastNsr: true } });
+    const created = await tx.pontoEmployer.create({ data: { organizationId: orgId, name: (cfg?.razaoOuNome || "Empregador"), tpIdtEmpregador: cfg?.tpIdtEmpregador ?? 1, idtEmpregador: cfg?.idtEmpregador ?? null, caepf: cfg?.caepf ?? null, lastNsr: cfg?.lastNsr ?? 0n, isDefault: true } });
+    return created.id;
   }
 
   // ----- CONFIG do empregador -----
@@ -68,10 +89,22 @@ export class PontoService {
       alertsEnabled: c?.alertsEnabled ?? true, alertWhatsapp: c?.alertWhatsapp ?? "", alertEmail: c?.alertEmail ?? "",
       alertSummaryHour: c?.alertSummaryHour ?? 20, overtimeWeeklyAlertMin: c?.overtimeWeeklyAlertMin ?? 600,
       bankExpiryMonths: c?.bankExpiryMonths ?? 6,
+      showBankToEmployee: c?.showBankToEmployee ?? true,
+      requestsRestrictHours: c?.requestsRestrictHours ?? false,
+      requestsWindowStart: c?.requestsWindowStart ?? "08:00",
+      requestsWindowEnd: c?.requestsWindowEnd ?? "18:00",
+      requestsWindowDays: c?.requestsWindowDays ?? "1,2,3,4,5",
+      requestsRestrictMachine: c?.requestsRestrictMachine ?? false,
+      assidBonusCents: c?.assidBonusCents != null ? Number(c.assidBonusCents) : 15000,
+      assidMaxAtestadoDays: c?.assidMaxAtestadoDays ?? 2,
+      assidMaxLates: c?.assidMaxLates ?? 4,
+      assidBlockMeasure: c?.assidBlockMeasure ?? true,
+      assidBlockFalta: c?.assidBlockFalta ?? true,
+      assidProportional: c?.assidProportional ?? true,
       accountantEmail: c?.accountantEmail ?? "",
     };
   }
-  async updateConfig(ctx: RequestContext, input: { tpIdtEmpregador?: number; idtEmpregador?: string; caepf?: string; cno?: string; razaoOuNome?: string; repAProcesso?: string; timezone?: string; localPrestacao?: string; responsavelCpf?: string; devTpIdt?: number; devIdt?: string; faceProvider?: string; faceProviderUrl?: string; faceProviderKey?: string; faceThreshold?: number; requireFace?: boolean; requireLiveness?: boolean; faceEnforce?: boolean; nightReducedHour?: boolean; dsrLossEnabled?: boolean; bgImageUrl?: string; bgUntil?: string | null; webhookUrl?: string; webhookSecret?: string; alertsEnabled?: boolean; alertWhatsapp?: string; alertEmail?: string; alertSummaryHour?: number; overtimeWeeklyAlertMin?: number; bankExpiryMonths?: number; accountantEmail?: string }) {
+  async updateConfig(ctx: RequestContext, input: { tpIdtEmpregador?: number; idtEmpregador?: string; caepf?: string; cno?: string; razaoOuNome?: string; repAProcesso?: string; timezone?: string; localPrestacao?: string; responsavelCpf?: string; devTpIdt?: number; devIdt?: string; faceProvider?: string; faceProviderUrl?: string; faceProviderKey?: string; faceThreshold?: number; requireFace?: boolean; requireLiveness?: boolean; faceEnforce?: boolean; nightReducedHour?: boolean; dsrLossEnabled?: boolean; bgImageUrl?: string; bgUntil?: string | null; webhookUrl?: string; webhookSecret?: string; alertsEnabled?: boolean; alertWhatsapp?: string; alertEmail?: string; alertSummaryHour?: number; overtimeWeeklyAlertMin?: number; bankExpiryMonths?: number; showBankToEmployee?: boolean; requestsRestrictHours?: boolean; requestsWindowStart?: string; requestsWindowEnd?: string; requestsWindowDays?: string; requestsRestrictMachine?: boolean; assidBonusCents?: number; assidMaxAtestadoDays?: number; assidMaxLates?: number; assidBlockMeasure?: boolean; assidBlockFalta?: boolean; assidProportional?: boolean; accountantEmail?: string }) {
     this.requireAdmin(ctx);
     const orgId = ctx.orgId!;
     const data: any = {};
@@ -105,14 +138,28 @@ export class PontoService {
     if (input.alertSummaryHour !== undefined) data.alertSummaryHour = Math.max(0, Math.min(23, Math.trunc(Number(input.alertSummaryHour) || 20)));
     if (input.overtimeWeeklyAlertMin !== undefined) data.overtimeWeeklyAlertMin = Math.max(0, Math.trunc(Number(input.overtimeWeeklyAlertMin) || 600));
     if (input.bankExpiryMonths !== undefined) data.bankExpiryMonths = Math.max(0, Math.min(36, Math.trunc(Number(input.bankExpiryMonths) || 6)));
+    if (input.showBankToEmployee !== undefined) data.showBankToEmployee = !!input.showBankToEmployee;
+    if (input.requestsRestrictHours !== undefined) data.requestsRestrictHours = !!input.requestsRestrictHours;
+    if (input.requestsWindowStart !== undefined) data.requestsWindowStart = /^\d{2}:\d{2}$/.test(input.requestsWindowStart) ? input.requestsWindowStart : "08:00";
+    if (input.requestsWindowEnd !== undefined) data.requestsWindowEnd = /^\d{2}:\d{2}$/.test(input.requestsWindowEnd) ? input.requestsWindowEnd : "18:00";
+    if (input.requestsWindowDays !== undefined) data.requestsWindowDays = (input.requestsWindowDays || "").split(",").map((x) => x.trim()).filter((x) => /^[0-6]$/.test(x)).join(",") || "1,2,3,4,5";
+    if (input.requestsRestrictMachine !== undefined) data.requestsRestrictMachine = !!input.requestsRestrictMachine;
+    if (input.assidBonusCents !== undefined) data.assidBonusCents = BigInt(Math.max(0, Math.round(Number(input.assidBonusCents) || 0)));
+    if (input.assidMaxAtestadoDays !== undefined) data.assidMaxAtestadoDays = Math.max(0, Math.trunc(Number(input.assidMaxAtestadoDays) || 0));
+    if (input.assidMaxLates !== undefined) data.assidMaxLates = Math.max(0, Math.trunc(Number(input.assidMaxLates) || 0));
+    if (input.assidBlockMeasure !== undefined) data.assidBlockMeasure = !!input.assidBlockMeasure;
+    if (input.assidBlockFalta !== undefined) data.assidBlockFalta = !!input.assidBlockFalta;
+    if (input.assidProportional !== undefined) data.assidProportional = !!input.assidProportional;
     if (input.accountantEmail !== undefined) data.accountantEmail = (input.accountantEmail || "").slice(0, 200) || null;
     await this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       await tx.pontoConfig.upsert({ where: { organizationId: orgId }, update: data, create: { organizationId: orgId, ...data } });
-      // Atribui o NSR do registro de empregador (tipo 2) na 1ª vez.
-      const cur = await tx.pontoConfig.findUnique({ where: { organizationId: orgId }, select: { employerNsr: true } });
-      if (cur && cur.employerNsr == null) {
-        const nsr = await this.consumeNsr(tx, orgId);
-        await tx.pontoConfig.update({ where: { organizationId: orgId }, data: { employerNsr: nsr, employerRecordedAt: new Date() } });
+      // Atribui o NSR do registro de empregador (tipo 2) do empregador DEFAULT na 1ª vez.
+      const employerId = await this.resolveEmployerId(tx, orgId);
+      const empRow = await tx.pontoEmployer.findFirst({ where: { id: employerId }, select: { employerNsr: true } });
+      if (empRow && empRow.employerNsr == null) {
+        const nsr = await this.consumeNsr(tx, employerId);
+        await tx.pontoEmployer.update({ where: { id: employerId }, data: { employerNsr: nsr, employerRecordedAt: new Date() } });
+        await tx.pontoConfig.update({ where: { organizationId: orgId }, data: { employerNsr: nsr, employerRecordedAt: new Date() } }).catch(() => undefined);
       }
     });
     return this.getConfig(ctx);
@@ -122,11 +169,11 @@ export class PontoService {
   async listEmployees(ctx: RequestContext) {
     this.requireOrg(ctx);
     const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.pontoEmployee.findMany({ where: {}, orderBy: { name: "asc" }, select: { id: true, name: true, cpf: true, pis: true, matricula: true, matEsocial: true, cargo: true, scheduleCode: true, storeId: true, active: true, faceRefKey: true, barcode: true, hrEmployeeId: true } }),
+      tx.pontoEmployee.findMany({ where: {}, orderBy: { name: "asc" }, select: { id: true, name: true, cpf: true, pis: true, matricula: true, matEsocial: true, cargo: true, scheduleCode: true, storeId: true, active: true, faceRefKey: true, barcode: true, hrEmployeeId: true, allowedDeviceIds: true } }),
     );
     return rows.map(({ faceRefKey, ...e }) => ({ ...e, faceEnrolled: !!faceRefKey }));
   }
-  async upsertEmployee(ctx: RequestContext, input: { id?: string; name: string; cpf?: string; pis?: string; matricula?: string; matEsocial?: string; cargo?: string; scheduleCode?: string; pin?: string; active?: boolean }) {
+  async upsertEmployee(ctx: RequestContext, input: { id?: string; name: string; cpf?: string; pis?: string; matricula?: string; matEsocial?: string; cargo?: string; scheduleCode?: string; pin?: string; active?: boolean; allowedDeviceIds?: string[] }) {
     this.requireAdmin(ctx);
     const orgId = ctx.orgId!;
     if (!input.name?.trim()) throw new AppError(ErrorCode.ValidationFailed, "Nome obrigatório", 400);
@@ -136,23 +183,104 @@ export class PontoService {
       cargo: (input.cargo || "").trim() || null, scheduleCode: (input.scheduleCode || "").trim() || null,
       active: input.active ?? true,
     };
+    if (Array.isArray(input.allowedDeviceIds)) data.allowedDeviceIds = input.allowedDeviceIds.filter((x) => typeof x === "string").slice(0, 200);
     if (input.pin && input.pin.trim()) data.pinHash = this.sha(input.pin.trim());
     const row = await this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       if (input.id) {
-        const r = await tx.pontoEmployee.update({ where: { id: input.id }, data });
-        // Backfill: empregado pré-existente sem NSR/código de barras ganha um.
+        const cur = await tx.pontoEmployee.findFirst({ where: { id: input.id }, select: { employerId: true } });
+        const employerId = await this.resolveEmployerId(tx, orgId, cur?.employerId);
+        const r = await tx.pontoEmployee.update({ where: { id: input.id }, data: { ...data, employerId } });
+        // Backfill: empregado pré-existente sem NSR/código de barras ganha um (na sequência do empregador).
         const patch: any = {};
-        if (r.nsr == null) { patch.nsr = await this.consumeNsr(tx, orgId); patch.afdRecordedAt = new Date(); }
+        if (r.nsr == null) { patch.nsr = await this.consumeNsr(tx, employerId); patch.afdRecordedAt = new Date(); }
         if (!r.barcode) patch.barcode = await this.genBarcode(tx, orgId);
         if (Object.keys(patch).length) await tx.pontoEmployee.update({ where: { id: r.id }, data: patch });
         return r;
       }
-      const nsr = await this.consumeNsr(tx, orgId);
+      const employerId = await this.resolveEmployerId(tx, orgId);
+      const nsr = await this.consumeNsr(tx, employerId);
       const barcode = await this.genBarcode(tx, orgId);
-      return tx.pontoEmployee.create({ data: { organizationId: orgId, ...data, nsr, afdRecordedAt: new Date(), barcode } });
+      return tx.pontoEmployee.create({ data: { organizationId: orgId, ...data, employerId, nsr, afdRecordedAt: new Date(), barcode } });
     });
     await this.prisma.runWithContext(this.rls(ctx), (tx) => this.audit(tx, orgId, input.id ? "employee.update" : "employee.create", "employee", row.id, ctx.userId ?? null, null, { name: data.name }));
     return { id: row.id };
+  }
+
+  /** Define os terminais liberados de um funcionário ([] = sem restrição). */
+  async setAllowedDevices(ctx: RequestContext, employeeId: string, deviceIds: string[]) {
+    this.requireAdmin(ctx);
+    const ids = (Array.isArray(deviceIds) ? deviceIds : []).filter((x) => typeof x === "string").slice(0, 200);
+    await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.update({ where: { id: employeeId }, data: { allowedDeviceIds: ids } }));
+    return { ok: true, allowedDeviceIds: ids };
+  }
+
+  // ----- SOLICITAÇÕES DE SALDO DE BANCO (somente RH; o líder NÃO vê) -----
+  /** Lista as solicitações de visualização de saldo (RH). */
+  async listBankRequests(ctx: RequestContext) {
+    this.requireAdmin(ctx);
+    const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankRequest.findMany({ where: {}, orderBy: [{ status: "asc" }, { requestedAt: "desc" }], take: 300 }));
+    const ids = [...new Set(rows.map((r) => r.pontoEmployeeId))];
+    const emps = ids.length ? await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })) : [];
+    const nm = new Map(emps.map((e) => [e.id, e.name] as const));
+    return rows.map((r) => ({ id: r.id, employeeId: r.pontoEmployeeId, employeeName: nm.get(r.pontoEmployeeId) ?? "—", status: r.status, reason: r.reason, responseNote: r.responseNote, balanceMin: r.balanceMin, requestedAt: r.requestedAt, respondedAt: r.respondedAt }));
+  }
+  /** RH responde (aprova = libera a visualização; rejeita = nega). */
+  async respondBankRequest(ctx: RequestContext, id: string, input: { approve: boolean; note?: string }) {
+    this.requireAdmin(ctx);
+    const req = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankRequest.findFirst({ where: { id } }));
+    if (!req) throw new AppError(ErrorCode.NotFound, "Solicitação não encontrada", 404);
+    let balanceMin: number | null = null;
+    if (input.approve) {
+      const mv = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankMovement.findMany({ where: { employeeId: req.pontoEmployeeId }, select: { minutes: true } })).catch(() => [] as any[]);
+      balanceMin = (mv as any[]).reduce((s, m) => s + m.minutes, 0);
+    }
+    await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankRequest.update({ where: { id }, data: { status: input.approve ? "approved" : "rejected", responseNote: (input.note || "").slice(0, 500) || null, balanceMin, respondedAt: new Date(), respondedByUserId: ctx.userId ?? null } }));
+    // notifica o funcionário (WhatsApp/e-mail) — best-effort
+    try {
+      const pe = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findFirst({ where: { id: req.pontoEmployeeId }, select: { name: true, hrEmployeeId: true } }));
+      let phone: string | null = null, email: string | null = null;
+      if (pe?.hrEmployeeId) {
+        const hr = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.employee.findFirst({ where: { id: pe.hrEmployeeId! }, select: { phone: true, whatsappPhone: true, email: true } }));
+        phone = hr?.whatsappPhone || hr?.phone || null; email = hr?.email || null;
+      }
+      if (phone || email) {
+        const first = (pe?.name || "").split(" ")[0] || "";
+        const hm = (m: number) => `${m < 0 ? "-" : ""}${Math.floor(Math.abs(m) / 60)}h${String(Math.abs(m) % 60).padStart(2, "0")}`;
+        const text = input.approve
+          ? `Olá ${first}! O RH liberou a visualização do seu banco de horas${balanceMin != null ? ` — saldo atual: ${hm(balanceMin)}` : ""}. Acesse o portal para ver os detalhes.`
+          : `Olá ${first}. Sua solicitação para ver o saldo do banco de horas foi avaliada pelo RH${input.note ? `: ${input.note}` : "."}`;
+        await this.notifications.notify({ organizationId: ctx.orgId!, storeId: "", whatsappPhone: phone, email, subject: "Banco de horas — resposta do RH", text }).catch(() => undefined);
+      }
+    } catch { /* best-effort */ }
+    return { ok: true };
+  }
+
+  // ----- MÁQUINAS HOMOLOGADAS (libera solicitações no portal) -----
+  async listMachines(ctx: RequestContext) {
+    this.requireAdmin(ctx);
+    const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoHomologatedMachine.findMany({ where: {}, orderBy: [{ revokedAt: "asc" }, { createdAt: "desc" }], select: { id: true, label: true, lastSeenAt: true, lastSeenIp: true, revokedAt: true, createdAt: true } }));
+    return rows;
+  }
+  /** Cria uma máquina homologada e devolve a CHAVE crua (exibida só agora). */
+  async createMachine(ctx: RequestContext, label: string) {
+    this.requireAdmin(ctx);
+    const name = (label || "").trim().slice(0, 80); if (!name) throw new AppError(ErrorCode.ValidationFailed, "Informe um nome para a máquina", 400);
+    const key = randomBytes(24).toString("base64url");
+    const row = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoHomologatedMachine.create({ data: { organizationId: ctx.orgId!, label: name, keyHash: this.sha(key) }, select: { id: true } }));
+    return { id: row.id, label: name, key }; // chave crua só aqui
+  }
+  async revokeMachine(ctx: RequestContext, id: string, revoke: boolean) {
+    this.requireAdmin(ctx);
+    await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoHomologatedMachine.updateMany({ where: { id }, data: { revokedAt: revoke ? new Date() : null } }));
+    return { ok: true };
+  }
+  /** Valida a chave de máquina para uma org (uso interno do gate). Marca lastSeen. */
+  async machineValid(orgId: string, rawKey: string | null | undefined, ip?: string | null): Promise<boolean> {
+    const k = (rawKey || "").trim(); if (!k) return false;
+    const m = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) => tx.pontoHomologatedMachine.findFirst({ where: { organizationId: orgId, keyHash: this.sha(k), revokedAt: null }, select: { id: true } }));
+    if (!m) return false;
+    await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) => tx.pontoHomologatedMachine.update({ where: { id: m.id }, data: { lastSeenAt: new Date(), lastSeenIp: ip ?? null } })).catch(() => undefined);
+    return true;
   }
 
   /** Une registros de ponto duplicados (mesmo CPF): mantém o vinculado ao RH (ou o mais antigo)
@@ -198,9 +326,12 @@ export class PontoService {
 
   /** Vincula/cria o ponto_employee a partir de um funcionário do RH (employees).
    *  Chamado quando o RH cria/atualiza um funcionário — herda os dados e gera código. */
-  async syncFromHr(orgId: string, hr: { id: string; name: string; cpf?: string | null; roleTitle?: string | null; storeId?: string | null; userId?: string | null; status?: string | null }) {
+  async syncFromHr(orgId: string, hr: { id: string; name: string; cpf?: string | null; roleTitle?: string | null; storeId?: string | null; userId?: string | null; status?: string | null; employerId?: string | null; pis?: string | null }) {
     await this.prisma.runWithContext({ orgId, isOrgAdmin: true }, async (tx) => {
       const cpf = this.digits(hr.cpf) || null;
+      // empregador: usa o do HR; se faltar, cai no empregador default da conta
+      let employerId = hr.employerId ?? null;
+      if (!employerId) employerId = (await tx.pontoEmployer.findFirst({ where: { isDefault: true }, select: { id: true } }))?.id ?? null;
       // Evita duplicar: usa o vínculo (hrEmployeeId) OU um registro manual com o MESMO CPF
       // ainda sem vínculo — nesse caso, ADOTA esse registro (liga o hrEmployeeId nele).
       const existing = await tx.pontoEmployee.findFirst({
@@ -208,11 +339,11 @@ export class PontoService {
         orderBy: { hrEmployeeId: "desc" }, // prioriza o que já tem vínculo
       });
       const base = {
-        name: hr.name, cpf, cargo: hr.roleTitle ?? null,
+        name: hr.name, cpf, cargo: hr.roleTitle ?? null, employerId, ...(hr.pis ? { pis: this.digits(hr.pis) } : {}),
         storeId: hr.storeId ?? null, userId: hr.userId ?? null, active: (hr.status ?? "active") === "active",
       };
       if (existing) { await tx.pontoEmployee.update({ where: { id: existing.id }, data: { ...base, hrEmployeeId: hr.id } }); return; }
-      const nsr = await this.consumeNsr(tx, orgId);
+      const nsr = await this.consumeNsr(tx, employerId ?? await this.resolveEmployerId(tx, orgId));
       const barcode = await this.genBarcode(tx, orgId);
       await tx.pontoEmployee.create({ data: { organizationId: orgId, hrEmployeeId: hr.id, ...base, nsr, afdRecordedAt: new Date(), barcode } });
     });
@@ -277,27 +408,27 @@ export class PontoService {
   /** Núcleo da marcação reutilizável (web/admin e PWA por dispositivo). Roda no RLS da org.
    *  Offline: o horário do dispositivo (deviceAt) é a hora da marcação; o servidor grava o
    *  createdAt na sincronização e a marcação fica com offline=1 (Portaria 671). */
-  async punchCore(orgId: string, input: PunchInput, ip: string | null, opts?: { userId?: string | null; device?: string }) {
+  async punchCore(orgId: string, input: PunchInput, ip: string | null, opts?: { userId?: string | null; device?: string; deviceId?: string | null }) {
     const res = await this.prisma.runWithContext({ orgId }, async (tx) => {
       const emp = await tx.pontoEmployee.findFirst({ where: { id: input.employeeId, active: true } });
       if (!emp) throw new AppError(ErrorCode.NotFound, "Funcionário não encontrado", 404);
       if (emp.pinHash) {
         if (!input.pin || this.sha(input.pin.trim()) !== emp.pinHash) throw new AppError(ErrorCode.Unauthorized, "PIN incorreto", 401);
       }
-      // NSR sequencial por empresa (atômico via increment no upsert do config)
-      const cfg = await tx.pontoConfig.upsert({ where: { organizationId: orgId }, update: { lastNsr: { increment: 1 } }, create: { organizationId: orgId, lastNsr: 1 }, select: { lastNsr: true } });
-      const nsr = cfg.lastNsr;
-      const last = await tx.pontoPunch.findFirst({ where: {}, orderBy: { nsr: "desc" }, select: { hash: true } });
+      // NSR sequencial POR EMPREGADOR (atômico via increment) + cadeia de hash por empregador
+      const employerId = await this.resolveEmployerId(tx, orgId, emp.employerId);
+      const nsr = await this.consumeNsr(tx, employerId);
+      const last = await tx.pontoPunch.findFirst({ where: { employerId }, orderBy: { nsr: "desc" }, select: { hash: true } });
       const prevHash = last?.hash ?? null;
       const offline = !!input.offline;
       const punchedAt = offline && input.deviceAt ? new Date(input.deviceAt) : new Date(); // offline = hora do dispositivo; senão servidor
       const hash = this.sha(`${prevHash ?? ""}|${nsr}|${emp.id}|${punchedAt.toISOString()}|O`);
       const punch = await tx.pontoPunch.create({
         data: {
-          organizationId: orgId, employeeId: emp.id, nsr, punchedAt,
+          organizationId: orgId, employeeId: emp.id, employerId, nsr, punchedAt,
           deviceAt: input.deviceAt ? new Date(input.deviceAt) : null,
           origin: ["web", "pwa", "kiosk"].includes(input.origin ?? "") ? input.origin! : "web",
-          source: "O", ip: ip ?? null, device: (input.device || opts?.device || "").slice(0, 120) || null,
+          source: "O", ip: ip ?? null, device: (input.device || opts?.device || "").slice(0, 120) || null, deviceId: opts?.deviceId ?? null,
           offline, lat: input.lat ?? null, lng: input.lng ?? null, accuracy: input.accuracy ?? null,
           photoUrl: input.photoUrl ?? null,
           faceScore: input.faceScore ?? null, faceMatch: input.faceMatch ?? null, livenessOk: input.livenessOk ?? null,
@@ -368,13 +499,7 @@ export class PontoService {
     this.requireOrg(ctx);
     const where: any = {};
     if (opts.employeeId) where.employeeId = opts.employeeId;
-    if (opts.from || opts.to) {
-      // YYYY-MM-DD vira UTC midnight; sem expandir, `to` ignora o dia inteiro.
-      // Normaliza inversão pra não devolver lista vazia silenciosamente.
-      let fromIso = opts.from || "", toIso = opts.to || "";
-      if (fromIso && toIso && fromIso > toIso) { const t = fromIso; fromIso = toIso; toIso = t; }
-      where.punchedAt = { ...(fromIso ? { gte: new Date(fromIso + "T00:00:00Z") } : {}), ...(toIso ? { lte: new Date(toIso + "T23:59:59Z") } : {}) };
-    }
+    if (opts.from || opts.to) where.punchedAt = { ...(opts.from ? { gte: new Date(opts.from) } : {}), ...(opts.to ? { lte: new Date(opts.to) } : {}) };
     const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.pontoPunch.findMany({ where, orderBy: { punchedAt: "desc" }, take: 1000, select: { id: true, nsr: true, employeeId: true, punchedAt: true, origin: true, source: true, offline: true, hash: true, photoUrl: true, faceScore: true, faceMatch: true, livenessOk: true, fraudFlags: true, voided: true } }),
     );
@@ -408,6 +533,7 @@ export class PontoService {
   ) {
     this.requireAdmin(ctx);
     const orgId = ctx.orgId!;
+    await this.assertDaysNotClosed(ctx, (input.days ?? []).map((d) => d.day));
     const cfg0 = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.pontoConfig.findFirst({ where: {}, select: { timezone: true } }),
     );
@@ -433,15 +559,13 @@ export class PontoService {
     stamps.sort((a, b) => a.getTime() - b.getTime());
 
     const emp = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.pontoEmployee.findFirst({ where: { id: input.employeeId, active: true }, select: { id: true, name: true } }),
+      tx.pontoEmployee.findFirst({ where: { id: input.employeeId, active: true }, select: { id: true, name: true, employerId: true } }),
     );
     if (!emp) throw new AppError(ErrorCode.NotFound, "Funcionário não encontrado", 404);
     const motivo = (input.motivo || "ajuste do empregador").slice(0, 200);
 
     // REAJUSTE: anula (não apaga — Portaria 671/hash-chain) as batidas ATIVAS dos dias
     // editados, pra não duplicar. O espelho passa a considerar só as ativas (a última edição).
-    // Se a migration 186 ainda não rodou (coluna `voided` ausente), o reajuste cai num
-    // erro claro pedindo aplicar a migration — em vez de criar batidas duplicadas em silêncio.
     let voided = 0;
     if (input.replaceDay) {
       for (const d of input.days ?? []) {
@@ -449,18 +573,10 @@ export class PontoService {
         if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) continue;
         const dayStart = new Date(Date.parse(`${ymd}T00:00:00Z`) - offMin * 60000);
         const dayEnd = new Date(dayStart.getTime() + 86400000);
-        try {
-          const r = await this.prisma.runWithContext({ orgId }, (tx) =>
-            tx.pontoPunch.updateMany({ where: { employeeId: emp.id, punchedAt: { gte: dayStart, lt: dayEnd }, voided: false }, data: { voided: true, voidedAt: new Date(), voidedBy: ctx.userId ?? null } }),
-          );
-          voided += r.count;
-        } catch (e: any) {
-          const msg = String(e?.message ?? "");
-          if (/voided/i.test(msg) || /column .* does not exist/i.test(msg) || e?.code === "P2022") {
-            throw new AppError(ErrorCode.Conflict, "Banco desatualizado: aplique a migration 186_ponto_punch_voided.sql antes de usar 'substituir batidas do dia'.", 409);
-          }
-          throw e;
-        }
+        const r = await this.prisma.runWithContext({ orgId }, (tx) =>
+          tx.pontoPunch.updateMany({ where: { employeeId: emp.id, punchedAt: { gte: dayStart, lt: dayEnd }, voided: false }, data: { voided: true, voidedAt: new Date(), voidedBy: ctx.userId ?? null } }),
+        );
+        voided += r.count;
       }
     }
 
@@ -469,13 +585,13 @@ export class PontoService {
     for (let i = 0; i < stamps.length; i += CHUNK) {
       const slice = stamps.slice(i, i + CHUNK);
       await this.prisma.runWithContext({ orgId }, async (tx) => {
+        const employerId = await this.resolveEmployerId(tx, orgId, emp.employerId);
         for (const at of slice) {
-          const cfg = await tx.pontoConfig.upsert({ where: { organizationId: orgId }, update: { lastNsr: { increment: 1 } }, create: { organizationId: orgId, lastNsr: 1 }, select: { lastNsr: true } });
-          const nsr = cfg.lastNsr;
-          const last = await tx.pontoPunch.findFirst({ where: {}, orderBy: { nsr: "desc" }, select: { hash: true } });
+          const nsr = await this.consumeNsr(tx, employerId);
+          const last = await tx.pontoPunch.findFirst({ where: { employerId }, orderBy: { nsr: "desc" }, select: { hash: true } });
           const prevHash = last?.hash ?? null;
           const hash = this.sha(`${prevHash ?? ""}|${nsr}|${emp.id}|${at.toISOString()}|O`);
-          await tx.pontoPunch.create({ data: { organizationId: orgId, employeeId: emp.id, nsr, punchedAt: at, deviceAt: null, origin: "manual", source: "O", offline: false, motivo, createdByUserId: ctx.userId ?? null, prevHash, hash } });
+          await tx.pontoPunch.create({ data: { organizationId: orgId, employeeId: emp.id, employerId, nsr, punchedAt: at, deviceAt: null, origin: "manual", source: "O", offline: false, motivo, createdByUserId: ctx.userId ?? null, prevHash, hash } });
           created++;
         }
       });
@@ -509,9 +625,12 @@ export class PontoService {
   /** Verifica a integridade da cadeia de hash das marcações (auditoria). */
   async verifyChain(ctx: RequestContext) {
     this.requireAdmin(ctx);
-    const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoPunch.findMany({ where: {}, orderBy: { nsr: "asc" }, select: { nsr: true, employeeId: true, punchedAt: true, source: true, prevHash: true, hash: true } }));
+    // cadeia POR EMPREGADOR: ordena por (empregador, nsr) e reinicia a cada empregador
+    const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoPunch.findMany({ where: {}, orderBy: [{ employerId: "asc" }, { nsr: "asc" }], select: { nsr: true, employerId: true, employeeId: true, punchedAt: true, source: true, prevHash: true, hash: true } }));
     let prev: string | null = null;
+    let curEmployer: string | null | undefined = undefined;
     for (const r of rows) {
+      if (r.employerId !== curEmployer) { curEmployer = r.employerId; prev = null; } // novo empregador → nova cadeia
       const expected = this.sha(`${prev ?? ""}|${r.nsr}|${r.employeeId}|${new Date(r.punchedAt).toISOString()}|${r.source}`);
       if (r.prevHash !== prev || r.hash !== expected) return { ok: false, brokenAtNsr: String(r.nsr), total: rows.length };
       prev = r.hash;
@@ -572,16 +691,21 @@ export class PontoService {
    *  ordenados por NSR + trailer tipo 9 + assinatura.
    *  PENDENTE (complete:false): confirmar variante do CRC-16 com arquivo-teste oficial e
    *  trocar a assinatura placeholder pela real P7S/ICP-Brasil (Fase 4). */
-  async afd(ctx: RequestContext, opts: { from?: string; to?: string }): Promise<{ content: string; counts: Record<string, number>; complete: boolean; missing: string[] }> {
+  async afd(ctx: RequestContext, opts: { from?: string; to?: string; employerId?: string }): Promise<{ content: string; counts: Record<string, number>; complete: boolean; missing: string[]; employer?: { id: string; name: string } }> {
     this.requireAdmin(ctx);
-    const where: any = {};
+    const cfg = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.findFirst({ where: {} }));
+    // AFD é POR EMPREGADOR (CNPJ). Sem employerId, usa o empregador padrão.
+    const employer = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
+      opts.employerId ? tx.pontoEmployer.findFirst({ where: { id: opts.employerId } }) : tx.pontoEmployer.findFirst({ where: { isDefault: true } }),
+    );
+    if (!employer) throw new AppError(ErrorCode.ValidationFailed, "Empregador não encontrado (cadastre em Empregadores)", 400);
+    const where: any = { employerId: employer.id };
     if (opts.from || opts.to) where.punchedAt = { ...(opts.from ? { gte: new Date(opts.from) } : {}), ...(opts.to ? { lte: new Date(opts.to) } : {}) };
     const punches = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.pontoPunch.findMany({ where, orderBy: { nsr: "asc" }, take: 100000, select: { nsr: true, punchedAt: true, createdAt: true, origin: true, offline: true, hash: true, employeeId: true } }),
     );
-    const cfg = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.findFirst({ where: {} }));
     const emps = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.pontoEmployee.findMany({ where: { nsr: { not: null } }, orderBy: { nsr: "asc" }, select: { id: true, name: true, cpf: true, nsr: true, afdRecordedAt: true } }),
+      tx.pontoEmployee.findMany({ where: { employerId: employer.id, nsr: { not: null } }, orderBy: { nsr: "asc" }, select: { id: true, name: true, cpf: true, nsr: true, afdRecordedAt: true } }),
     );
     const cpfOf = new Map(emps.map((e) => [e.id, this.digits(e.cpf)]));
     const tz = cfg?.timezone ?? "-0300";
@@ -594,10 +718,10 @@ export class PontoService {
     const repNum = this.digits(cfg?.repAProcesso) ? this.padN(cfg?.repAProcesso ?? "", 17) : "9".repeat(17);
     const header = withCrc(
       "000000000" + "1" +
-      String(cfg?.tpIdtEmpregador ?? 1) +
-      this.padN(cfg?.idtEmpregador ?? "", 14) +
-      this.padN(cfg?.caepf || cfg?.cno || "", 14) +
-      this.padA(cfg?.razaoOuNome, 150) +
+      String(employer.tpIdtEmpregador ?? 1) +
+      this.padN(employer.idtEmpregador ?? "", 14) +
+      this.padN(employer.caepf || cfg?.cno || "", 14) +
+      this.padA(employer.name, 150) +
       repNum +
       this.fmtD(dIni, tz) + this.fmtD(dFim, tz) +
       this.fmtDH(new Date(), tz) +
@@ -609,18 +733,18 @@ export class PontoService {
 
     // ----- Corpo: tipo 2 (empregador), tipo 5 (empregados), tipo 7 (marcações) por NSR -----
     const body: { nsr: bigint; line: string }[] = [];
-    if (cfg?.employerNsr != null) {
+    if (employer.employerNsr != null) {
       const rec = withCrc(
-        this.padN(cfg.employerNsr, 9) + "2" +
-        this.fmtDH(new Date(cfg.employerRecordedAt ?? new Date()), tz) +
-        this.padN(cfg.responsavelCpf ?? "", 14) +
-        String(cfg.tpIdtEmpregador ?? 1) +
-        this.padN(cfg.idtEmpregador ?? "", 14) +
-        this.padN(cfg.caepf || cfg.cno || "", 14) +
-        this.padA(cfg.razaoOuNome, 150) +
-        this.padA(cfg.localPrestacao, 100),
+        this.padN(employer.employerNsr, 9) + "2" +
+        this.fmtDH(new Date(employer.employerRecordedAt ?? new Date()), tz) +
+        this.padN(cfg?.responsavelCpf ?? "", 14) +
+        String(employer.tpIdtEmpregador ?? 1) +
+        this.padN(employer.idtEmpregador ?? "", 14) +
+        this.padN(employer.caepf || cfg?.cno || "", 14) +
+        this.padA(employer.name, 150) +
+        this.padA(cfg?.localPrestacao, 100),
       ); // + CRC(4) = 331
-      body.push({ nsr: cfg.employerNsr as bigint, line: rec });
+      body.push({ nsr: employer.employerNsr as bigint, line: rec });
     }
     for (const e of emps) {
       const rec = withCrc(
@@ -647,13 +771,14 @@ export class PontoService {
     }
     body.sort((a, b) => (a.nsr < b.nsr ? -1 : a.nsr > b.nsr ? 1 : 0));
 
-    const counts = { t2: cfg?.employerNsr != null ? 1 : 0, t3: 0, t4: 0, t5: emps.length, t6: 0, t7: punches.length };
+    const counts = { t2: employer.employerNsr != null ? 1 : 0, t3: 0, t4: 0, t5: emps.length, t6: 0, t7: punches.length };
     const lines = [header, ...body.map((r) => r.line), this.afdTrailer(counts), this.afdSignature()];
     return {
       content: lines.join("\r\n"),
       counts,
+      employer: { id: employer.id, name: employer.name },
       complete: false,
-      missing: ["confirmar variante do CRC-16 com arquivo-teste oficial", "assinatura real P7S/ICP-Brasil (Fase 4)"],
+      missing: ["confirmar variante do CRC-16 com arquivo-teste oficial", "assinatura real P7S/ICP-Brasil (Fase 3)"],
     };
   }
 

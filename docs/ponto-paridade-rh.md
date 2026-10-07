@@ -97,11 +97,43 @@ telas. As conferências reprovaram, e foi bom:
 Todas corrigidas. `tsc --noEmit` limpo, `npm run check` verde e `nest build` +
 `next build` passando nos dois apps.
 
-## O que falta para isso rodar
+## Como subir: as migrations primeiro
 
-**As 16 migrations precisam ser aplicadas** antes de subir o código — o deploy
-não aplica migration nenhuma (`deploy-nv-thor.sh` sincroniza código e
-reconstrói, só isso). Subir a API com o schema velho quebra o ponto inteiro,
-porque o Prisma Client passou a esperar tabelas e colunas que não existem.
+`infra/scripts/db-apply-nv-thor.sh` aplica as migrations no Postgres
+compartilhado da thor (CT 102, banco `norty_vision`). O `db-apply.sh` do
+projeto não serve: ele aponta pro Postgres do compose e pro `.env.production`,
+e nenhum dos dois existe nesta instalação.
 
-Isso não foi feito aqui: eu não tenho acesso ao banco de produção.
+**A ordem é o contrário da intuição:**
+
+```bash
+bash infra/scripts/db-apply-nv-thor.sh --dry-run   # lista, sem tocar
+bash infra/scripts/db-apply-nv-thor.sh             # aplica + confere
+bash infra/scripts/deploy-nv-thor.sh               # só então o código
+```
+
+Subir o código antes quebra o ponto inteiro: toda consulta estoura com
+"relation does not exist". Na ordem certa não há janela de quebra — as
+migrations só ADICIONAM, e o código velho ignora o que não conhece.
+
+O script faz dump do banco antes de qualquer DDL, aplica uma migration por vez
+parando no primeiro erro, e **confere no fim** se o banco tem as 8 tabelas e as
+10 colunas que o Prisma Client passou a esperar. Se faltar alguma, ele manda
+NÃO subir o código — porque é exatamente aí que o erro apareceria só quando
+alguém abrisse o Ponto.
+
+### Provado antes de entregar
+
+Num Postgres 16 com pgvector, do zero:
+
+| | |
+| --- | ---: |
+| base de julho reconstruída (migrations 001–197) | **197 ok, 0 falhas**, 211 tabelas |
+| as 16 novas, sobre essa base | **16 ok, 0 falhas** |
+| as 16 de novo (idempotência) | **0 falhas** |
+| as 18 conferências do script | **18 ok** |
+| Prisma Client novo contra o banco migrado | **13 de 13 models respondem** |
+
+O último é o que importa de verdade: não basta o SQL aplicar, o cliente gerado
+precisa conseguir consultar. Os 8 models novos e os campos novos nos 5 models
+antigos foram consultados de fato.

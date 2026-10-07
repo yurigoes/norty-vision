@@ -106,6 +106,12 @@ e nenhum dos dois existe nesta instalação.
 
 **A ordem é o contrário da intuição:**
 
+Os dois scripts **descobrem sozinhos onde o código mora neste host**: perguntam
+ao Proxmox qual diretório está montado como `/opt/fase3` dentro do CT 105. O
+caminho já mudou uma vez — era `/srv/apps-fase3` e virou `/mnt/ssd/apps-fase3`
+quando o armazenamento dos containers foi movido —, e cravar de novo só adiaria
+o mesmo problema. `BASE=/caminho bash <script>` força, se precisar.
+
 ```bash
 bash infra/scripts/db-apply-nv-thor.sh --dry-run   # lista, sem tocar
 bash infra/scripts/db-apply-nv-thor.sh             # aplica + confere

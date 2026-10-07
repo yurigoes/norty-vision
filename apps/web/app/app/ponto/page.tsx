@@ -4,6 +4,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useDialog } from "../../../components/SystemDialog";
 import { PageHeader } from "../../../components/PageHeader";
 import { PUNCH_FIELDS, type PunchForm, emptyPunchForm, punchesToForm, formToTimes } from "../../../lib/punch";
+import { Inconsistencias } from "./Inconsistencias";
 
 type Emp = { id: string; name: string; cpf: string | null; pis: string | null; matricula: string | null; matEsocial: string | null; cargo: string | null; scheduleCode: string | null; active: boolean; faceEnrolled?: boolean; barcode?: string | null; hrEmployeeId?: string | null; allowedDeviceIds?: string[] };
 type Punch = { id: string; nsr: string; employeeId: string; punchedAt: string; origin: string; source: string; offline: boolean; hash: string; photoUrl?: string | null; faceScore?: number | null; faceMatch?: boolean | null; livenessOk?: boolean | null; fraudFlags?: string[] | null };
@@ -38,7 +39,7 @@ function printCracha(e: Emp, employer: string) {
 
 export default function PontoPage() {
   const dialog = useDialog();
-  const [tab, setTab] = useState<"bater" | "marcacoes" | "tempo" | "espelho" | "solicitacoes" | "trocas" | "escalas" | "banco" | "ferias" | "fechamento" | "eventos" | "funcionarios" | "empregadores" | "dispositivos" | "avisos" | "config">("bater");
+  const [tab, setTab] = useState<"bater" | "marcacoes" | "tempo" | "espelho" | "inconsistencias" | "solicitacoes" | "trocas" | "escalas" | "banco" | "ferias" | "fechamento" | "eventos" | "funcionarios" | "empregadores" | "dispositivos" | "avisos" | "config">("bater");
   const [emps, setEmps] = useState<Emp[]>([]);
   const load = () => fetch("/api/ponto/employees", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setEmps(d?.items ?? [])).catch(() => {});
   useEffect(() => { load(); }, []);
@@ -55,7 +56,7 @@ export default function PontoPage() {
         description="Marcação imutável (horário do servidor + NSR + hash) e jornada derivada — Portaria 671 (Fases 0–1)."
       />
       <nav className="mb-6 flex flex-wrap gap-1 rounded-lg border border-line bg-bg/60 p-1 text-sm print:hidden">
-        {([["bater", "Bater ponto"], ["marcacoes", "Marcações"], ["tempo", "Tempo real"], ["espelho", "Espelho"], ["solicitacoes", "Solicitações"], ["trocas", "Trocas"], ["escalas", "Escalas"], ["banco", "Banco de horas"], ["ferias", "Férias"], ["fechamento", "Fechamento"], ["eventos", "Eventos / Webhook"], ["funcionarios", "Funcionários (marcação)"], ["empregadores", "Empregadores"], ["dispositivos", "Dispositivos"], ["avisos", "Avisos"], ["config", "Empregador"]] as const).map(([k, l]) => (
+        {([["bater", "Bater ponto"], ["marcacoes", "Marcações"], ["tempo", "Tempo real"], ["espelho", "Espelho"], ["inconsistencias", "Inconsistências"], ["solicitacoes", "Solicitações"], ["trocas", "Trocas"], ["escalas", "Escalas"], ["banco", "Banco de horas"], ["ferias", "Férias"], ["fechamento", "Fechamento"], ["eventos", "Eventos / Webhook"], ["funcionarios", "Funcionários (marcação)"], ["empregadores", "Empregadores"], ["dispositivos", "Dispositivos"], ["avisos", "Avisos"], ["config", "Empregador"]] as const).map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className={`rounded-md px-3 py-1 ${tab === k ? "bg-brand text-white" : "text-muted hover:text-fg"}`}>{l}</button>
         ))}
       </nav>
@@ -64,6 +65,7 @@ export default function PontoPage() {
       {tab === "marcacoes" && <Marcacoes emps={emps} dialog={dialog} />}
       {tab === "tempo" && <TempoReal dialog={dialog} />}
       {tab === "espelho" && <><EspelhosContabil dialog={dialog} /><Espelho emps={emps} dialog={dialog} /></>}
+      {tab === "inconsistencias" && <Inconsistencias dialog={dialog} Ajuste={EspelhoAjusteModal} />}
       {tab === "solicitacoes" && <SolicitacoesPonto dialog={dialog} />}
       {tab === "trocas" && <TrocasRh dialog={dialog} />}
       {tab === "escalas" && <Escalas dialog={dialog} />}
@@ -800,6 +802,7 @@ function EspelhosContabil({ dialog }: { dialog: any }) {
 
 function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   const [empId, setEmpId] = useState("");
+  const [adjustOpen, setAdjustOpen] = useState(false);
   const [range, setRange] = useState(monthRange());
   const [data, setData] = useState<any>(null);
   const [just, setJust] = useState({ day: "", kind: "atraso", reason: "" });
@@ -928,10 +931,21 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
         </select>
         <label className="text-sm">De <input type="date" value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" /></label>
         <label className="text-sm">Até <input type="date" value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" /></label>
-        {data && <button onClick={() => csvEspelho(data, range)} className="ml-auto rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">CSV</button>}
+        {/* O RH abre a grade SOZINHO ao escolher o funcionário. Aqui é botão:
+            abrir em tela cheia automaticamente esconderia o espelho do Vision —
+            com o CSV, a impressão e o espelho assinado — e não haveria como
+            voltar a ele sem fechar a grade. Os dois caminhos ficam disponíveis. */}
+        {empId && <button onClick={() => setAdjustOpen(true)} className="ml-auto rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:opacity-90">Ajustar ponto (tela cheia)</button>}
+        {data && <button onClick={() => csvEspelho(data, range)} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">CSV</button>}
         {data && <button onClick={() => printEspelho(data, range)} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Imprimir / PDF</button>}
         {data && empId && <a href={`/api/ponto/espelho/recibo.pdf?employeeId=${empId}&refMonth=${range.from.slice(0, 7)}`} target="_blank" rel="noreferrer" className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Espelho assinado</a>}
       </div>
+
+      {adjustOpen && empId && (
+        data
+          ? <EspelhoAjusteModal empId={empId} data={data} range={range} dialog={dialog} onClose={() => setAdjustOpen(false)} onSaved={load} />
+          : <div className="fixed inset-0 z-50 flex items-center justify-center bg-bg text-sm text-muted">Carregando…</div>
+      )}
 
       {!data ? <p className="rounded-xl border border-line bg-bg/60 p-6 text-sm text-muted">Selecione um funcionário e o período.</p> : (
         <div className="rounded-xl border border-line bg-bg/60 p-4 print:border-0 print:bg-white print:text-black">
@@ -2261,3 +2275,399 @@ function FaceTestModal({ onClose, dialog }: { onClose: () => void; dialog: any }
 function Inp({ label, v, on }: { label: string; v: string; on: (v: string) => void }) {
   return <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">{label}</span><input value={v ?? ""} onChange={(e) => on(e.target.value)} className="w-full rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" /></label>;
 }
+
+// ============================================================================
+// GRADE DE AJUSTE DE PONTO — portada do Norty RH.
+//
+// O modelo é o "Cartão Ponto" clássico: o período inteiro numa tabela, com os
+// horários do dia já editáveis direto na célula (sem clicar em "editar" linha
+// por linha antes), e a coluna Situação classificada por cor — BH+, BH−, HE,
+// Abono, Falta, Ponto certo — com um mini-painel por linha para aplicar cada
+// uma. Os horários salvam num lote só, e apenas os dias que mudaram; BH, HE e
+// abono aplicam na hora, por dia.
+//
+// É a tela que o gestor usa para fechar o mês. A fila de inconsistências
+// (`Inconsistencias.tsx`) abre esta grade já no funcionário, com só os dias
+// pendentes à mostra, e o "Próximo" salva e pula para o seguinte.
+// ============================================================================
+
+const AJUSTE_COLS: { key: keyof PunchForm; label: string }[] = [
+  { key: "entrada", label: "Entrada" }, { key: "saidaAlmoco", label: "Saída 1" }, { key: "voltaAlmoco", label: "Entrada 2" },
+  { key: "saidaLanche", label: "Saída 2" }, { key: "voltaLanche", label: "Entrada 3" }, { key: "saida", label: "Saída 3" },
+];
+type SitTipo = "bh_mais" | "bh_menos" | "he" | "abono";
+const SIT_LABEL: Record<SitTipo, string> = { bh_mais: "BH+", bh_menos: "BH−", he: "HE", abono: "Abono" };
+const SIT_ACTIVE_CLS: Record<SitTipo, string> = {
+  bh_mais: "border-green-500 bg-green-500/15 text-green-300",
+  bh_menos: "border-yellow-500 bg-yellow-500/15 text-yellow-300",
+  he: "border-blue-500 bg-blue-500/15 text-blue-300",
+  abono: "border-purple-500 bg-purple-500/15 text-purple-300",
+};
+type Scope = "dia" | "horas";
+const BH_NEG_CAP_MIN = 360;    // BH− não passa de -6:00 no saldo total da conta
+const BH_NEG_PRAZO_DIAS = 10;  // janela pra compensar antes do fechamento da folha
+
+function parseHm(s: string): number {
+  const m = /^(-)?(\d{1,3}):(\d{2})$/.exec((s || "").trim());
+  if (!m) return 0;
+  return (m[1] ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
+}
+function addDays(iso: string, n: number): string {
+  const d = new Date(iso + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Quanto ainda falta EXPLICAR no dia, dos dois lados: o negativo (falta +
+ * atraso + saída antecipada, que BH− e abono disputam) e o positivo (extra, que
+ * BH+ e HE disputam). Cada lançamento e cada abono já feito consome desse
+ * total — é o que impede aplicar abono de 5h E BH− de 8h num dia que só tem 8h
+ * de divergência.
+ */
+function budgetsFor(d: any, moves: any[], justs: any[]): { neg: number; pos: number } {
+  const rawNeg = (d.faltaMin || 0) + (d.lateMin || 0) + (d.earlyMin || 0);
+  const rawPos = d.extraMin || 0;
+  const fullDayAbono = justs.some((j) => !(j.proposed && Number.isFinite(Number(j.proposed.minutes))));
+  let usedNeg = fullDayAbono ? rawNeg : justs.reduce((s, j) => s + (Number(j.proposed?.minutes) || 0), 0);
+  let usedPos = 0;
+  for (const m of moves) {
+    if (m.kind === "he") usedPos += Math.abs(m.minutes);
+    else if (m.minutes < 0) usedNeg += Math.abs(m.minutes);
+    else usedPos += m.minutes;
+  }
+  return { neg: Math.max(0, rawNeg - usedNeg), pos: Math.max(0, rawPos - usedPos) };
+}
+function suggestionFor(t: SitTipo, budgets: { neg: number; pos: number }): string {
+  return hmMin(t === "bh_mais" || t === "he" ? budgets.pos : budgets.neg);
+}
+
+/**
+ * Chips da situação do dia. Pode haver mais de um — BH− de parte do atraso +
+ * abono do restante é caso comum. Cada lançamento de banco vira um chip; cada
+ * abono vira outro, já com as horas quando não é do dia inteiro; o que sobrar
+ * sem classificar vira um chip próprio no fim.
+ *
+ * O ramo de `special` é do Vision, não do RH: feriado lançado, ponto
+ * facultativo e folga premium zeram o esperado do dia por justificativa
+ * aprovada. Sem ele esses dias apareceriam como "Folga" genérica e o gestor não
+ * saberia por que o esperado é zero.
+ */
+function situacaoChips(d: any, moves: any[], justs: any[], hasSchedule: boolean): { label: string; cls: string; title?: string }[] {
+  if (d.leave) return [{ label: `Afastamento${d.leaveType ? ` (${d.leaveType})` : ""}`, cls: "text-muted" }];
+  if (d.future && d.isWorkDay && moves.length === 0 && justs.length === 0) {
+    return [{ label: "Dia ainda não chegou", cls: "text-muted", title: "Não conta como falta nem entra no saldo" }];
+  }
+  if (d.special && moves.length === 0 && justs.length === 0) {
+    return [{ label: d.specialReason ? `Dia especial — ${d.specialReason}` : "Dia especial", cls: "bg-purple-500/10 text-purple-300/80", title: "Esperado zerado por justificativa aprovada (feriado, ponto facultativo ou folga premium)" }];
+  }
+  if (!d.isWorkDay && moves.length === 0 && justs.length === 0) {
+    const label = d.holiday ? `Feriado${d.holidayName ? ` — ${d.holidayName}` : ""}` : !hasSchedule ? "Fora de escala" : (d.dsrLost ? "Folga — DSR descontado" : "Folga");
+    return [{ label, cls: "text-muted" }];
+  }
+  const chips: { label: string; cls: string; title?: string }[] = [];
+  const today = new Date().toISOString().slice(0, 10);
+  for (const m of moves) {
+    if (m.kind === "he") { chips.push({ label: `HE ${hmMin(Math.abs(m.minutes))}`, cls: "bg-blue-500/15 text-blue-300", title: m.reason }); continue; }
+    if (m.minutes < 0) {
+      const prazo = addDays(d.day, BH_NEG_PRAZO_DIAS);
+      const vencido = prazo < today;
+      chips.push({
+        label: `BH− ${hmMin(Math.abs(m.minutes))} · prazo ${prazo.slice(8)}/${prazo.slice(5, 7)}${vencido ? " ⚠" : ""}`,
+        cls: vencido ? "bg-red-500/20 text-red-300 ring-1 ring-red-400" : "bg-yellow-500/15 text-yellow-300",
+        title: `${m.reason ?? ""} — compensar até ${prazo.split("-").reverse().join("/")} (${BH_NEG_PRAZO_DIAS} dias)`.trim(),
+      });
+      continue;
+    }
+    chips.push({ label: `BH+ ${hmMin(m.minutes)}`, cls: "bg-green-500/15 text-green-300", title: m.reason });
+  }
+  for (const j of justs) {
+    const mins = j.proposed && Number.isFinite(Number(j.proposed.minutes)) ? Number(j.proposed.minutes) : null;
+    const suf = j.status === "pending" ? " (pendente)" : "";
+    chips.push({
+      label: `Abono${mins != null ? ` ${hmMin(mins)}` : " (dia)"}${suf}`,
+      cls: j.status === "approved" ? "bg-purple-500/15 text-purple-300" : "bg-purple-500/10 text-purple-300/70",
+      title: j.reason,
+    });
+  }
+  if (d.faltaMin && !d.justified) chips.push({ label: "Falta", cls: "bg-red-500/15 text-red-300" });
+  else if (d.divergence) chips.push({ label: "Pendente", cls: "bg-orange-500/15 text-orange-300" });
+  if (!chips.length && d.inProgress && d.isWorkDay) {
+    chips.push({ label: "Hoje — em andamento", cls: "text-muted", title: "O que falta do dia só é cobrado depois que o dia terminar" });
+  } else if (!chips.length && d.punches?.length) {
+    chips.push({ label: "Ponto certo", cls: "bg-green-500/10 text-green-400" });
+  }
+  return chips;
+}
+
+/** Props da grade — a fila de inconsistências monta esta tela e passa a navegação dela. */
+export type AjusteProps = {
+  empId: string; data: any; range: { from: string; to: string }; dialog: any; onClose: () => void; onSaved: () => void;
+  nav?: { pos: number; total: number; onPrev?: () => void; onNext?: () => void; nextName?: string | null };
+  focusDays?: string[];
+};
+
+function EspelhoAjusteModal({ empId, data, range, dialog, onClose, onSaved, nav, focusDays }: AjusteProps) {
+  const [rows, setRows] = useState<Record<string, PunchForm>>({});
+  const [snackByDay, setSnackByDay] = useState<Record<string, boolean>>({});
+  const [busy, setBusy] = useState(false);
+  const [bankItems, setBankItems] = useState<any[]>([]);
+  const [bankBalance, setBankBalance] = useState(0);
+  const [justItems, setJustItems] = useState<any[]>([]);
+  const [actionDay, setActionDay] = useState<string | null>(null);
+  const [actionForm, setActionForm] = useState<{ tipo: SitTipo; horas: string; obs: string; scope: Scope }>({ tipo: "bh_mais", horas: "", obs: "", scope: "dia" });
+  const [busyAction, setBusyAction] = useState(false);
+  const hasSchedule = !!data?.schedule;
+  // aberta pela fila de inconsistências: começa mostrando só os dias pendentes (congelados na abertura,
+  // pra o dia corrigido não sumir da tela enquanto a pessoa ainda está nele)
+  const [focus] = useState(() => new Set(focusDays ?? []));
+  const [onlyFocus, setOnlyFocus] = useState(() => (focusDays ?? []).length > 0);
+  const visibleDays = (data?.days ?? []).filter((d: any) => !onlyFocus || focus.has(d.day));
+  useEffect(() => {
+    const r: Record<string, PunchForm> = {}; const s: Record<string, boolean> = {};
+    for (const d of data?.days ?? []) { const { form, snack } = punchesToForm(d.punches ?? []); r[d.day] = form; s[d.day] = snack; }
+    setRows(r); setSnackByDay(s);
+  }, [data]);
+  const refreshAux = () => {
+    fetch(`/api/ponto/banco?employeeId=${empId}`, { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((b) => { setBankItems(b?.items ?? []); setBankBalance(b?.balanceMin ?? 0); }).catch(() => {});
+    fetch(`/api/ponto/justificativas?employeeId=${empId}`, { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((j) => setJustItems(j?.items ?? [])).catch(() => {});
+  };
+  useEffect(() => { refreshAux(); }, [empId]);
+  const bankByDay = new Map<string, any[]>();
+  for (const m of bankItems) { const k = String(m.day).slice(0, 10); (bankByDay.get(k) ?? bankByDay.set(k, []).get(k)!).push(m); }
+  const justsByDay = new Map<string, any[]>();
+  for (const j of justItems) {
+    if (j.kind !== "abono" || j.status === "rejected") continue;
+    const k = String(j.day).slice(0, 10);
+    (justsByDay.get(k) ?? justsByDay.set(k, []).get(k)!).push(j);
+  }
+  function setCell(day: string, key: keyof PunchForm, value: string) {
+    setRows((s) => ({ ...s, [day]: { ...(s[day] ?? emptyPunchForm()), [key]: value } }));
+    if (key === "saidaLanche" || key === "voltaLanche") setSnackByDay((s) => ({ ...s, [day]: true }));
+  }
+  async function salvar(quiet = false): Promise<boolean> {
+    const original = new Map((data?.days ?? []).map((d: any) => [d.day, (d.punches ?? []).join(" ")]));
+    const days: { day: string; times: string[] }[] = [];
+    for (const d of data?.days ?? []) {
+      const times = formToTimes(rows[d.day] ?? emptyPunchForm(), !!snackByDay[d.day]);
+      if (times.join(" ") !== (original.get(d.day) ?? "")) days.push({ day: d.day, times });
+    }
+    if (!days.length) { if (!quiet) dialog.toast("Nada alterado", "error"); return true; }
+    // dia que tinha batida e ficou sem nenhum horário: é permitido (bateu por engano), mas confirma antes
+    const limpar = days.filter((d) => !d.times.length);
+    if (limpar.length) {
+      const quais = limpar.map((d) => `${d.day.slice(8, 10)}/${d.day.slice(5, 7)}`).join(", ");
+      const um = limpar.length === 1;
+      const ok = await dialog.confirm(`${um ? `O dia ${quais} vai` : `Os dias ${quais} vão`} ficar sem nenhum horário. As batidas ${um ? "desse dia" : "desses dias"} são anuladas (continuam no histórico, mas deixam de contar) e o dia passa a aparecer sem marcação. Confirmar?`);
+      if (!ok) return false;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch("/api/ponto/punches/manual", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ employeeId: empId, days, replaceDay: true }) });
+      const j = await res.json().catch(() => null);
+      if (!res.ok) { dialog.toast(j?.error?.message ?? "Falha ao salvar", "error"); return false; }
+      dialog.toast(`${days.length} dia(s) atualizado(s) ✅${j?.voided ? ` · ${j.voided} batida(s) anteriores anuladas` : ""}`, "success");
+      onSaved();
+      return true;
+    } finally { setBusy(false); }
+  }
+  /** Anterior / Próximo da fila: salva os horários que foram mexidos e só então troca de funcionário. */
+  async function irPara(fn?: () => void) { if (!fn || busy) return; if (await salvar(true)) fn(); }
+  useEffect(() => {
+    if (!nav) return;
+    const h = (e: KeyboardEvent) => {
+      if (!e.altKey) return;
+      if (e.key === "ArrowRight") { e.preventDefault(); void irPara(nav.onNext ?? onClose); }
+      if (e.key === "ArrowLeft" && nav.onPrev) { e.preventDefault(); void irPara(nav.onPrev); }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  });
+  function openAction(d: any) {
+    if (actionDay === d.day) { setActionDay(null); return; }
+    const moves = (bankByDay.get(d.day) ?? []).filter((m: any) => m.kind !== "expiry");
+    const b = budgetsFor(d, moves, justsByDay.get(d.day) ?? []);
+    setActionDay(d.day); setActionForm({ tipo: "bh_mais", horas: suggestionFor("bh_mais", b), obs: "", scope: "dia" });
+  }
+  function pickTipo(d: any, t: SitTipo) {
+    const moves = (bankByDay.get(d.day) ?? []).filter((m: any) => m.kind !== "expiry");
+    const b = budgetsFor(d, moves, justsByDay.get(d.day) ?? []);
+    setActionForm((f) => ({ ...f, tipo: t, horas: suggestionFor(t, b), scope: "dia" }));
+  }
+  async function applyAction(d: any) {
+    const { tipo, horas, obs, scope } = actionForm;
+    const moves = (bankByDay.get(d.day) ?? []).filter((m: any) => m.kind !== "expiry");
+    const b = budgetsFor(d, moves, justsByDay.get(d.day) ?? []);
+    const budget = tipo === "bh_mais" || tipo === "he" ? b.pos : b.neg;
+    const mins = scope === "dia" ? budget : parseHm(horas);
+    if (!mins) { dialog.toast(scope === "dia" ? "Não sobra nada desse tipo pra lançar hoje" : (tipo === "abono" ? "Informe as horas do abono" : "Informe as horas"), "error"); return; }
+    if (mins > budget) {
+      if (!(await dialog.confirm({ title: "Passa do que falta explicar no dia", message: `Restam ${hmMin(budget)} desse tipo de divergência no dia — você está lançando ${hmMin(mins)}. Aplicar mesmo assim?` }))) return;
+    }
+    if (tipo === "bh_menos") {
+      const wouldBe = bankBalance - mins;
+      if (wouldBe < -BH_NEG_CAP_MIN) {
+        dialog.alert(`O banco de horas negativo não pode passar de -${hmMin(BH_NEG_CAP_MIN)}. Esse funcionário está em ${hmMin(bankBalance)}; lançar ${hmMin(mins)} deixaria em ${hmMin(wouldBe)}. Reduza o valor, ou resolva parte com abono.`);
+        return;
+      }
+    }
+    if (tipo === "abono" && !obs.trim()) { dialog.toast("Informe a observação (motivo do abono)", "error"); return; }
+    setBusyAction(true);
+    try {
+      if (tipo !== "abono") {
+        const minutes = tipo === "bh_menos" ? -Math.abs(mins) : Math.abs(mins);
+        const kind = tipo === "he" ? "he" : "inclusion";
+        const reason = tipo === "bh_menos" ? `${obs || "ajuste"} — compensar até ${addDays(d.day, BH_NEG_PRAZO_DIAS).split("-").reverse().join("/")} (10 dias)` : (obs || (tipo === "he" ? "horas extras (grade de ajuste)" : "ajuste (grade de ajuste)"));
+        const res = await fetch("/api/ponto/banco", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ employeeId: empId, day: d.day, minutes, kind, reason }) });
+        const j = await res.json().catch(() => null);
+        if (!res.ok) { dialog.toast(j?.error?.message ?? "Falha ao aplicar", "error"); return; }
+        dialog.toast("Aplicado ✅", "success");
+      } else {
+        const proposed = scope === "horas" ? { minutes: Math.abs(mins) } : undefined;
+        const res = await fetch("/api/ponto/justificativas", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ employeeId: empId, day: d.day, kind: "abono", reason: obs.trim(), ...(proposed ? { proposed } : {}) }) });
+        const j = await res.json().catch(() => null);
+        if (!res.ok) { dialog.toast(j?.error?.message ?? "Falha ao aplicar", "error"); return; }
+        const rev = await fetch(`/api/ponto/justificativas/${j.id}/review`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ approve: true }) });
+        dialog.toast(rev.ok ? "Abono aplicado ✅" : "Abono criado, mas falhou ao aprovar — revise na fila de justificativas", rev.ok ? "success" : "error");
+      }
+      setActionDay(null); refreshAux(); onSaved();
+    } finally { setBusyAction(false); }
+  }
+  async function removeMov(id: string) {
+    if (!(await dialog.confirm({ title: "Remover lançamento", message: "Remover este lançamento do banco/HE?", tone: "danger" }))) return;
+    const res = await fetch(`/api/ponto/banco/${id}/delete`, { method: "POST", credentials: "include" });
+    if (!res.ok) { dialog.toast("Falha ao remover", "error"); return; }
+    dialog.toast("Removido", "success"); refreshAux(); onSaved();
+  }
+  async function removeJust(id: string) {
+    if (!(await dialog.confirm({ title: "Remover abono", message: "Remover este abono? A divergência volta a contar.", tone: "danger" }))) return;
+    const res = await fetch(`/api/ponto/justificativas/${id}/review`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ approve: false }) });
+    if (!res.ok) { dialog.toast("Falha ao remover", "error"); return; }
+    dialog.toast("Removido", "success"); refreshAux(); onSaved();
+  }
+  const totalCols = AJUSTE_COLS.length + 7;
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-bg">
+      <div className="flex flex-wrap items-center gap-3 border-b border-line bg-bg/95 px-4 py-3">
+        <div>
+          <p className="text-base font-semibold">Ajuste de ponto — {data.employee.name}{data.employee.cargo ? ` — ${data.employee.cargo}` : ""}</p>
+          <p className="text-xs text-muted">{data.employer} · Período {range.from} a {range.to} · clique direto no horário pra editar, ou na Situação pra classificar{nav?.nextName ? ` · próximo: ${nav.nextName}` : ""}</p>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          {focus.size > 0 && <button onClick={() => setOnlyFocus((v) => !v)} className="rounded-lg border border-line px-3 py-2 text-xs hover:border-brand">{onlyFocus ? "Ver o período inteiro" : `Só os ${focus.size} dia(s) pendentes`}</button>}
+          <button onClick={() => void salvar()} disabled={busy} className={`rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50 ${nav ? "border border-line hover:border-brand" : "bg-brand text-white"}`}>{busy ? "Salvando…" : "Salvar horários alterados"}</button>
+          {nav && (
+            <div className="flex items-center gap-1 rounded-lg border border-line p-1">
+              <button onClick={() => void irPara(nav.onPrev)} disabled={busy || !nav.onPrev} title="Funcionário anterior (Alt + ←) — salva o que foi alterado" className="rounded-md px-2.5 py-1 text-sm hover:bg-bg/80 disabled:opacity-30">◀ Anterior</button>
+              <span className="px-1 text-xs tabular-nums text-muted">{nav.pos} de {nav.total}</span>
+              <button onClick={() => void irPara(nav.onNext ?? onClose)} disabled={busy} title={nav.onNext ? "Próximo funcionário (Alt + →) — salva o que foi alterado" : "Último da fila — salva e fecha"} className="rounded-md bg-brand px-3 py-1 text-sm font-semibold text-white disabled:opacity-50">{nav.onNext ? "Próximo ▶" : "Concluir ✓"}</button>
+            </div>
+          )}
+          <button onClick={onClose} className="rounded-lg border border-line px-4 py-2 text-sm hover:border-brand">Fechar</button>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 border-b border-line/60 bg-bg/60 px-4 py-1.5 text-[10px] text-muted">
+        <span className="font-semibold uppercase tracking-wider">Legenda</span>
+        <span><span className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-green-400" />BH+ / Ponto certo</span>
+        <span><span className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-yellow-400" />BH− (ajuste, não é erro)</span>
+        <span><span className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-blue-400" />HE</span>
+        <span><span className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-purple-400" />Abono</span>
+        <span><span className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-red-400" />Falta</span>
+        <span><span className="mr-1 inline-block h-2.5 w-2.5 rounded-full bg-orange-400" />Pendente de classificar</span>
+      </div>
+      <div className="flex-1 overflow-auto p-3">
+        <table data-sem-cartao="grade-ajuste-ponto" className="w-full min-w-[1200px] border-collapse text-sm">
+          <thead className="sticky top-0 z-10 bg-bg text-left text-[10px] uppercase tracking-wider text-muted">
+            <tr>
+              <th className="whitespace-nowrap border border-line/60 px-2 py-1.5">Dia</th>
+              <th className="whitespace-nowrap border border-line/60 px-2 py-1.5">Previsto</th>
+              {AJUSTE_COLS.map((c) => <th key={c.key} className="border border-line/60 px-2 py-1.5">{c.label}</th>)}
+              <th className="border border-line/60 px-2 py-1.5">Trab.</th>
+              <th className="border border-line/60 px-2 py-1.5">Extra</th>
+              <th className="border border-line/60 px-2 py-1.5">Falta</th>
+              <th className="border border-line/60 px-2 py-1.5">Saldo</th>
+              <th className="border border-line/60 px-2 py-1.5">Situação</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visibleDays.map((d: any) => {
+              const isSunday = d.wd === 0;
+              const moves = (bankByDay.get(d.day) ?? []).filter((m: any) => m.kind !== "expiry");
+              const dayJusts = justsByDay.get(d.day) ?? [];
+              const chips = situacaoChips(d, moves, dayJusts, hasSchedule);
+              return (
+                <Fragment key={d.day}>
+                <tr className={isSunday || d.holiday ? "text-red-400" : !d.isWorkDay || d.future ? "text-muted" : ""}>
+                  <td className="whitespace-nowrap border border-line/40 px-2 py-1 font-mono text-xs">{d.day.slice(8)}/{d.day.slice(5, 7)} <span className="text-[10px]">{WD[d.wd]}</span></td>
+                  <td className="whitespace-nowrap border border-line/40 px-2 py-1 text-center font-mono text-[10px] text-muted" title={d.scheduleOrigin === "planilha" ? "escala da planilha" : d.scheduleOrigin === "troca" ? "troca de turno" : d.scheduleOrigin === "sem_escala" ? "sem escala cadastrada" : ""}>{(d.expectedSegs ?? []).length ? (d.expectedSegs as string[][]).map((x) => `${x[0]}–${x[1]}`).join(" · ") : d.scheduleOrigin === "sem_escala" ? "sem escala" : "—"}</td>
+                  {AJUSTE_COLS.map((c) => (
+                    <td key={c.key} className="border border-line/40 p-0.5">
+                      <input type="time" value={rows[d.day]?.[c.key] ?? ""} onChange={(e) => setCell(d.day, c.key, e.target.value)}
+                        className="w-full rounded-md border-0 bg-transparent px-1.5 py-1 text-center text-xs text-fg outline-none focus:bg-brand/10 focus:ring-1 focus:ring-brand" />
+                    </td>
+                  ))}
+                  <td className="border border-line/40 px-2 py-1 text-center text-xs">{d.future ? "" : d.hm.workedMin}</td>
+                  <td className="border border-line/40 px-2 py-1 text-center text-xs">{d.extraMin ? d.hm.extraMin : ""}</td>
+                  <td className="border border-line/40 px-2 py-1 text-center text-xs">{d.faltaMin && !d.justified ? d.hm.faltaMin : ""}</td>
+                  <td className={`border border-line/40 px-2 py-1 text-center text-xs ${d.future ? "" : d.balanceMin < 0 ? "text-red-400" : "text-green-400"}`}>{d.future ? "" : d.hm.balanceMin}</td>
+                  <td className="border border-line/40 p-0.5">
+                    <button onClick={() => openAction(d)} className="flex w-full flex-wrap items-center gap-1 rounded-md px-1 py-0.5 text-left hover:bg-bg/80">
+                      {chips.length ? chips.map((c, i) => (
+                        <span key={i} title={c.title || ""} className={`truncate rounded px-1.5 py-0.5 text-[10px] font-medium ${c.cls}`}>{c.label}</span>
+                      )) : <span className="px-1.5 py-0.5 text-[11px] text-muted">— classificar —</span>}
+                    </button>
+                  </td>
+                </tr>
+                {actionDay === d.day && (() => {
+                  const budgets = budgetsFor(d, moves, dayJusts);
+                  const budget = actionForm.tipo === "bh_mais" || actionForm.tipo === "he" ? budgets.pos : budgets.neg;
+                  return (
+                  <tr className="bg-bg/60">
+                    <td colSpan={totalCols} className="border border-line/40 px-3 py-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {(["bh_mais", "bh_menos", "he", "abono"] as SitTipo[]).map((t) => (
+                          <button key={t} onClick={() => pickTipo(d, t)} className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${actionForm.tipo === t ? SIT_ACTIVE_CLS[t] : "border-line text-muted hover:border-brand"}`}>{SIT_LABEL[t]}</button>
+                        ))}
+                        <div className="flex overflow-hidden rounded-lg border border-line">
+                          <button onClick={() => setActionForm((f) => ({ ...f, scope: "dia", horas: suggestionFor(f.tipo, budgets) }))} className={`px-2.5 py-1 text-xs font-medium ${actionForm.scope === "dia" ? SIT_ACTIVE_CLS[actionForm.tipo] : "text-muted hover:bg-bg/60"}`}>Dia inteiro</button>
+                          <button onClick={() => setActionForm((f) => ({ ...f, scope: "horas" }))} className={`px-2.5 py-1 text-xs font-medium ${actionForm.scope === "horas" ? SIT_ACTIVE_CLS[actionForm.tipo] : "text-muted hover:bg-bg/60"}`}>De horas</button>
+                        </div>
+                        {actionForm.scope === "horas" ? (
+                          <input value={actionForm.horas} onChange={(e) => setActionForm((f) => ({ ...f, horas: e.target.value }))} placeholder="hh:mm" title="Quanto desse tipo você quer lançar — o resto do dia continua sem classificar" className="w-20 rounded-lg border border-line bg-bg/40 px-2 py-1 text-xs font-mono" />
+                        ) : (
+                          <span className="rounded-lg border border-line/60 bg-bg/40 px-2 py-1 text-xs font-mono text-muted">{hmMin(budget)}</span>
+                        )}
+                        <span className="text-[11px] text-muted">restam {hmMin(budget)} do dia</span>
+                        <input value={actionForm.obs} onChange={(e) => setActionForm((f) => ({ ...f, obs: e.target.value }))} placeholder="Observação" className="min-w-[200px] flex-1 rounded-lg border border-line bg-bg/40 px-2 py-1 text-xs" />
+                        <button onClick={() => applyAction(d)} disabled={busyAction} className="rounded-lg bg-brand px-3 py-1 text-xs font-semibold text-white disabled:opacity-50">Aplicar</button>
+                        <button onClick={() => setActionDay(null)} className="rounded-lg border border-line px-2 py-1 text-xs text-muted">Fechar</button>
+                      </div>
+                      <p className="mt-1 text-[10px] text-muted">"Dia inteiro" usa o que resta do dia pra esse tipo (some outras classificações já feitas). "De horas" deixa lançar só uma parte — dá pra combinar, ex.: 2h de BH− + o resto de abono. BH− não passa de -{hmMin(BH_NEG_CAP_MIN)} no saldo total, e tem prazo de {BH_NEG_PRAZO_DIAS} dias pra compensar.</p>
+                      {(moves.length > 0 || dayJusts.length > 0) && (
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {moves.map((m: any) => (
+                            <span key={m.id} className="inline-flex items-center gap-1 rounded-full border border-line/60 bg-bg px-2 py-0.5 text-[11px] text-muted">
+                              {m.kind === "he" ? "HE" : m.minutes < 0 ? "BH−" : "BH+"} {hmMin(Math.abs(m.minutes))}{m.reason ? ` · ${m.reason}` : ""}
+                              <button onClick={() => removeMov(m.id)} className="text-muted hover:text-red-400" title="remover">✕</button>
+                            </span>
+                          ))}
+                          {dayJusts.map((j: any) => (
+                            <span key={j.id} className="inline-flex items-center gap-1 rounded-full border border-line/60 bg-bg px-2 py-0.5 text-[11px] text-muted">
+                              Abono{j.proposed?.minutes ? ` ${hmMin(Number(j.proposed.minutes))}` : " (dia)"}{j.status === "pending" ? " (pendente)" : ""}{j.reason ? ` · ${j.reason}` : ""}
+                              <button onClick={() => removeJust(j.id)} className="text-muted hover:text-red-400" title="remover">✕</button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                  ); })()}
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <p className="border-t border-line px-4 py-2 text-[11px] text-muted">Reajustar horário substitui as batidas anteriores do dia (não duplica) — as anuladas ficam guardadas pra auditoria (Portaria 671, nada é apagado). BH/HE/Abono aplicam na hora, por dia.</p>
+    </div>
+  );
+}
+

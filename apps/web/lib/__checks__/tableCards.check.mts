@@ -15,10 +15,27 @@ import { fileURLToPath } from "node:url";
 const web = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const raiz = join(web, "app", "app");
 
-/** Tabelas que NÃO devem virar cartão, e por quê. */
+/** ARQUIVOS cujas tabelas NÃO devem virar cartão, e por quê. */
 const ISENTAS: Record<string, string> = {
   "agenda/relatorio/page.tsx": "folha de relatório impresso — na tela também é 'papel'",
   "caixa/relatorio/page.tsx": "folha de relatório impresso — na tela também é 'papel'",
+};
+
+/**
+ * TABELA avulsa isenta, dentro de um arquivo que no resto continua sendo cobrado.
+ *
+ * A isenção por arquivo é grosseira demais quando a tela tem oito tabelas e só
+ * uma é grade: isentar `ponto/page.tsx` por causa da grade de ajuste cegaria as
+ * outras sete, que são listas e precisam virar cartão no celular.
+ *
+ * Então a tabela declara `data-sem-cartao="<chave>"` na própria tag, e a chave
+ * tem que estar aqui com o motivo. Fica explícito nos dois lugares — quem lê o
+ * JSX vê que é deliberado, e quem lê esta lista vê o porquê.
+ */
+const TABELAS_ISENTAS: Record<string, string> = {
+  "grade-ajuste-ponto":
+    "Cartão Ponto clássico: 11 colunas de horário editável, em modal de tela cheia com rolagem " +
+    "horizontal de propósito. Virar cartão desmonta a grade — é a grade que faz a leitura funcionar.",
 };
 
 function walk(dir: string): string[] {
@@ -43,8 +60,14 @@ for (const arquivo of walk(raiz)) {
     continue;
   }
   for (const tag of tabelas) {
-    if (tag.includes("table-cards")) comClasse++;
-    else semClasse.push(`${rel}  ${tag}`);
+    if (tag.includes("table-cards")) { comClasse++; continue; }
+    const m = /data-sem-cartao="([^"]+)"/.exec(tag);
+    if (m) {
+      if (TABELAS_ISENTAS[m[1]!]) { isentas++; continue; }
+      semClasse.push(`${rel}  data-sem-cartao="${m[1]}" não está declarado em TABELAS_ISENTAS (declare o motivo)`);
+      continue;
+    }
+    semClasse.push(`${rel}  ${tag}`);
   }
 }
 

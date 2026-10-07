@@ -315,7 +315,14 @@ export class JornadaService {
       const holidayName = holidayByDay.get(dayIso) ?? holidayByMd.get(dayIso.slice(5)) ?? null;
       // Dia que ainda não chegou não é falta nem entra nos totais — senão o
       // espelho do dia 10 já mostra o mês inteiro em vermelho.
-      const isFuture = dayIso > todayIso;
+      // `&& sem batida`: dia marcado como futuro que TEM batida (relógio do
+      // terminal adiantado, importação com data errada) precisa aparecer com o
+      // que foi batido, senão a batida fica invisível e ninguém a corrige.
+      const isFuture = dayIso > todayIso && !(byDay.get(dayIso)?.length);
+      // HOJE não é dia fechado. Quem ainda não foi embora tem batida ímpar, e
+      // isso não é erro — é alguém trabalhando. Sem esta distinção o espelho e a
+      // fila de inconsistências acusam a empresa inteira toda manhã.
+      const inProgress = dayIso === todayIso;
       const ov = overrideByDay.get(dayIso);
       const leaveType = leaveByDay.get(dayIso) ?? null;
       const dayJusts = justs.filter((j) => this.local(j.day, "+0000").day === dayIso);
@@ -340,8 +347,22 @@ export class JornadaService {
       } else {
         segs = this.expectedSegments(schedule, dayIso, wd);
       }
+      // DE ONDE veio o previsto do dia. A grade de ajuste mostra isso no tooltip
+      // da coluna "Previsto": sem ele, um dia sem escala e um dia de folga ficam
+      // idênticos na tela (ambos em branco) e a pessoa não sabe se é erro de
+      // cadastro ou descanso. "sem_escala" também é o que faz a fila de
+      // inconsistências NÃO acusar extra: quem não tem escala tem todo minuto
+      // trabalhado contado como extra, e isso é cadastro faltando, não erro de ponto.
+      const scheduleOrigin = leaveType ? "afastamento" : ov ? "troca" : specialOff ? "especial"
+        : holidayName ? "feriado" : !schedule ? "sem_escala" : "escala";
       const flexH = holidayName && segs.length === 0 ? 0 : this.flexTarget(schedule, wd);
-      const c = this.computeDay(segs, byDay.get(dayIso) ?? [], tol, ns, ne, flexH, nightRed);
+      const c0 = this.computeDay(segs, byDay.get(dayIso) ?? [], tol, ns, ne, flexH, nightRed);
+      // o que falta do dia de hoje só é cobrado depois que o dia terminar:
+      // saída antecipada, falta e batida incompleta ficam zeradas, e o saldo não
+      // fica negativo só porque ainda é meio-dia.
+      const c = inProgress
+        ? { ...c0, earlyMin: 0, faltaMin: 0, balanceMin: Math.max(0, c0.balanceMin), incomplete: false }
+        : c0;
       const justified = dayJusts.some((j) => j.status === "approved");
       // ABONO: dia com justificativa aprovada não conta atraso/saída antecipada/falta
       // (foi abonado). Afastamento (leave) também não conta. Mantém trabalhado/extra/noturno.
@@ -361,7 +382,14 @@ export class JornadaService {
       const adjEarly = Math.max(0, earlyMin - abonoMin);
       const adjLate = Math.max(0, lateMin - Math.max(0, abonoMin - earlyMin));
       const adjBalance = c.balanceMin + abonoMin;
-      if (isFuture) { days.push({ day: dayIso, wd, punches: [], ...c, expectedMin: 0, faltaMin: 0, isFuture: true, special: false, justifications: [], dsrLost: false, unjustifiedFalta: false, divergence: false }); continue; }
+      if (isFuture) {
+        days.push({
+          day: dayIso, wd, punches: [], ...c, expectedMin: 0, faltaMin: 0,
+          expectedSegs: segs.map(([a, b]) => [this.fmtClock(a), this.fmtClock(b)]), scheduleOrigin,
+          future: true, inProgress: false, special: false, justifications: [], dsrLost: false, unjustifiedFalta: false, divergence: false,
+        });
+        continue;
+      }
       if (!c.isWorkDay) tot.restDays++;
       tot.expectedMin += c.expectedMin; tot.workedMin += c.workedMin; tot.nightMin += c.nightMin;
       tot.nightReducedMin += c.nightReducedMin; tot.nightFictaMin += c.nightFictaMin;
@@ -371,7 +399,8 @@ export class JornadaService {
         day: dayIso, wd, punches: (byDay.get(dayIso) ?? []).sort((a, b) => a - b).map((m) => this.fmtHM(m)),
         shiftStart: segs.length ? this.fmtClock(segs[0]![0]) : null, shiftEnd: segs.length ? this.fmtClock(segs[segs.length - 1]![1]) : null,
         ...c, lateMin: adjLate, earlyMin: adjEarly, lateCount, faltaMin, abonado, abonoMin, balanceMin: adjBalance,
-        isFuture: false, special: specialOff, specialReason: holidayName ?? specialJust?.reason ?? null, holiday: !!holidayName, holidayName, swapped: !!ov, swapKind: ov?.kind ?? null, leave: !!leaveType, leaveType, justified: justified || !!leaveType, justifications: dayJusts, dsrLost: false,
+        expectedSegs: segs.map(([a, b]) => [this.fmtClock(a), this.fmtClock(b)]), scheduleOrigin,
+        future: false, inProgress, special: specialOff, specialReason: holidayName ?? specialJust?.reason ?? null, holiday: !!holidayName, holidayName, swapped: !!ov, swapKind: ov?.kind ?? null, leave: !!leaveType, leaveType, justified: justified || !!leaveType, justifications: dayJusts, dsrLost: false,
         unjustifiedFalta: !justified && !specialOff && c.faltaMin > 0,
         divergence: !justified && !specialOff && (c.faltaMin > 0 || c.incomplete || adjLate > 0 || adjEarly > 0 || c.extraMin > 0),
       });

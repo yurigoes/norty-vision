@@ -12,10 +12,18 @@ import { EmployerService } from "./employer.service";
 import { ReportsService } from "./reports.service";
 import { AllocationService } from "./allocation.service";
 import { AssiduidadeService } from "./assiduidade.service";
+import { InconsistenciasService } from "./inconsistencias.service";
 
 @Controller("ponto")
 export class PontoController {
-  constructor(private readonly svc: PontoService, private readonly jornada: JornadaService, private readonly sign: PontoSignService, private readonly folha: FolhaService, private readonly aej: AejService, private readonly swap: ShiftSwapService, private readonly employers: EmployerService, private readonly reports: ReportsService, private readonly alloc: AllocationService, private readonly assid: AssiduidadeService) {}
+  constructor(private readonly svc: PontoService, private readonly jornada: JornadaService, private readonly sign: PontoSignService, private readonly folha: FolhaService, private readonly aej: AejService, private readonly swap: ShiftSwapService, private readonly employers: EmployerService, private readonly reports: ReportsService, private readonly alloc: AllocationService, private readonly assid: AssiduidadeService, private readonly inc: InconsistenciasService) {}
+
+  // ----- Fila de pontos inconsistentes -----
+  /** Funcionários com dia ainda sem decisão: batida incompleta, falta, atraso, saída antecipada, extra. */
+  @Get("inconsistencias")
+  inconsistencias(@CurrentContext() ctx: RequestContext, @Query() q: { from?: string; to?: string; storeId?: string }) {
+    return this.inc.list(ctx, q ?? {});
+  }
 
   // ----- Assiduidade (bônus) -----
   @Get("assiduidade/ranking")

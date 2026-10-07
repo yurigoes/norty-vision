@@ -42,6 +42,11 @@ const ISENTAS: Record<string, string> = {
     "lista de funcionários da empresa, vem inteira de /api/ponto/employees — não há pedaço pra ficar de fora",
   "voip/VoipClient.tsx":
     "ramais do PABX, uma dúzia de linhas carregadas inteiras",
+  "ponto/Inconsistencias.tsx":
+    "a resposta de /api/ponto/inconsistencias JÁ É o resultado — ela calcula o espelho de " +
+    "todo mundo e devolve só quem tem pendência no período (máx. 2 meses). Pedir de novo ao " +
+    "servidor a cada letra digitada recalcularia a empresa inteira; filtrar o que já está na " +
+    "tela é o certo aqui",
 };
 
 function walk(dir: string): string[] {

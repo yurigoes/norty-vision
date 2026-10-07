@@ -49,8 +49,7 @@ CT=${CT:-102}
 BANCO=${BANCO:-norty_vision}
 CONTAINER=${CONTAINER:-shared-postgres}
 INFRA=${INFRA:-/opt/norty-shared-infra}
-FONTE=${FONTE:-/srv/apps-fase3/.norty-vision-src}
-BACKUPS=${BACKUPS:-/srv/apps-fase3/.norty-vision-backups}
+CT_APP=${CT_APP:-105}   # o CT das aplicações, de onde se descobre o caminho do host
 DE=${DE:-198}
 
 DRY=0
@@ -61,6 +60,24 @@ log()   { printf '\n%s==>%s %s\n' "$C_AZ" "$C_0" "$*"; }
 ok()    { printf '%s[OK]%s %s\n' "$C_OK" "$C_0" "$*"; }
 aviso() { printf '%s[!]%s %s\n' "$C_AV" "$C_0" "$*" >&2; }
 morre() { printf '%s[ERRO]%s %s\n' "$C_ER" "$C_0" "$*" >&2; exit 1; }
+
+# --- onde o código mora NESTE host ------------------------------------------
+# O caminho já mudou uma vez: era /srv/apps-fase3 e virou /mnt/ssd/apps-fase3
+# quando o armazenamento dos containers foi movido. Cravar isso de novo só
+# adiaria o mesmo problema, então pergunta-se ao Proxmox: o bind-mount do CT
+# diz exatamente qual diretório do host aparece como /opt/fase3 lá dentro.
+# BASE=... na chamada força outro caminho, se precisar.
+descobre_base() {
+  local b
+  b=$(pct config "$CT_APP" 2>/dev/null | sed -n 's|^mp[0-9]*: \([^,]*\),mp=/opt/fase3$|\1|p' | head -1)
+  printf '%s' "$b"
+}
+
+BASE=${BASE:-$(descobre_base)}
+FONTE=${FONTE:-${BASE:+$BASE/.norty-vision-src}}
+BACKUPS=${BACKUPS:-${BASE:+$BASE/.norty-vision-backups}}
+[[ -n "$FONTE" ]] || morre "não descobri o caminho do código neste host.
+  Passe explicitamente:  FONTE=/caminho/.norty-vision-src bash $0"
 
 [[ $EUID -eq 0 ]] || morre "precisa ser root (pct pede root)"
 command -v pct >/dev/null || morre "sem \`pct\` — este script roda NA THOR, não dentro do CT"

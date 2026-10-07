@@ -51,10 +51,8 @@ set -euo pipefail
 REF="${REF:-main}"
 REPO="${REPO:-https://github.com/yurigoes/norty-vision.git}"
 CT=105
-DESTINO=/srv/apps-fase3/norty-vision
-FONTE=/srv/apps-fase3/.norty-vision-src          # clone de verdade, com histórico
+CT_APP=$CT
 DENTRO_DO_CT=/opt/fase3/norty-vision
-BACKUPS=/srv/apps-fase3/.norty-vision-backups
 
 DRY=0
 [[ "${1:-}" == "--dry-run" ]] && DRY=1
@@ -64,6 +62,27 @@ log()  { printf '\n\033[34m==>\033[0m %s\n' "$*"; }
 ok()   { printf '%s[OK]%s %s\n' "$C_OK" "$C_0" "$*"; }
 aviso(){ printf '%s[!]%s %s\n' "$C_AV" "$C_0" "$*" >&2; }
 morre(){ printf '%s[ERRO]%s %s\n' "$C_ER" "$C_0" "$*" >&2; exit 1; }
+
+# --- onde o código mora NESTE host ------------------------------------------
+# O caminho já mudou uma vez: era /srv/apps-fase3 e virou /mnt/ssd/apps-fase3
+# quando o armazenamento dos containers foi movido. Cravar isso de novo só
+# adiaria o mesmo problema, então pergunta-se ao Proxmox: o bind-mount do CT
+# diz exatamente qual diretório do host aparece como /opt/fase3 lá dentro.
+# BASE=... na chamada força outro caminho, se precisar.
+descobre_base() {
+  local b
+  b=$(pct config "$CT_APP" 2>/dev/null | sed -n 's|^mp[0-9]*: \([^,]*\),mp=/opt/fase3$|\1|p' | head -1)
+  printf '%s' "$b"
+}
+
+BASE=${BASE:-$(descobre_base)}
+[[ -n "$BASE" ]] || morre "não descobri o caminho do código neste host.
+  O CT $CT_APP deveria ter um bind-mount terminando em mp=/opt/fase3:
+      pct config $CT_APP | grep ^mp
+  Se existir e eu não achei, passe explicitamente:  BASE=/caminho/apps-fase3 bash $0"
+DESTINO="$BASE/norty-vision"
+FONTE="$BASE/.norty-vision-src"
+BACKUPS="$BASE/.norty-vision-backups"
 
 [[ $EUID -eq 0 ]] || morre "precisa ser root (pct e docker do CT pedem root)"
 command -v pct >/dev/null || morre "sem \`pct\` — este script roda NA THOR, não dentro do CT"

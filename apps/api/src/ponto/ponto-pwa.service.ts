@@ -95,58 +95,13 @@ export class PontoPwaService {
     return { rustdeskId: d.rustdeskId ?? null, password: d.rustdeskPassEnc ? this.dec(d.rustdeskPassEnc) : null };
   }
 
-  /** Lista as lojas (stores) ativas da empresa — usada nos selects de loja (terminais, escalas, RH). */
-  async listStores(ctx: RequestContext) {
-    return this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.store.findMany({ where: { status: "active" }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    ).catch(() => [] as any[]);
-  }
-
-  /** Lista TODAS as lojas (inclui inativas) com detalhes — para a tela de gestão de lojas. */
-  async listStoresAdmin(ctx: RequestContext) {
-    this.requireAdmin(ctx);
-    return this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.store.findMany({ where: {}, select: { id: true, name: true, slug: true, city: true, state: true, status: true }, orderBy: [{ status: "asc" }, { name: "asc" }] }),
-    ).catch(() => [] as any[]);
-  }
-
-  private slugify(s: string): string {
-    return (s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 36) || "loja";
-  }
-  /** Gera um slug único dentro da org (loja, loja-2, loja-3…). */
-  private async uniqueStoreSlug(ctx: RequestContext, base: string, ignoreId?: string): Promise<string> {
-    const root = this.slugify(base);
-    const taken = new Set((await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.store.findMany({ where: ignoreId ? { id: { not: ignoreId } } : {}, select: { slug: true } })).catch(() => [] as any[])).map((r: any) => r.slug));
-    if (!taken.has(root)) return root;
-    for (let i = 2; i < 999; i++) { const c = `${root}-${i}`.slice(0, 40); if (!taken.has(c)) return c; }
-    return `${root}-${randomBytes(2).toString("hex")}`;
-  }
-
-  /** Cria uma nova loja (filial) da empresa. */
-  async createStore(ctx: RequestContext, input: { name?: string; slug?: string; city?: string | null; state?: string | null }) {
-    this.requireAdmin(ctx);
-    const orgId = ctx.orgId!;
-    const name = (input.name || "").trim();
-    if (name.length < 2) throw new AppError(ErrorCode.ValidationFailed, "Nome da loja obrigatório", 400);
-    const slug = await this.uniqueStoreSlug(ctx, input.slug?.trim() || name);
-    const row = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.store.create({
-      data: { organizationId: orgId, slug, name, city: input.city?.trim() || null, state: input.state?.trim()?.toUpperCase()?.slice(0, 2) || null, status: "active" },
-      select: { id: true, name: true, slug: true },
-    }));
-    return row;
-  }
-
-  /** Edita uma loja (nome, cidade/UF, ativa/inativa). */
-  async updateStore(ctx: RequestContext, id: string, input: { name?: string; city?: string | null; state?: string | null; status?: string }) {
-    this.requireAdmin(ctx);
-    const data: any = {};
-    if (input.name !== undefined) { const n = input.name.trim(); if (n.length < 2) throw new AppError(ErrorCode.ValidationFailed, "Nome inválido", 400); data.name = n; }
-    if (input.city !== undefined) data.city = input.city?.trim() || null;
-    if (input.state !== undefined) data.state = input.state?.trim()?.toUpperCase()?.slice(0, 2) || null;
-    if (input.status !== undefined) data.status = input.status === "inactive" ? "inactive" : "active";
-    await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.store.update({ where: { id }, data }));
-    return { ok: true };
-  }
+  // NOTA DO PORTE: listStores / listStoresAdmin / createStore / updateStore
+  // saíram daqui junto com as rotas que as expunham. Eram a versão do RH de um
+  // módulo que o Vision já tem — `StoresService` + `StoresController`, com
+  // permissão `stores.manage`, schema zod e PATCH/DELETE. Mantidas aqui, as
+  // rotas colidiam com as do módulo de lojas e o Fastify recusava subir a API
+  // (FST_ERR_DUPLICATED_ROUTE). Quem precisa de loja no ponto chama
+  // `GET /api/stores`, que já responde `{ items }`.
 
   /** Relatório (PDF) dos terminais para fiscalização: código, loja, CNPJ, RustDesk, status, nº de batidas. */
   async terminalsReportPdf(ctx: RequestContext): Promise<{ buffer: Buffer; filename: string }> {

@@ -14,18 +14,20 @@ export class PontoPwaController {
   constructor(private readonly svc: PontoPwaService, private readonly face: FaceService) {}
 
   // ----- ADMIN (autenticado) -----
-  /** Lojas (stores) ativas da empresa — para os selects de loja. */
-  @Get("stores")
-  async stores(@CurrentContext() ctx: RequestContext) { return { items: await this.svc.listStores(ctx) }; }
-  /** Lojas (todas, incl. inativas) — para a tela de gestão. */
-  @Get("stores/manage")
-  async storesManage(@CurrentContext() ctx: RequestContext) { return { items: await this.svc.listStoresAdmin(ctx) }; }
-  @Post("stores")
-  @HttpCode(200)
-  createStore(@CurrentContext() ctx: RequestContext, @Body() b: any) { return this.svc.createStore(ctx, b ?? {}); }
-  @Post("stores/:id")
-  @HttpCode(200)
-  updateStore(@CurrentContext() ctx: RequestContext, @Param("id") id: string, @Body() b: any) { return this.svc.updateStore(ctx, id, b ?? {}); }
+  // NOTA DO PORTE: aqui existiam `@Get("stores")`, `@Get("stores/manage")`,
+  // `@Post("stores")` e `@Post("stores/:id")`, vindos do RH. No RH faziam
+  // sentido — não havia módulo de lojas. No Vision há: `StoresController`
+  // (@Controller("stores")), com `@RequirePermission("stores.manage")`, schema
+  // zod e PATCH/DELETE. Declarar as duas coisas não dá rota ambígua: dá API
+  // que NÃO SOBE — o Fastify recusa no boot com FST_ERR_DUPLICATED_ROUTE, e
+  // tsc/nest build/next build passam todos, porque a colisão só existe quando
+  // a rota é REGISTRADA. Foi assim que a produção caiu em laço de reinício.
+  //
+  // As telas do ponto chamam `GET /api/stores`, que o StoresController já
+  // responde no mesmo formato `{ items }`. `stores/manage` não tinha chamador
+  // nenhum. Quem cria e edita loja é a tela /app/lojas, pelo módulo de lojas.
+  //
+  // `apps/api/src/__checks__/rotas.check.mts` passou a cobrir isso.
   @Get("ponto/devices")
   async devices(@CurrentContext() ctx: RequestContext) { return { items: await this.svc.listDevices(ctx) }; }
   @Post("ponto/devices")

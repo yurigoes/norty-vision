@@ -233,7 +233,30 @@ fi
 
 # --- 6. rebuild dentro do CT -------------------------------------------------
 log "rebuildando nv-api e nv-web no CT $CT"
-pct exec "$CT" -- bash -c "cd $DENTRO_DO_CT/infra/docker && docker compose up -d --build"
+# EM SÉRIE, E ISSO NÃO É DETALHE. `docker compose up -d --build` builda tudo em
+# paralelo. Medido na marra: o `next build` do web junto com o `nest build` da
+# api, num CT que também roda Yugo, Ponto, Festou e Norty CRM, levou o host a
+# load 104 com o swap 100% cheio — a máquina inteira ficou inutilizável. O
+# deploy-prod.sh deste repositório avisa exatamente sobre isso, e eu só não
+# tinha trazido a lição junto com o caminho do compose.
+COMPOSE="cd $DENTRO_DO_CT/infra/docker && docker compose"
+
+# Antes de começar: swap suficiente. 975 MiB num host de 15 GiB não segura um
+# build de Next — foi o que estourou. Best-effort: não impede o deploy.
+if [[ -x "$FONTE/infra/scripts/ensure-swap.sh" ]]; then
+  log "garantindo swap (anti-OOM no build)"
+  bash "$FONTE/infra/scripts/ensure-swap.sh" 4 || aviso "não consegui ajustar o swap — seguindo"
+fi
+free -h 2>/dev/null | sed -n '2,3p' | sed 's/^/    /' || true
+
+log "buildando em série (api primeiro, que é a mais rápida)"
+for svc in nv-api nv-web; do
+  log "  build: $svc"
+  pct exec "$CT" -- bash -c "$COMPOSE build $svc" || morre "build de $svc falhou. Nada foi trocado: os containers antigos seguem servindo."
+done
+
+log "subindo"
+pct exec "$CT" -- bash -c "$COMPOSE up -d"
 
 # --- 7. conferir -------------------------------------------------------------
 log "estado dos containers"

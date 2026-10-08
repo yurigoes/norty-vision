@@ -1407,7 +1407,7 @@ function TrocasRh({ dialog }: { dialog: any }) {
 
 function Escalas({ dialog }: { dialog: any }) {
   const [items, setItems] = useState<any[]>([]);
-  const empty = { id: "", code: "", name: "", kind: "fixa", toleranceMin: 10, nightStart: "22:00", nightEnd: "05:00", holidayPolicy: "folga", holidayPay: "normal", days: WD.map(() => ["", "", "", ""]) as string[][], anchor: "", anchorEnt: "07:00", anchorSai: "19:00", onDays: 1, offDays: 1, dailyHours: "8" };
+  const empty = { id: "", code: "", name: "", kind: "fixa", toleranceMin: 10, nightStart: "22:00", nightEnd: "05:00", holidayPolicy: "folga", holidayPay: "normal", days: WD.map(() => ["", "", "", ""]) as string[][], anchor: "", anchorEnt: "07:00", anchorSai: "19:00", onDays: 1, offDays: 1, dailyHours: "8", adminAltSat: false, firstSat: "", friWorkSat: ["", "", "", ""] as string[], satTol: "60" };
   const [f, setF] = useState<any>(empty);
   const load = () => fetch("/api/ponto/schedules", { credentials: "include", headers: { "x-no-loading": "1" } }).then((r) => (r.ok ? r.json() : null)).then((d) => setItems(d?.items ?? [])).catch(() => {});
   useEffect(() => { load(); }, []);
@@ -1424,6 +1424,17 @@ function Escalas({ dialog }: { dialog: any }) {
       if (row[2] && row[3]) segs.push([row[2], row[3]]);
       if (segs.length) pattern[String(wd)] = segs;
     });
+    // sábado alternado entra no MESMO pattern da escala fixa: é exceção sobre
+    // o padrão semanal, não um tipo de escala à parte.
+    if (f.kind === "fixa" && f.adminAltSat && f.firstSat) {
+      pattern.adminAltSat = true;
+      pattern.firstSat = f.firstSat;
+      const fw: string[][] = [];
+      if (f.friWorkSat[0] && f.friWorkSat[1]) fw.push([f.friWorkSat[0], f.friWorkSat[1]]);
+      if (f.friWorkSat[2] && f.friWorkSat[3]) fw.push([f.friWorkSat[2], f.friWorkSat[3]]);
+      if (fw.length) pattern.friWorkSat = fw;
+      if (f.satTol) pattern.satToleranceMin = Number(f.satTol);
+    }
     const body: any = { code: f.code, name: f.name, kind: f.kind, toleranceMin: Number(f.toleranceMin), nightStart: f.nightStart, nightEnd: f.nightEnd, holidayPolicy: f.holidayPolicy, holidayPay: f.holidayPay, pattern };
     if (f.id) body.id = f.id;
     const res = await fetch("/api/ponto/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) });
@@ -1437,11 +1448,18 @@ function Escalas({ dialog }: { dialog: any }) {
       id: s.id, code: s.code, name: s.name, kind: s.kind, toleranceMin: s.toleranceMin, nightStart: s.nightStart, nightEnd: s.nightEnd, holidayPolicy: s.holidayPolicy ?? "folga", holidayPay: s.holidayPay ?? "normal", days,
       anchor: p.anchor ?? "", anchorEnt: p.segments?.[0]?.[0] ?? "07:00", anchorSai: p.segments?.[0]?.[1] ?? "19:00",
       onDays: p.onDays ?? 1, offDays: p.offDays ?? 1, dailyHours: p.dailyMinutes ? String(p.dailyMinutes / 60) : "8",
+      adminAltSat: p.adminAltSat ?? false, firstSat: p.firstSat ?? "",
+      friWorkSat: [p.friWorkSat?.[0]?.[0] ?? "", p.friWorkSat?.[0]?.[1] ?? "", p.friWorkSat?.[1]?.[0] ?? "", p.friWorkSat?.[1]?.[1] ?? ""],
+      satTol: p.satToleranceMin ? String(p.satToleranceMin) : "60",
     });
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }
   async function toggleActive(s: any) {
-    const res = await fetch("/api/ponto/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ id: s.id, code: s.code, name: s.name, kind: s.kind, toleranceMin: s.toleranceMin, nightStart: s.nightStart, nightEnd: s.nightEnd, pattern: s.pattern ?? {}, active: !s.active }) });
+    // holidayPolicy/holidayPay VÃO no corpo de propósito. O upsert do servidor
+    // aplica o padrão ("folga"/"normal") em campo ausente, então mandar sem
+    // eles faz ligar/desligar uma escala apagar a política de feriado dela, em
+    // silêncio. O RH tem o mesmo defeito; aqui está consertado.
+    const res = await fetch("/api/ponto/schedules", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify({ id: s.id, code: s.code, name: s.name, kind: s.kind, toleranceMin: s.toleranceMin, nightStart: s.nightStart, nightEnd: s.nightEnd, holidayPolicy: s.holidayPolicy ?? "folga", holidayPay: s.holidayPay ?? "normal", pattern: s.pattern ?? {}, active: !s.active }) });
     if (!res.ok) { dialog.toast("Falha", "error"); return; }
     load(); dialog.toast(s.active ? "Escala desativada" : "Escala reativada", "success");
   }
@@ -1474,6 +1492,33 @@ function Escalas({ dialog }: { dialog: any }) {
                 ))}
               </div>
             ))}
+            <label className="mt-2 flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={f.adminAltSat} onChange={(e) => setF((s: any) => ({ ...s, adminAltSat: e.target.checked }))} className="h-4 w-4" />
+              <span>Administrativo — trabalha 1 sábado sim, 1 sábado não</span>
+            </label>
+            {f.adminAltSat && (
+              <div className="mt-1 space-y-2 rounded-lg border border-line/60 bg-bg/40 p-3">
+                <label className="block"><span className="mb-1 block text-[10px] uppercase text-muted">1º sábado trabalhado</span>
+                  <input type="date" value={f.firstSat} onChange={(e) => setF((s: any) => ({ ...s, firstSat: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm" />
+                </label>
+                <div>
+                  <span className="mb-1 block text-[10px] uppercase text-muted">Sexta na semana que TRABALHA sábado (ex.: entra mais tarde)</span>
+                  <div className="flex items-center gap-2">
+                    {[0, 1, 2, 3].map((i) => (
+                      <input key={i} type="time" value={f.friWorkSat[i]} onChange={(e) => setF((s: any) => { const fw = [...s.friWorkSat]; fw[i] = e.target.value; return { ...s, friWorkSat: fw }; })} className="rounded border border-line bg-bg/40 px-2 py-1 text-xs" />
+                    ))}
+                  </div>
+                </div>
+                <div className="sm:w-56">
+                  <Inp label="Tolerância do sábado (min)" v={String(f.satTol)} on={(v) => setF((s: any) => ({ ...s, satTol: v }))} />
+                </div>
+                <p className="text-[11px] text-muted">
+                  A contagem sai do 1º sábado trabalhado, de duas em duas semanas. A sexta alterna junto: na semana
+                  que trabalha sábado ela usa o horário acima (em branco = mantém o horário normal da sexta). A
+                  tolerância do sábado vale só nele, e nunca fica menor que a tolerância da escala.
+                </p>
+              </div>
+            )}
           </div>
         ) : f.kind === "home_office" ? (
           <div className="mt-3 grid gap-3 sm:grid-cols-3">

@@ -59,6 +59,37 @@ export class EmployerService {
     return { id: r.id };
   }
 
+  /**
+   * Nome e CNPJ do empregador que TIMBRA um documento do funcionário.
+   *
+   * Portado do RH, onde conserta um defeito que o Vision também tinha: o
+   * espelho de ponto e o holerite usavam `ponto_config.razaoOuNome` — o nome
+   * comercial da CONTA. Com multi-CNPJ (ponto_employer), quem está sob um
+   * empregador diferente do padrão recebia espelho e holerite timbrados com a
+   * empresa errada. São documentos que vão pra fiscalização do trabalho.
+   *
+   * Sem employerId, ou empregador inexistente, cai no `isDefault` — que é o
+   * comportamento certo pra empresa de um CNPJ só.
+   *
+   * (O RH devolve também a cidade, de `ponto_employer.local_prestacao`. Aqui a
+   * coluna não existe e nenhum dos dois usos precisa dela; quando precisar, ela
+   * vem junto com a migration.)
+   */
+  async resolveBrand(ctx: RequestContext, employerId?: string | null): Promise<{ name: string; cnpj: string | null } | null> {
+    const rls = this.rls(ctx);
+    const campos = { name: true, idtEmpregador: true } as const;
+    const row = employerId
+      ? await this.prisma.runWithContext(rls, (tx) => tx.pontoEmployer.findFirst({ where: { id: employerId }, select: campos })).catch(() => null)
+      : null;
+    const r = row ?? await this.prisma.runWithContext(rls, (tx) => tx.pontoEmployer.findFirst({ where: { isDefault: true }, select: campos })).catch(() => null);
+    if (!r) return null;
+    return { name: r.name, cnpj: r.idtEmpregador ? this.fmtCnpj(r.idtEmpregador) : null };
+  }
+  private fmtCnpj(d: string) {
+    const s = (d || "").replace(/\D/g, "");
+    return s.length === 14 ? `${s.slice(0, 2)}.${s.slice(2, 5)}.${s.slice(5, 8)}/${s.slice(8, 12)}-${s.slice(12)}` : d;
+  }
+
   async remove(ctx: RequestContext, id: string) {
     this.requireAdmin(ctx);
     const emp = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployer.findFirst({ where: { id }, select: { id: true, isDefault: true } }));

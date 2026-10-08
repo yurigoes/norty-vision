@@ -9,6 +9,7 @@ import { buildBrandedEmail } from "../notifications/template-render";
 import { StorageService } from "../storage/storage.service";
 import { PontoSignService } from "./sign.service";
 import { PontoService } from "./ponto.service";
+import { EmployerService } from "./employer.service";
 import type { RequestContext } from "../auth/session.middleware";
 
 type Seg = [number, number]; // [entrada, saida] em minutos do dia (saida pode passar de 1440)
@@ -21,7 +22,7 @@ type Seg = [number, number]; // [entrada, saida] em minutos do dia (saida pode p
  */
 @Injectable()
 export class JornadaService {
-  constructor(private readonly prisma: PrismaService, private readonly notifications: NotificationService, private readonly storage: StorageService, private readonly sign: PontoSignService, private readonly email: EmailService, private readonly ponto: PontoService) {}
+  constructor(private readonly prisma: PrismaService, private readonly notifications: NotificationService, private readonly storage: StorageService, private readonly sign: PontoSignService, private readonly email: EmailService, private readonly ponto: PontoService, private readonly employer: EmployerService) {}
 
   private rls(ctx: RequestContext) {
     return ctx.isPlatformAdmin ? { isPlatformAdmin: true as const } : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
@@ -149,7 +150,28 @@ export class JornadaService {
       if (pos >= on) return []; // dia de folga no ciclo
       return (p.segments ?? []) as [string, string][];
     }
-    return (p[String(wd)] ?? []) as [string, string][];
+    const baseSegs = (p[String(wd)] ?? []) as [string, string][];
+    // ADMINISTRATIVO: trabalha 1 sábado sim, 1 sábado não, contado em semanas
+    // cheias a partir do 1º sábado trabalhado (`firstSat`). O resto negativo do
+    // JS obriga o `((x % 2) + 2) % 2` — sem isso, data anterior à âncora cai no
+    // sábado errado.
+    //
+    // A SEXTA ALTERNA JUNTO: na semana que trabalha sábado a sexta tem horário
+    // próprio (`friWorkSat`), normalmente entrando mais tarde. Olha o sábado
+    // SEGUINTE (dia + 1), não a própria sexta, porque é o sábado que manda.
+    if (wd === 5 && p.adminAltSat && p.firstSat && Array.isArray(p.friWorkSat) && p.friWorkSat.length) {
+      const firstMs = new Date(String(p.firstSat) + "T00:00:00Z").getTime();
+      const nextSatMs = new Date(dayIso + "T00:00:00Z").getTime() + 86400000;
+      const weeks = Math.floor((nextSatMs - firstMs) / (7 * 86400000));
+      if (((weeks % 2) + 2) % 2 === 0) return p.friWorkSat as [string, string][];
+    }
+    if (wd === 6 && p.adminAltSat && p.firstSat) {
+      const firstMs = new Date(String(p.firstSat) + "T00:00:00Z").getTime();
+      const dayMs = new Date(dayIso + "T00:00:00Z").getTime();
+      const weeks = Math.floor((dayMs - firstMs) / (7 * 86400000));
+      return ((weeks % 2) + 2) % 2 === 0 ? baseSegs : [];
+    }
+    return baseSegs;
   }
   /** Segmentos crus esperados de um ponto_employee num dia (escala vigente). Para a troca de turno. */
   async rawSegmentsForDay(ctx: RequestContext, pontoEmployeeId: string, dayIso: string): Promise<[string, string][]> {
@@ -257,6 +279,10 @@ export class JornadaService {
     const emp = await this.prisma.runWithContext(rls, (tx) => tx.pontoEmployee.findFirst({ where: { id: opts.employeeId } }));
     if (!emp) throw new AppError(ErrorCode.NotFound, "Funcionário não encontrado", 404);
     const cfg = await this.prisma.runWithContext(rls, (tx) => tx.pontoConfig.findFirst({ where: {}, select: { timezone: true, razaoOuNome: true, nightReducedHour: true, dsrLossEnabled: true } }));
+    // timbrado do espelho = empregador do FUNCIONÁRIO, não o nome comercial
+    // da conta. Com multi-CNPJ, o espelho de quem está sob outro empregador
+    // saía com a empresa errada — e ele vai pra fiscalização do trabalho.
+    const emprBrand = await this.employer.resolveBrand(ctx, emp.employerId).catch(() => null);
     const tz = cfg?.timezone ?? "-0300";
     const nightRed = cfg?.nightReducedHour ?? true;
     const dsrOn = cfg?.dsrLossEnabled ?? true;
@@ -341,7 +367,9 @@ export class JornadaService {
         segs = [];
       } else if (holidayName) {
         // feriado: aplica a política da escala (folga | trabalha | alterna 1 sim/1 não)
-        const pol = (schedule as any)?.holidayPolicy ?? "folga";
+        // sem `as any`: a coluna existe no schema agora, então o tsc confere.
+        // Era esse cast que escondia a ausência da coluna (migration 214).
+        const pol = schedule?.holidayPolicy ?? "folga";
         const worksHoliday = pol === "trabalha" || (pol === "alterna" && Math.floor(Date.parse(dayIso + "T00:00:00Z") / 604800000) % 2 === 0);
         segs = worksHoliday ? this.expectedSegments(schedule, dayIso, wd) : [];
       } else {
@@ -356,35 +384,87 @@ export class JornadaService {
       const scheduleOrigin = leaveType ? "afastamento" : ov ? "troca" : specialOff ? "especial"
         : holidayName ? "feriado" : !schedule ? "sem_escala" : "escala";
       const flexH = holidayName && segs.length === 0 ? 0 : this.flexTarget(schedule, wd);
-      const c0 = this.computeDay(segs, byDay.get(dayIso) ?? [], tol, ns, ne, flexH, nightRed);
+      // TOLERÂNCIA PRÓPRIA DO SÁBADO na escala administrativa de sábado
+      // alternado: é meio turno, e quem vem num sábado que não é o seu normal
+      // chega mais espalhado. Padrão 60min, nunca MENOS que a tolerância do
+      // resto da semana (daí o Math.max — baixar a tolerância num sábado de
+      // meio turno seria mais rígido justamente no dia mais frouxo).
+      const padrao = (schedule?.pattern ?? {}) as any;
+      const satTolDay = wd === 6 && padrao.adminAltSat
+        ? Math.max(tol, Number(padrao.satToleranceMin) || 60)
+        : tol;
+      const c0 = this.computeDay(segs, byDay.get(dayIso) ?? [], satTolDay, ns, ne, flexH, nightRed);
       // o que falta do dia de hoje só é cobrado depois que o dia terminar:
       // saída antecipada, falta e batida incompleta ficam zeradas, e o saldo não
       // fica negativo só porque ainda é meio-dia.
       const c = inProgress
         ? { ...c0, earlyMin: 0, faltaMin: 0, balanceMin: Math.max(0, c0.balanceMin), incomplete: false }
         : c0;
-      const justified = dayJusts.some((j) => j.status === "approved");
-      // ABONO: dia com justificativa aprovada não conta atraso/saída antecipada/falta
-      // (foi abonado). Afastamento (leave) também não conta. Mantém trabalhado/extra/noturno.
-      const excused = justified && !leaveType;
-      const lateMin = excused ? 0 : c.lateMin;
-      const earlyMin = excused ? 0 : c.earlyMin;
-      const lateCount = excused ? 0 : c.lateCount;
-      const faltaMin = (justified || leaveType) ? 0 : c.faltaMin;
-      const abonado = excused && (c.faltaMin > 0 || c.lateMin > 0 || c.earlyMin > 0 || c.incomplete);
-      // ABONO PARCIAL DE HORAS: trabalhou 08–13 e o resto do dia foi abonado.
-      // Os minutos abonados PAGAM o déficit — abatem saída antecipada, depois
-      // atraso, e entram no saldo. Nunca passam do déficit do dia.
+      // ------------------------------------------------------------------
+      // ABONO — motor de ORÇAMENTO, igual ao do RH.
+      //
+      // Antes aqui havia duas regras empilhadas: "qualquer justificativa
+      // aprovada zera tudo" mais um abono parcial separado que lia
+      // `proposed.abonoMinutes`. O problema não era o desenho, era o NOME: a
+      // grade de ajuste (e o RH) gravam `proposed.minutes`. Abono de horas
+      // lançado pela grade não abatia nada — ficava guardado e invisível no
+      // cálculo. Com um orçamento só, o nome é um e não há como divergir.
+      //
+      // O orçamento é consumido em ORDEM: falta primeiro, depois atraso,
+      // depois saída antecipada. A ordem é o interesse do funcionário —
+      // falta desconta dia e DSR, atraso só desconta minuto.
+      //
+      // Abono do dia inteiro (sem `minutes`), ou qualquer outra justificativa
+      // aprovada, vale orçamento infinito: abona tudo, como sempre foi.
+      // Afastamento também.
+      // ------------------------------------------------------------------
+      const approvedAbonos = dayJusts.filter((j) => j.status === "approved" && j.kind === "abono");
+      const otherApproved = dayJusts.some((j) => j.status === "approved" && j.kind !== "abono");
+      const anyApproved = approvedAbonos.length > 0 || otherApproved;
+      // só é parcial quando TODOS os abonos do dia trazem minutos e não há
+      // outra justificativa aprovada por cima — um abono de dia inteiro no
+      // meio torna o dia inteiro abonado.
+      const partialOnly = approvedAbonos.length > 0 && !otherApproved && approvedAbonos.every((j) => {
+        const pr = j.proposed as any;
+        return pr && Number.isFinite(Number(pr.minutes));
+      });
+      const abonoBudget = leaveType ? Infinity : partialOnly
+        ? approvedAbonos.reduce((acc, j) => acc + Math.max(0, Math.trunc(Number((j.proposed as any).minutes) || 0)), 0)
+        : (anyApproved ? Infinity : 0);
+      let restAbono = abonoBudget;
+      const consume = (v: number) => { const t = Math.min(v, restAbono); restAbono -= t; return v - t; };
+      const faltaMin = consume(c.faltaMin);
+      const lateMin = consume(c.lateMin);
+      const earlyMin = consume(c.earlyMin);
+      const lateCount = lateMin > 0 ? c.lateCount : 0;
+      const rawDivergentMin = c.faltaMin + c.lateMin + c.earlyMin;
+      // `justified` (o ✅, o DSR e a elegibilidade de assiduidade) só fica true
+      // quando a divergência do dia foi INTEIRAMENTE tratada — abono parcial
+      // que deixa falta sobrando não é dia resolvido.
+      const justified = !!leaveType || (rawDivergentMin > 0
+        ? (faltaMin === 0 && lateMin === 0 && earlyMin === 0)
+        : anyApproved);
+      const abonado = !leaveType && anyApproved && (rawDivergentMin > 0 || c.incomplete);
+      // CRÉDITO NO SALDO — isto é do Vision, não do RH, e segue limitado ao
+      // abono DE HORAS. Os minutos abonados pagam o déficit do dia e entram no
+      // saldo, nunca passando do déficit. No abono de dia inteiro o saldo
+      // continua negativo, exatamente como hoje e como no RH: mudar isso mexe
+      // em número de folha e é decisão de quem fecha a folha, não minha.
       const deficitMin = Math.max(0, c.expectedMin - c.workedMin);
-      const abonoMin = Math.min(deficitMin, dayJusts
-        .filter((j) => j.status === "approved" && j.kind === "abono" && (j.proposed as any)?.abonoMinutes)
-        .reduce((acc, j) => acc + Math.max(0, Math.trunc(Number((j.proposed as any).abonoMinutes) || 0)), 0));
-      const adjEarly = Math.max(0, earlyMin - abonoMin);
-      const adjLate = Math.max(0, lateMin - Math.max(0, abonoMin - earlyMin));
+      const consumidoMin = Math.max(0, rawDivergentMin - (faltaMin + lateMin + earlyMin));
+      const abonoMin = partialOnly ? Math.min(deficitMin, consumidoMin) : 0;
+      const adjEarly = earlyMin;
+      const adjLate = lateMin;
       const adjBalance = c.balanceMin + abonoMin;
       if (isFuture) {
+        // Zera TODAS as divergências, não só a falta. Antes `lateMin`,
+        // `earlyMin` e principalmente `balanceMin` vazavam do computeDay — e
+        // `balanceMin` de um dia sem batida é `0 - expectedMin`, então a coluna
+        // Saldo da grade mostrava -08:00 em todo dia que ainda não chegou.
         days.push({
-          day: dayIso, wd, punches: [], ...c, expectedMin: 0, faltaMin: 0,
+          day: dayIso, wd, punches: [], ...c,
+          expectedMin: 0, faltaMin: 0, lateMin: 0, earlyMin: 0, lateCount: 0,
+          balanceMin: 0, incomplete: false, abonoMin: 0,
           expectedSegs: segs.map(([a, b]) => [this.fmtClock(a), this.fmtClock(b)]), scheduleOrigin,
           future: true, inProgress: false, special: false, justifications: [], dsrLost: false, unjustifiedFalta: false, divergence: false,
         });
@@ -420,7 +500,7 @@ export class JornadaService {
     const fmt = (o: any) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, typeof v === "number" && k.endsWith("Min") ? this.fmtHM(v as number) : v]));
     return {
       employee: { id: emp.id, name: emp.name, cpf: emp.cpf, matricula: emp.matricula, cargo: emp.cargo },
-      employer: cfg?.razaoOuNome ?? "", schedule: schedule ? { code: schedule.code, name: schedule.name, kind: schedule.kind } : null,
+      employer: emprBrand?.name || cfg?.razaoOuNome || "", schedule: schedule ? { code: schedule.code, name: schedule.name, kind: schedule.kind } : null,
       period: { from: opts.from, to: opts.to },
       days: days.map((d) => ({ ...d, hm: fmt({ expectedMin: d.expectedMin, workedMin: d.workedMin, extraMin: d.extraMin, lateMin: d.lateMin, earlyMin: d.earlyMin, faltaMin: d.faltaMin, nightMin: d.nightMin, nightReducedMin: d.nightReducedMin, balanceMin: d.balanceMin }) })),
       totals: { ...tot, hm: fmt(tot) },

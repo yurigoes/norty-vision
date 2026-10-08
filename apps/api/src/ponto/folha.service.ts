@@ -3,6 +3,7 @@ import PDFDocument from "pdfkit";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { JornadaService } from "./jornada.service";
+import { EmployerService } from "./employer.service";
 import { OrgAiService } from "../ai/org-ai.service";
 import type { RequestContext } from "../auth/session.middleware";
 import { PAYROLL_LAYOUTS, getPayrollLayout, renderPayroll, type PayrollRow } from "./payroll-layouts";
@@ -12,7 +13,7 @@ import { PAYROLL_LAYOUTS, getPayrollLayout, renderPayroll, type PayrollRow } fro
  */
 @Injectable()
 export class FolhaService {
-  constructor(private readonly prisma: PrismaService, private readonly jornada: JornadaService, private readonly orgAi: OrgAiService) {}
+  constructor(private readonly prisma: PrismaService, private readonly jornada: JornadaService, private readonly orgAi: OrgAiService, private readonly employer: EmployerService) {}
 
   private rls(ctx: RequestContext) {
     return ctx.isPlatformAdmin ? { isPlatformAdmin: true as const } : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
@@ -135,14 +136,19 @@ export class FolhaService {
     const v = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoVacation.findFirst({ where: { id } }));
     if (!v) throw new AppError(ErrorCode.NotFound, "Férias não encontradas", 404);
     const [emp, cfg, org] = await Promise.all([
-      this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findFirst({ where: { id: v.employeeId }, select: { name: true, cpf: true, matricula: true, cargo: true } })),
+      this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findFirst({ where: { id: v.employeeId }, select: { name: true, cpf: true, matricula: true, cargo: true, employerId: true } })),
       this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.findFirst({ where: {}, select: { razaoOuNome: true } })),
       this.prisma.runWithContext(this.rls(ctx), (tx) => tx.organization.findFirst({ where: {}, select: { name: true } })),
     ]);
     const start = new Date(v.startDate); const end = new Date(start); end.setUTCDate(end.getUTCDate() + v.days - 1);
     const ret = new Date(end); ret.setUTCDate(ret.getUTCDate() + 1);
     const d = (x: Date) => x.toLocaleDateString("pt-BR", { timeZone: "UTC" });
-    const employer = cfg?.razaoOuNome || org?.name || "Empresa";
+    // o timbrado do holerite tem que ser do empregador REAL do funcionário, não
+    // do nome comercial da conta — é o mesmo defeito que o espelho de ponto já
+    // tinha: quem está sob um CNPJ diferente do padrão recebia holerite com a
+    // empresa errada no cabeçalho, num documento que vai pra fiscalização.
+    const emprBrand = await this.employer.resolveBrand(ctx, emp?.employerId).catch(() => null);
+    const employer = emprBrand?.name || cfg?.razaoOuNome || org?.name || "Empresa";
     const buffer = await new Promise<Buffer>((resolve, reject) => {
       const pdf = new PDFDocument({ size: "A4", margin: 50 });
       const chunks: Buffer[] = []; pdf.on("data", (c) => chunks.push(c as Buffer)); pdf.on("end", () => resolve(Buffer.concat(chunks))); pdf.on("error", reject);

@@ -3322,6 +3322,8 @@ model PontoSchedule {
   toleranceMin    Int      @default(10) @map("tolerance_min")
   nightStart      String   @default("22:00") @map("night_start")
   nightEnd        String   @default("05:00") @map("night_end")
+  holidayPolicy   String   @default("folga") @map("holiday_policy")
+  holidayPay      String   @default("normal") @map("holiday_pay")
   pattern         Json     @default("{}")
   active          Boolean  @default(true)
   createdAt       DateTime @default(now()) @map("created_at")

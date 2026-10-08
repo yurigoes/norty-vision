@@ -925,16 +925,16 @@ function Espelho({ emps, dialog }: { emps: Emp[]; dialog: any }) {
   return (
     <section>
       <div className="mb-3 flex flex-wrap items-end gap-2 print:hidden">
-        <select value={empId} onChange={(e) => setEmpId(e.target.value)} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
+        <select value={empId} onChange={(e) => { setEmpId(e.target.value); setAdjustOpen(!!e.target.value); }} className="rounded-lg border border-line bg-bg/40 px-3 py-2 text-sm">
           <option value="">— funcionário —</option>
           {emps.filter((e) => e.active).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
         </select>
         <label className="text-sm">De <input type="date" value={range.from} onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" /></label>
         <label className="text-sm">Até <input type="date" value={range.to} onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))} className="rounded-lg border border-line bg-bg/40 px-2 py-2 text-sm" /></label>
-        {/* O RH abre a grade SOZINHO ao escolher o funcionário. Aqui é botão:
-            abrir em tela cheia automaticamente esconderia o espelho do Vision —
-            com o CSV, a impressão e o espelho assinado — e não haveria como
-            voltar a ele sem fechar a grade. Os dois caminhos ficam disponíveis. */}
+        {/* Escolher o funcionário JÁ abre a grade, como no RH: é o que o gestor
+            quer fazer em 9 de 10 vezes que entra aqui. O "Fechar" da grade cai
+            no espelho, que continua com CSV, impressão e espelho assinado — e
+            o botão abaixo reabre a grade sem trocar de funcionário. */}
         {empId && <button onClick={() => setAdjustOpen(true)} className="ml-auto rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white hover:opacity-90">Ajustar ponto (tela cheia)</button>}
         {data && <button onClick={() => csvEspelho(data, range)} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">CSV</button>}
         {data && <button onClick={() => printEspelho(data, range)} className="rounded-lg border border-line px-3 py-2 text-sm hover:border-brand">Imprimir / PDF</button>}

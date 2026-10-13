@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { toCents, toNum, normalizaLink, validar, erroAmigavel } from "../../../lib/produtoForm";
 import { useListaServidor } from "../../../lib/useListaServidor";
 import { CarregarMais } from "../../../components/CarregarMais";
 import { usePaginacao, Paginacao, PorPagina, useIrParaONovo } from "../../../components/Paginacao";
@@ -60,13 +61,6 @@ function brl(cents: number | null): string {
   if (cents == null) return "—";
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
-function toCents(v: FormDataEntryValue | null): number | null {
-  const s = String(v ?? "").trim().replace(",", ".");
-  if (!s) return null;
-  const n = Number(s);
-  return isNaN(n) ? null : Math.round(n * 100);
-}
-
 export function ProductsClient({ initialProducts, total: totalServidor = 0, labs = [], stores = [], niche = null }: { initialProducts: Product[]; total?: number; labs?: LabOpt[]; stores?: Array<{ id: string; name: string }>; niche?: string | null }) {
   const isOtica = niche === "otica";
   const router = useRouter();
@@ -127,7 +121,7 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
       // assim as dicas da IA já reagem ao custo que está sendo digitado
       costCents: toCents(fd.get("cost")) ?? (editing as any)?.costCents ?? null,
       stockQty: editing?.stockQty ?? Number(fd.get("stock") ?? 0),
-      minStockQty: Number(fd.get("minStock") ?? 0),
+      minStockQty: toNum(fd.get("minStock")) ?? 0,
       trackStock: fd.get("trackStock") === "on",
       ncm: String(fd.get("ncm") ?? ""),
     };
@@ -201,19 +195,19 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
       name: String(fd.get("name") ?? "").trim(),
       sku: String(fd.get("sku") ?? "").trim() || null,
       category: String(fd.get("category") ?? "").trim() || null,
-      imageUrl: String(fd.get("imageUrlLink") ?? "").trim() || imageUrl || null,
+      imageUrl: normalizaLink(fd.get("imageUrlLink")) || imageUrl || null,
       priceCashCents: toCents(fd.get("priceCash")),
       costCents: toCents(fd.get("cost")),
       priceCardFullCents: toCents(fd.get("priceCardFull")),
       priceCardInstallmentsCents: toCents(fd.get("priceCardInst")),
       priceCreditCents: toCents(fd.get("priceCredit")),
-      creditInterestPct: fd.get("creditInterest") ? Number(fd.get("creditInterest")) : null,
-      earlyPaymentDiscountPct: fd.get("earlyDiscount") ? Number(fd.get("earlyDiscount")) : null,
-      maxInstallments: fd.get("maxInst") ? Number(fd.get("maxInst")) : null,
+      creditInterestPct: toNum(fd.get("creditInterest")),
+      earlyPaymentDiscountPct: toNum(fd.get("earlyDiscount")),
+      maxInstallments: toNum(fd.get("maxInst")),
       // estoque por loja: só envia stockQty na CRIAÇÃO (vira o estoque inicial).
       // Na edição o total é calculado pela soma das lojas (read-only no form).
-      ...(editing ? {} : { stockQty: Number(fd.get("stock") ?? 0) }),
-      minStockQty: Number(fd.get("minStock") ?? 0),
+      ...(editing ? {} : { stockQty: toNum(fd.get("stock")) ?? 0 }),
+      minStockQty: toNum(fd.get("minStock")) ?? 0,
       trackStock: fd.get("trackStock") === "on",
       isActive: fd.get("isActive") === "on",
       showInCatalog: fd.get("showInCatalog") === "on",
@@ -226,6 +220,11 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
       cst: String(fd.get("cst") ?? "").replace(/\D/g, "") || null,
       csosn: String(fd.get("csosn") ?? "").replace(/\D/g, "") || null,
     };
+    // O 400 da API vinha em inglês e com o nome interno do campo. Conferir aqui
+    // devolve o nome da CAIXA e em português, antes de gastar uma ida ao servidor.
+    const problema = validar(payload);
+    if (problema) { setError(problema); return; }
+
     const url = editing ? `/api/products/${editing.id}` : "/api/products";
     const res = await fetch(url, {
       method: editing ? "PATCH" : "POST",
@@ -235,7 +234,7 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
     });
     const data = await res.json();
     if (!res.ok) {
-      setError(data?.error?.message ?? "Falha ao salvar");
+      setError(data?.error?.message ? erroAmigavel(String(data.error.message)) : "Falha ao salvar");
       return;
     }
     setCreating(false);
@@ -295,12 +294,12 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
               dentro, senão esconder viraria perder.
               ================================================================== */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field name="name" label="Nome" required defaultValue={editing?.name} />
-            <Field name="category" label="Categoria" help={isOtica ? 'use "lentes" pra vincular laboratório' : undefined} defaultValue={editing?.category ?? ""} />
-            <Field name="priceCash" label="Preço à vista (R$)" help="sem ele o PDV não vende" defaultValue={editing?.priceCashCents != null ? String(editing.priceCashCents / 100) : ""} />
+            <Field name="name" label="Nome" required maxLength={200} defaultValue={editing?.name} />
+            <Field name="category" label="Categoria" maxLength={80} help={isOtica ? 'use "lentes" pra vincular laboratório' : undefined} defaultValue={editing?.category ?? ""} />
+            <Field name="priceCash" label="Preço à vista (R$)" help="sem ele o PDV não vende" inputMode="decimal" placeholder="1299,90" defaultValue={editing?.priceCashCents != null ? String(editing.priceCashCents / 100) : ""} />
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field name="cost" label="Custo (R$)" help="pra saber a margem" defaultValue={editing?.costCents != null ? String(editing.costCents / 100) : ""} />
+            <Field name="cost" label="Custo (R$)" help="pra saber a margem" inputMode="decimal" placeholder="800,00" defaultValue={editing?.costCents != null ? String(editing.costCents / 100) : ""} />
             {editing ? (
               <label className="block">
                 <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Estoque atual (total)</span>
@@ -308,26 +307,26 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
                 <p className="mt-1 text-[10px] text-muted">Total das lojas. Para alterar, use <b>Entrada</b> ou <b>Mov.</b> (por loja).</p>
               </label>
             ) : (
-              <Field name="stock" label="Estoque inicial" help="entra na loja principal" defaultValue="0" />
+              <Field name="stock" label="Estoque inicial" help="entra na loja principal" inputMode="numeric" defaultValue="0" />
             )}
           </div>
 
           <Bloco titulo="Outros preços e crediário" aberto={temPrecoExtra} resumo="cartão, parcelado, juros, máx. parcelas">
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field name="priceCardFull" label="Cartão à vista" defaultValue={editing?.priceCardFullCents != null ? String(editing.priceCardFullCents / 100) : ""} />
-              <Field name="priceCardInst" label="Cartão parcelado" defaultValue={editing?.priceCardInstallmentsCents != null ? String(editing.priceCardInstallmentsCents / 100) : ""} />
-              <Field name="priceCredit" label="Crediário" help="vazio = calcula com juros" defaultValue={editing?.priceCreditCents != null ? String(editing.priceCreditCents / 100) : ""} />
-              <Field name="creditInterest" label="Juros crediário %" help="se preço crediário vazio" defaultValue={editing?.creditInterestPct != null ? String(editing.creditInterestPct) : ""} />
-              <Field name="earlyDiscount" label="Desc. antecipação %" defaultValue={editing?.earlyPaymentDiscountPct != null ? String(editing.earlyPaymentDiscountPct) : ""} />
-              <Field name="maxInst" label="Máx parcelas" defaultValue={editing?.maxInstallments != null ? String(editing.maxInstallments) : ""} />
+              <Field name="priceCardFull" label="Cartão à vista" inputMode="decimal" defaultValue={editing?.priceCardFullCents != null ? String(editing.priceCardFullCents / 100) : ""} />
+              <Field name="priceCardInst" label="Cartão parcelado" inputMode="decimal" defaultValue={editing?.priceCardInstallmentsCents != null ? String(editing.priceCardInstallmentsCents / 100) : ""} />
+              <Field name="priceCredit" label="Crediário" help="vazio = calcula com juros" inputMode="decimal" defaultValue={editing?.priceCreditCents != null ? String(editing.priceCreditCents / 100) : ""} />
+              <Field name="creditInterest" label="Juros crediário %" help="se preço crediário vazio (0 a 1000)" inputMode="decimal" defaultValue={editing?.creditInterestPct != null ? String(editing.creditInterestPct) : ""} />
+              <Field name="earlyDiscount" label="Desc. antecipação %" help="0 a 100" inputMode="decimal" defaultValue={editing?.earlyPaymentDiscountPct != null ? String(editing.earlyPaymentDiscountPct) : ""} />
+              <Field name="maxInst" label="Máx parcelas" help="1 a 120" inputMode="numeric" defaultValue={editing?.maxInstallments != null ? String(editing.maxInstallments) : ""} />
             </div>
             <p className="mt-2 text-[11px] text-muted">Vazio = o PDV usa o preço à vista nessa forma de pagamento.</p>
           </Bloco>
 
           <Bloco titulo="Identificação e estoque mínimo" aberto={temIdent} resumo="SKU, estoque mínimo">
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field name="sku" label="SKU" help={editing ? undefined : "vazio = gerado automaticamente"} defaultValue={editing?.sku ?? ""} />
-              <Field name="minStock" label="Estoque mínimo" help="alerta quando o total ficar igual/abaixo" defaultValue={String((editing as any)?.minStockQty ?? 0)} />
+              <Field name="sku" label="SKU" maxLength={60} help={editing ? undefined : "vazio = gerado automaticamente"} defaultValue={editing?.sku ?? ""} />
+              <Field name="minStock" label="Estoque mínimo" help="alerta quando o total ficar igual/abaixo" inputMode="numeric" defaultValue={String((editing as any)?.minStockQty ?? 0)} />
             </div>
           </Bloco>
 
@@ -351,6 +350,7 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
                 )}
                 <input
                   name="imageUrlLink"
+                  inputMode="url"
                   placeholder="ou cole um link https://..."
                   defaultValue={editing?.imageUrl && !editing.imageUrl.includes("/storage/") ? editing.imageUrl : ""}
                   className="input-base py-1.5 text-xs"
@@ -410,7 +410,7 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
                 )}
                 {ncmDesc && <p className="mt-1 text-[10px] text-green-300">✓ {ncmDesc}</p>}
               </div>
-              <Field name="cfop" label="CFOP" help="ex.: 5102" defaultValue={editing?.cfop ?? ""} />
+              <Field name="cfop" label="CFOP" help="ex.: 5102" maxLength={10} inputMode="numeric" defaultValue={editing?.cfop ?? ""} />
               <label className="block">
                 <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">CEST <span className="normal-case text-[10px] text-muted">(sugerido)</span></span>
                 <input name="cest" value={cestVal} onChange={(e) => setCestVal(e.target.value)} placeholder="opcional (ST)" className="input-base" />
@@ -431,9 +431,9 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
                   <option value="8">8 — Nacional &gt;70% import.</option>
                 </select>
               </label>
-              <Field name="unidade" label="Unidade" help="ex.: UN, PC, KG" defaultValue={editing?.unidade ?? "UN"} />
-              <Field name="csosn" label="CSOSN (Simples)" help="ex.: 102, 500" defaultValue={editing?.csosn ?? ""} />
-              <Field name="cst" label="CST (Normal)" help="ex.: 00, 60" defaultValue={editing?.cst ?? ""} />
+              <Field name="unidade" label="Unidade" help="ex.: UN, PC, KG" maxLength={10} defaultValue={editing?.unidade ?? "UN"} />
+              <Field name="csosn" label="CSOSN (Simples)" help="ex.: 102, 500" maxLength={5} inputMode="numeric" defaultValue={editing?.csosn ?? ""} />
+              <Field name="cst" label="CST (Normal)" help="ex.: 00, 60" maxLength={5} inputMode="numeric" defaultValue={editing?.cst ?? ""} />
             </div>
           </Bloco>
 
@@ -859,13 +859,30 @@ function ImportEstoque({ onClose, onDone }: { onClose: () => void; onDone: () =>
   );
 }
 
-function Field({ name, label, required, help, defaultValue }: { name: string; label: string; required?: boolean; help?: string; defaultValue?: string }) {
+/**
+ * `maxLength` e `inputMode`, que este campo nunca teve.
+ *
+ * Era um `<input>` de texto puro pra TUDO: dava pra digitar 61 caracteres num
+ * SKU que a API corta em 60, e o celular abria teclado de letras pra digitar
+ * preço. Não uso `type="number"` de propósito: em `type=number` o Chrome
+ * DESCARTA a vírgula, então "1299,90" chegaria vazio — trocaria o 400 por um
+ * produto salvo sem preço, que é pior. Vírgula é o separador de quem digita
+ * aqui; quem lê é o `numeroBr` acima.
+ */
+function Field({ name, label, required, help, defaultValue, maxLength, inputMode, placeholder }: {
+  name: string; label: string; required?: boolean; help?: string; defaultValue?: string;
+  maxLength?: number; inputMode?: "decimal" | "numeric" | "text"; placeholder?: string;
+}) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">
         {label}{required && <span className="text-brand"> *</span>}
       </span>
-      <input name={name} required={required} defaultValue={defaultValue} autoComplete="off" className="input-base" />
+      <input
+        name={name} required={required} defaultValue={defaultValue} autoComplete="off"
+        maxLength={maxLength} inputMode={inputMode} placeholder={placeholder}
+        className="input-base"
+      />
       {help && <p className="mt-1 text-[10px] text-muted">{help}</p>}
     </label>
   );

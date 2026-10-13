@@ -262,19 +262,49 @@ pct exec "$CT" -- bash -c "$COMPOSE up -d"
 log "estado dos containers"
 pct exec "$CT" -- docker ps --filter name=nv- --format '    {{.Names}}\t{{.Status}}'
 
+# ESPERA PELOS DOIS NOMES, não por uma CONTAGEM de prefixo.
+#
+# Era `--filter name=nv- --filter health=healthy -q | wc -l` e `-ge 2`: conta
+# quantos containers com prefixo `nv-` estão saudáveis. O CT roda mais coisa
+# que `nv-api` e `nv-web` — bastam dois `nv-*` quaisquer saudáveis pro deploy
+# declarar sucesso COM A API CAÍDA. E foi exatamente esse o modo de falha da
+# última vez: `nv-api` em laço de reinício por FST_ERR_DUPLICATED_ROUTE,
+# enquanto o deploy terminava dizendo que estava tudo bem.
+#
+# Agora cada container é conferido pelo SEU nome, e o que estiver de fora
+# aparece com o estado em que ficou.
 log "esperando ficarem saudáveis"
+SERVICOS=(nv-api nv-web)
+
+# `docker inspect` do health: devolve o estado, ou `sem-healthcheck` quando o
+# container existe e não declara um, ou `ausente` quando não existe. Os três
+# casos são diferentes e precisam aparecer diferentes — "ausente" lido como
+# "sem-healthcheck" era metade do furo antigo.
+estado_de() {
+  pct exec "$CT" -- docker inspect \
+    --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}sem-healthcheck{{end}}' \
+    "$1" 2>/dev/null || printf 'ausente'
+}
+
 saudavel=0
 for _ in $(seq 1 30); do
-  n=$(pct exec "$CT" -- docker ps --filter name=nv- --filter health=healthy -q 2>/dev/null | wc -l)
-  [[ "$n" -ge 2 ]] && { saudavel=1; break; }
+  faltam=()
+  for svc in "${SERVICOS[@]}"; do
+    e=$(estado_de "$svc")
+    # `sem-healthcheck` passa: o container está de pé e não tem o que esperar.
+    [[ "$e" == "healthy" || "$e" == "sem-healthcheck" ]] || faltam+=("$svc:$e")
+  done
+  [[ ${#faltam[@]} -eq 0 ]] && { saudavel=1; break; }
   sleep 5
 done
+
 if [[ "$saudavel" == "1" ]]; then
-  ok "nv-api e nv-web saudáveis"
+  ok "${SERVICOS[*]} saudáveis"
 else
-  aviso "não ficaram saudáveis em 150s. Veja:"
-  aviso "  pct exec $CT -- docker logs --tail 80 nv-api"
-  aviso "  pct exec $CT -- docker logs --tail 80 nv-web"
+  aviso "não ficaram saudáveis em 150s: ${faltam[*]}"
+  for svc in "${faltam[@]}"; do
+    aviso "  pct exec $CT -- docker logs --tail 80 ${svc%%:*}"
+  done
 fi
 
 log "subiu: $COMMIT"

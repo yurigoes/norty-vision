@@ -30,7 +30,18 @@ echo "==> Verificando swap (anti-OOM no build)"
 bash "$SCRIPT_DIR/ensure-swap.sh" 4 || echo "   (não consegui ajustar swap — seguindo)"
 
 echo "==> Rodando deploy (build + migrations + up)"
-bash "$SCRIPT_DIR/deploy-prod.sh"
+# --no-pull NÃO é otimização: é o que impede o deploy de subir OUTRA branch.
+#
+# O `deploy-prod.sh`, no passo 1, faz `git pull --ff-only origin main` — com
+# `main` CRAVADO. Chamado sem argumento, ele roda esse pull por cima da branch
+# que o checkout acima acabou de deixar no diretório. Enquanto `main` for
+# ancestral da branch, o pull é um "Already up to date" inofensivo; no dia em
+# que `main` andar à frente, ele faz fast-forward da branch pra `main` e sobe
+# o código da `main` — enquanto esta tela diz, acima, que subiu a branch.
+#
+# O git já foi feito aqui (fetch + checkout + pull da branch PEDIDA). Fazer de
+# novo lá dentro, de outra branch, só pode dar errado.
+bash "$SCRIPT_DIR/deploy-prod.sh" --no-pull
 
 echo "==> Pronto. Estado dos containers:"
 docker ps --format 'table {{.Names}}\t{{.Status}}' | grep -i yugo || true

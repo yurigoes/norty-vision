@@ -122,14 +122,22 @@ if (!/x-nv-path/.test(mw)) falhas.push("middleware.ts parou de publicar `x-nv-pa
 const SO_ADMIN = new Set([
   // Configuração e dinheiro da própria empresa — permissão não deve abrir.
   "billing", "empresa-contrato", "pagamentos", "suporte-sistema",
-  // Dívida conhecida: estas MERECEM `perm` no nav.ts e hoje são admin-only,
-  // então nenhuma permissão do catálogo as alcança. Tirar daqui = ganhou
-  // `perm`. Acrescentar = alguém fechou mais uma tela para o catálogo.
-  "agenda", "clientes", "cobranca", "comissoes", "crediario", "fornecedores",
-  "mala-direta", "modelos", "pedidos-lente", "produtos", "prospector",
-  "relatorios", "repasses", "vendas-historico",
-  // RH e ponto: o catálogo não tem NENHUMA chave para esta área, então não há
-  // o que pendurar. Precisa de chaves novas antes de deixar de ser admin-only.
+
+  // Importação de vendas antigas: não há chave no catálogo que caiba
+  // (`products.import` é de produto). Fica admin-only até existir uma.
+  "vendas-historico",
+
+  // Comissões: o catálogo só tem `reports.commission`, que é RELATÓRIO. A ação
+  // principal da tela é PAGAR comissão — dinheiro saindo. Abrir a tela com uma
+  // chave de leitura deixaria os botões de pagar dando 403, que é o defeito que
+  // acabamos de consertar em outro lugar. Precisa de uma chave própria
+  // (`commissions.pay`) antes de sair daqui.
+  "comissoes",
+
+  // RH e ponto: o catálogo não tem NENHUMA chave para esta área — foram 111
+  // rotas de ponto portadas e nenhuma pode ser concedida a ninguém. Precisa de
+  // chaves novas (ponto.view, ponto.adjust, ponto.close, rh.manage…) antes de
+  // deixar de ser admin-only.
   "rh", "alocacoes", "assiduidade",
 ]);
 
@@ -146,8 +154,14 @@ for (const nome of readdirSync(appDir)) {
   const pagina = join(appDir, nome, "page.tsx");
   let src: string;
   try { src = readFileSync(pagina, "utf8"); } catch { continue; }
-  // o gate à mão: `!session.user?.isOrgAdmin` barrando a renderização
-  const barraAMao = /!session\.user\?\.isOrgAdmin/.test(src);
+  // O GATE à mão, não qualquer menção a isOrgAdmin. A diferença importa:
+  // `const isAdmin = !!session.master || !!session.user?.isOrgAdmin` é uma
+  // CAPACIDADE passada pro cliente (a agenda usa pra decidir o que o botão faz),
+  // e não barra nada. O que barra é a condição que impede a renderização —
+  // `if (!session.user?.isOrgAdmin && !session.master)`. Procurar a menção em
+  // vez da forma acusava a agenda sem motivo, e conferência que grita errado
+  // ensina a ignorar conferência.
+  const barraAMao = /if \(\s*!session\.user\?\.isOrgAdmin\s*&&\s*!session\.master\s*\)/.test(src);
   if (!barraAMao) continue;
   const perm = telasComPerm.get(nome);
   if (perm) {

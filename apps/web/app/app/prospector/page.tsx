@@ -9,9 +9,8 @@ export const dynamic = "force-dynamic";
 export default async function ProspectorPage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
-  if (!session.user?.isOrgAdmin && !session.master) {
-    return <div className="max-w-3xl"><p className="card text-muted">Apenas administradores configuram a prospecção.</p></div>;
-  }
+  // O porteiro desta tela é o `perm` dela no nav.ts (lib/acesso.ts, no layout
+  // de /app). Não repetir a conta aqui: a trava da página roda depois e vence.
   return (
     <div className="max-w-5xl">
       <PageHeader

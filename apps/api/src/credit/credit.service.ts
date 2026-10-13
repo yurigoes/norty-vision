@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import type { PrismaClient } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { ctxCan } from "../auth/decorators";
 import { StorageService } from "../storage/storage.service";
 import type { RequestContext } from "../auth/session.middleware";
 import { paginar } from "../common/pagina";
@@ -29,6 +30,22 @@ export class CreditService {
       : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
   }
 
+  /**
+   * Porteiro das operações de crediário.
+   *
+   * `credit.approve` ("Aprovar limite/parcelamento") cobre criar conta, mexer
+   * em limite, bloquear, congelar e revisar pedido — é o trabalho do gerente de
+   * crediário, e `ctxCan` já devolve true pra admin, então ninguém perde acesso.
+   *
+   * A CONFIGURAÇÃO da empresa (`updateConfig`, que define entre outras coisas o
+   * teto de desconto do operador) segue exigindo admin de propósito: quem
+   * aprova um limite não decide a política da casa.
+   */
+  private requireCredito(ctx: RequestContext, chave: "credit.approve" | "credit.view" = "credit.approve") {
+    if (!ctxCan(ctx, chave)) {
+      throw new AppError(ErrorCode.Forbidden, `Sem permissão para esta ação do crediário (${chave})`, 403);
+    }
+  }
   private requireAdmin(ctx: RequestContext) {
     if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) {
       throw new AppError(ErrorCode.Forbidden, "Apenas admin/gerente", 403);
@@ -113,7 +130,7 @@ export class CreditService {
   }
 
   async createAccount(ctx: RequestContext, input: CreateAccountInput) {
-    this.requireAdmin(ctx);
+    this.requireCredito(ctx, "credit.approve");
     const doc = input.document.replace(/\D/g, "");
     return this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       const exists = await tx.creditAccount.findFirst({
@@ -164,7 +181,7 @@ export class CreditService {
 
   /** Define o limite diretamente (admin/master). */
   async setLimit(ctx: RequestContext, id: string, newLimitCents: number) {
-    this.requireAdmin(ctx);
+    this.requireCredito(ctx, "credit.approve");
     return this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       const acc = await tx.creditAccount.findFirst({ where: { id } });
       if (!acc) throw new AppError(ErrorCode.NotFound, "Conta nao encontrada", 404);
@@ -186,7 +203,7 @@ export class CreditService {
   }
 
   async block(ctx: RequestContext, id: string, reason: string) {
-    this.requireAdmin(ctx);
+    this.requireCredito(ctx, "credit.approve");
     return this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       const acc = await tx.creditAccount.findFirst({ where: { id } });
       if (!acc) throw new AppError(ErrorCode.NotFound, "Conta nao encontrada", 404);
@@ -205,7 +222,7 @@ export class CreditService {
   }
 
   async unblock(ctx: RequestContext, id: string) {
-    this.requireAdmin(ctx);
+    this.requireCredito(ctx, "credit.approve");
     return this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       const acc = await tx.creditAccount.findFirst({ where: { id } });
       if (!acc) throw new AppError(ErrorCode.NotFound, "Conta nao encontrada", 404);
@@ -219,7 +236,7 @@ export class CreditService {
   }
 
   async freeze(ctx: RequestContext, id: string, until: string) {
-    this.requireAdmin(ctx);
+    this.requireCredito(ctx, "credit.approve");
     return this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       const acc = await tx.creditAccount.findFirst({ where: { id } });
       if (!acc) throw new AppError(ErrorCode.NotFound, "Conta nao encontrada", 404);
@@ -280,7 +297,7 @@ export class CreditService {
     decision: "approved" | "rejected",
     opts?: { via?: "panel" | "token"; authorizerName?: string; note?: string },
   ) {
-    this.requireAdmin(ctx);
+    this.requireCredito(ctx, "credit.approve");
     return this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       const req = await tx.creditLimitRequest.findFirst({ where: { id: requestId } });
       if (!req) throw new AppError(ErrorCode.NotFound, "Pedido nao encontrado", 404);
@@ -371,7 +388,7 @@ export class CreditService {
     decision: "approved" | "rejected" | "more_info",
     opts?: { approvedLimitCents?: number; note?: string },
   ) {
-    this.requireAdmin(ctx);
+    this.requireCredito(ctx, "credit.approve");
     return this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       const app = await tx.creditApplication.findFirst({ where: { id: applicationId } });
       if (!app) throw new AppError(ErrorCode.NotFound, "Aplicacao nao encontrada", 404);

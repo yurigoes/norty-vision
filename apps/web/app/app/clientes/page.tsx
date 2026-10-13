@@ -10,15 +10,10 @@ export const dynamic = "force-dynamic";
 export default async function ClientesPage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
-  if (!session.user?.isOrgAdmin && !session.master) {
-    return (
-      <div className="max-w-3xl">
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-muted">
-          Apenas administradores podem gerenciar clientes.
-        </p>
-      </div>
-    );
-  }
+  // O porteiro desta tela é o `perm` dela no nav.ts (lib/acesso.ts, no layout
+  // de /app). Não repetir a conta aqui: a trava da página roda depois e vence,
+  // e foi assim que conceder a permissão passou a mostrar o item no menu sem
+  // abrir a tela.
 
   // primeiro pedaço pequeno: o resto vem no "carregar mais", e o `total` diz
   // quantos existem de verdade (antes a tela mostrava 300 e chamava de tudo)

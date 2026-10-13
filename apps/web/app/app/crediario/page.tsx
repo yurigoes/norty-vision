@@ -31,15 +31,8 @@ interface LimitRequest {
 export default async function CrediarioPage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
-  if (!session.user?.isOrgAdmin && !session.master) {
-    return (
-      <div className="max-w-3xl">
-        <p className="rounded-2xl border border-line bg-surface p-6 text-muted">
-          Apenas administradores/gerentes podem gerenciar crediário.
-        </p>
-      </div>
-    );
-  }
+  // O porteiro desta tela é o `perm` dela no nav.ts (lib/acesso.ts, no layout
+  // de /app). Não repetir a conta aqui: a trava da página roda depois e vence.
 
   const [accRes, reqRes, appRes] = await Promise.all([
     // primeiro pedaço pequeno: o resto vem no "carregar mais"

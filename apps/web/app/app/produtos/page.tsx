@@ -29,15 +29,10 @@ interface Product {
 export default async function ProdutosPage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
-  if (!session.user?.isOrgAdmin && !session.master) {
-    return (
-      <div className="max-w-3xl">
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-muted">
-          Apenas administradores podem gerenciar produtos.
-        </p>
-      </div>
-    );
-  }
+  // O porteiro desta tela é o `perm` dela no nav.ts (lib/acesso.ts, no layout
+  // de /app). Não repetir a conta aqui: a trava da página roda depois e vence,
+  // e foi assim que conceder a permissão passou a mostrar o item no menu sem
+  // abrir a tela.
 
   const [{ data }, supRes, storesRes, org] = await Promise.all([
     // primeiro pedaço pequeno: o resto vem no "carregar mais"

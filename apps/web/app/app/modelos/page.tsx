@@ -10,16 +10,8 @@ export const dynamic = "force-dynamic";
 export default async function ModelosPage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
-  if (!session.user?.isOrgAdmin && !session.master) {
-    return (
-      <div className="max-w-3xl">
-        <p className="rounded-2xl border border-line bg-surface p-6 text-muted">
-          Apenas administradores ou owners da organização podem gerenciar
-          modelos de mensagem.
-        </p>
-      </div>
-    );
-  }
+  // O porteiro desta tela é o `perm` dela no nav.ts (lib/acesso.ts, no layout
+  // de /app). Não repetir a conta aqui: a trava da página roda depois e vence.
 
   const [tplRes, smtpRes] = await Promise.all([
     apiFetch<{ items: any[] }>("/api/messaging/templates"),

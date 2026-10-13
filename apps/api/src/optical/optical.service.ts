@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { ctxCan } from "../auth/decorators";
 import { applyStoreStockDelta } from "../products/products.service";
 import { NotificationService } from "../notifications/notification.service";
 import { SurveysService } from "../surveys/surveys.service";
@@ -116,8 +117,16 @@ export class OpticalService {
    * Vendas pagas de um cliente, com os itens já categorizados em óculos × lente,
    * pra o pedido de lente auto-preencher (puxa o ID da compra).
    */
+  // AS GUARDAS DESTE SERVIÇO usam `ctxCan`, não `isOrgAdmin`.
+  //
+  // O controller já exige `lens.orders` / `lens.batches` via
+  // @RequirePermission. Aqui havia um SEGUNDO porteiro, exigindo admin — e ele
+  // vencia. Conceder "Pedidos de lente" a alguém passava no controller e
+  // estourava no serviço: a ação dava 403 sem motivo visível na tela.
+  // `ctxCan` já devolve true pra admin e platform admin, então a troca não
+  // tira acesso de ninguém.
   async eligibleSales(ctx: RequestContext, customerId: string) {
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "lens.orders")) throw new AppError(ErrorCode.Forbidden, "Sem permissão para pedidos de lente (lens.orders)", 403);
     const sales = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.sale.findMany({
         where: { customerId, OR: [{ status: { in: ["completed", "paid"] } }, { creditPurchaseId: { not: null } }] },
@@ -153,8 +162,8 @@ export class OpticalService {
   }
 
   async createOrder(ctx: RequestContext, input: CreateOrderInput) {
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "lens.orders")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para pedidos de lente (lens.orders)", 403);
     }
     const orgId = this.requireOrg(ctx);
     const storeId = await this.resolveStoreId(ctx, input.storeId);
@@ -268,7 +277,7 @@ export class OpticalService {
   }
 
   async updateOrder(ctx: RequestContext, id: string, input: Partial<CreateOrderInput>) {
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "lens.orders")) throw new AppError(ErrorCode.Forbidden, "Sem permissão para pedidos de lente (lens.orders)", 403);
     await this.getOrder(ctx, id);
     const data: Record<string, unknown> = {};
     if (input.customerId !== undefined) data.customerId = input.customerId;
@@ -293,7 +302,7 @@ export class OpticalService {
    * email com link). A NF fica disponível no portal do cliente.
    */
   async attachInvoice(ctx: RequestContext, id: string, input: { nfNumber?: string | null; nfUrl: string }) {
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "lens.orders")) throw new AppError(ErrorCode.Forbidden, "Sem permissão para pedidos de lente (lens.orders)", 403);
     const orgId = this.requireOrg(ctx);
     const order = await this.getOrder(ctx, id);
 
@@ -331,7 +340,7 @@ export class OpticalService {
 
   /** Marca um pedido como chegou (sem passar por lote). */
   async markArrived(ctx: RequestContext, id: string) {
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "lens.orders")) throw new AppError(ErrorCode.Forbidden, "Sem permissão para pedidos de lente (lens.orders)", 403);
     await this.getOrder(ctx, id);
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.lensOrder.update({ where: { id }, data: { status: "chegou", arrivedAt: new Date(), late: false } }),
@@ -340,7 +349,7 @@ export class OpticalService {
 
   /** Avisa o cliente (WhatsApp/email) que a lente chegou -> status avisado. */
   async notifyArrival(ctx: RequestContext, id: string) {
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "lens.orders")) throw new AppError(ErrorCode.Forbidden, "Sem permissão para pedidos de lente (lens.orders)", 403);
     const orgId = this.requireOrg(ctx);
     const order = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.lensOrder.findFirst({ where: { id } }),
@@ -373,7 +382,7 @@ export class OpticalService {
   }
 
   async deliver(ctx: RequestContext, id: string) {
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "lens.orders")) throw new AppError(ErrorCode.Forbidden, "Sem permissão para pedidos de lente (lens.orders)", 403);
     const order = await this.getOrder(ctx, id);
     const updated = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.lensOrder.update({ where: { id }, data: { status: "entregue", deliveredAt: new Date() } }),
@@ -422,7 +431,7 @@ export class OpticalService {
     ctx: RequestContext,
     input: { labSupplierId?: string | null; orderIds: string[]; courierUserId?: string | null; notes?: string | null },
   ) {
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "lens.batches")) throw new AppError(ErrorCode.Forbidden, "Sem permissão para lotes do laboratório (lens.batches)", 403);
     const orgId = this.requireOrg(ctx);
     if (!input.orderIds?.length) throw new AppError(ErrorCode.ValidationFailed, "Selecione ao menos um pedido", 400);
 
@@ -470,7 +479,7 @@ export class OpticalService {
     batchId: string,
     input: { arrived: string[]; late?: Array<{ orderId: string; expectedAt?: string | null }> },
   ) {
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "lens.batches")) throw new AppError(ErrorCode.Forbidden, "Sem permissão para lotes do laboratório (lens.batches)", 403);
     return this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       const batch = await tx.labBatch.findFirst({ where: { id: batchId } });
       if (!batch) throw new AppError(ErrorCode.NotFound, "Lote nao encontrado", 404);

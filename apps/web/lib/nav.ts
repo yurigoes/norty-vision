@@ -18,7 +18,7 @@ export type NavItem = { key?: string; href: string; label: string; perm?: string
 export const NAV_OPERACAO: NavItem[] = [
   { key: "bi", href: "/app/painel/otica", label: "Painel (BI)", perm: "reports.bi_panel" },
   { key: "insights", href: "/app/insights", label: "Insights (IA)" },
-  { key: "agenda", href: "/app/agenda", label: "Agenda" },
+  { key: "agenda", href: "/app/agenda", label: "Agenda", perm: "agenda.view" },
   { key: "leads", href: "/app/leads", label: "Leads" },
   // o Disparador existia como rota e como módulo de plano, mas não tinha item
   // no menu — só dava pra chegar por um atalho do painel ou digitando a URL.
@@ -31,7 +31,7 @@ export const NAV_OPERACAO: NavItem[] = [
   { key: "atendimento_admin", href: "/app/atendimento/macros", label: "Macros do atendimento", subMod: "atendimento.macros" },
   { key: "atendimento_admin", href: "/app/atendimento/webhooks", label: "Webhooks (n8n/Zapier)", subMod: "atendimento.webhooks" },
   { key: "crm", href: "/app/crm", label: "Central de Atendimento" },
-  { key: "crm", href: "/app/prospector", label: "Prospecção (leads)", subMod: "crm.prospector" },
+  { key: "crm", href: "/app/prospector", label: "Prospecção (leads)", subMod: "crm.prospector", perm: "leads.view" },
   { key: "voip", href: "/app/voip", label: "Telefone (ramal)" },
   { href: "/app/suporte-sistema", label: "Suporte ao sistema" },
 ];
@@ -67,26 +67,26 @@ export const NAV_MASTER_BOTTOM: NavItem[] = [
 export const NAV_ADMIN: Array<{ title: string; items: NavItem[] }> = [
   { title: "Comercial", items: [
     { key: "orcamentos", href: "/app/orcamentos", label: "Orçamentos" },
-    { key: "clientes", href: "/app/clientes", label: "Clientes" },
+    { key: "clientes", href: "/app/clientes", label: "Clientes", perm: "customers.view" },
     { key: "atendimento", href: "/app/atendimento", label: "Atendimento" },
     { key: "chamados", href: "/app/chamados", label: "Chamados" },
-    { key: "mala_direta", href: "/app/mala-direta", label: "Mala direta" },
-    { key: "produtos", href: "/app/produtos", label: "Produtos" },
+    { key: "mala_direta", href: "/app/mala-direta", label: "Mala direta", perm: "broadcast.view" },
+    { key: "produtos", href: "/app/produtos", label: "Produtos", perm: "products.view" },
     { key: "catalogo", href: "/app/catalogo", label: "Catálogo online" },
     { key: "comissoes", href: "/app/comissoes", label: "Comissões" },
     { key: "pesquisas", href: "/app/pesquisas", label: "Pesquisas (NPS)" },
   ] },
   { title: "Ótica", items: [
-    { key: "fornecedores", href: "/app/fornecedores", label: "Fornecedores" },
-    { key: "pedidos_lente", href: "/app/pedidos-lente", label: "Pedidos de lente" },
-    { key: "repasses", href: "/app/repasses", label: "Repasses" },
+    { key: "fornecedores", href: "/app/fornecedores", label: "Fornecedores", perm: "suppliers.manage" },
+    { key: "pedidos_lente", href: "/app/pedidos-lente", label: "Pedidos de lente", perm: "lens.orders" },
+    { key: "repasses", href: "/app/repasses", label: "Repasses", perm: "payouts.manage" },
   ] },
   { title: "Financeiro", items: [
-    { key: "crediario", href: "/app/crediario", label: "Crediário" },
+    { key: "crediario", href: "/app/crediario", label: "Crediário", perm: "credit.view" },
     { key: "pagamentos", href: "/app/pagamentos", label: "Pagamentos" },
     { key: "pagamentos", href: "/app/transacoes", label: "Transações" },
-    { key: "cobranca", href: "/app/cobranca", label: "Cobrança" },
-    { key: "relatorios", href: "/app/relatorios", label: "Relatórios" },
+    { key: "cobranca", href: "/app/cobranca", label: "Cobrança", perm: "credit.collect" },
+    { key: "relatorios", href: "/app/relatorios", label: "Relatórios", perm: "reports.sales" },
     { key: "vendas_historico", href: "/app/vendas-historico", label: "Vendas (histórico)" },
     { key: "financeiro", href: "/app/financeiro/contas-a-pagar", label: "Contas a pagar", subMod: "financeiro.contas_pagar" },
     { key: "financeiro", href: "/app/financeiro/contas-a-receber", label: "Contas a receber", subMod: "financeiro.contas_receber" },
@@ -94,7 +94,7 @@ export const NAV_ADMIN: Array<{ title: string; items: NavItem[] }> = [
   ] },
   { title: "Documentos", items: [
     { key: "contratos", href: "/app/contratos", label: "Contratos" },
-    { key: "modelos", href: "/app/modelos", label: "Mensagens" },
+    { key: "modelos", href: "/app/modelos", label: "Mensagens", perm: "templates.manage" },
     { href: "/app/empresa-contrato", label: "Contrato da plataforma" },
   ] },
   { title: "Pessoas", items: [

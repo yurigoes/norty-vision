@@ -160,28 +160,30 @@ if (quitadas.length) {
 // --- 7. tela aberta por permissão tem que LER os dados -------------------
 // O defeito: o porteiro do nav.ts abriu /app/usuarios pra quem tem
 // `users.manage`, e `users.service.list()` continuou exigindo `isOrgAdmin`. A
-// tela abria e o endpoint respondia 403 — lista vazia, sem explicação nenhuma.
-// Pior que a mensagem "Apenas administradores" que havia antes.
+// tela abria e o endpoint respondia 403 — lista vazia, sem explicação. Pior que
+// a mensagem "Apenas administradores" que havia antes.
 //
-// `ctxCan` é a régua certa nesses serviços: ele já devolve true pra platform
-// admin e pra owner/admin, então trocar não tira acesso de ninguém — só faz a
-// permissão do catálogo valer. O padrão cru `!isOrgAdmin` aqui volta a abrir a
-// tela sem os dados.
-for (const [arq, chave] of [
-  ["users/users.service.ts", "users.manage"],
-  ["stores/stores.service.ts", "stores.manage"],
-  ["voip/voip-admin.service.ts", "voip.admin"],
+// A regra conta CHAMADAS do porteiro, não a presença do texto da chave. A
+// primeira versão conferia `t.includes('"credit.approve"')` e passava verde com
+// as 7 chamadas revertidas pra `requireAdmin` — porque a chave continuava no
+// arquivo, na assinatura do helper. Conferência que não pega o defeito é pior
+// que conferência nenhuma: ocupa o lugar de uma que pegaria.
+//
+// Os mínimos são o que existe hoje. Caírem = guarda virou admin-only de novo.
+for (const [arq, padrao, minimo] of [
+  ["users/users.service.ts", 'ctxCan(ctx, "users.manage")', 12],
+  ["users/users.service.ts", 'ctxCan(ctx, "roles.manage")', 3],
+  ["stores/stores.service.ts", 'ctxCan(ctx, "stores.manage")', 3],
+  ["voip/voip-admin.service.ts", 'ctxCan(ctx, "voip.admin")', 1],
+  ["optical/optical.service.ts", 'ctxCan(ctx, "lens.', 9],
+  ["credit/credit.service.ts", "this.requireCredito(ctx", 7],
 ] as const) {
   const t = semComentario(readFileSync(join(src, arq), "utf8"));
+  const n = t.split(padrao).length - 1;
   exige(
-    new RegExp(`ctxCan\\(ctx, "${chave.replace(".", "\\.")}"\\)`).test(t),
-    `${arq} não usa mais \`ctxCan(ctx, "${chave}")\` — a tela abre pelo nav.ts e os ` +
-      "endpoints respondem 403: tela vazia sem explicação",
-  );
-  exige(
-    !/if \(!ctx\.isPlatformAdmin && !ctx\.isOrgAdmin\) \{/.test(t) && !/if \(!ctx\.isOrgAdmin\) \{/.test(t),
-    `${arq} voltou a barrar por \`isOrgAdmin\` cru em vez de \`ctxCan\` — permissão ` +
-      "concedida deixa de ler os dados",
+    n >= minimo,
+    `${arq}: só ${n} guarda(s) \`${padrao}\`, eram ${minimo}. Alguma voltou a exigir ` +
+      "`isOrgAdmin`, e a tela que a permissão abre responde 403 — vazia e sem explicação",
   );
 }
 

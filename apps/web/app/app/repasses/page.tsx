@@ -10,15 +10,8 @@ export const dynamic = "force-dynamic";
 export default async function RepassesPage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
-  if (!session.user?.isOrgAdmin && !session.master) {
-    return (
-      <div className="max-w-3xl">
-        <p className="card p-6 text-muted">
-          Apenas administradores podem ver os repasses.
-        </p>
-      </div>
-    );
-  }
+  // O porteiro desta tela é o `perm` dela no nav.ts (lib/acesso.ts, no layout
+  // de /app). Não repetir a conta aqui: a trava da página roda depois e vence.
 
   const [supRes, setRes, profitRes] = await Promise.all([
     apiFetch<{ items: any[] }>("/api/suppliers?activeOnly=true"),

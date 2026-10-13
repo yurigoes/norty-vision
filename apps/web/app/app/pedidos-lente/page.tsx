@@ -10,15 +10,10 @@ export const dynamic = "force-dynamic";
 export default async function PedidosLentePage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
-  if (!session.user?.isOrgAdmin && !session.master) {
-    return (
-      <div className="max-w-3xl">
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-muted">
-          Apenas administradores podem gerenciar pedidos de lente.
-        </p>
-      </div>
-    );
-  }
+  // O porteiro desta tela é o `perm` dela no nav.ts (lib/acesso.ts, no layout
+  // de /app). Não repetir a conta aqui: a trava da página roda depois e vence,
+  // e foi assim que conceder a permissão passou a mostrar o item no menu sem
+  // abrir a tela.
 
   // a tela não carrega mais cliente nenhum (eram 300 de 3.000, só pro seletor):
   // o seletor pergunta ao servidor conforme se digita

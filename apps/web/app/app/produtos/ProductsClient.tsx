@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useListaServidor } from "../../../lib/useListaServidor";
 import { CarregarMais } from "../../../components/CarregarMais";
 import { usePaginacao, Paginacao, PorPagina, useIrParaONovo } from "../../../components/Paginacao";
+import { useDialog } from "../../../components/SystemDialog";
 
 interface Product {
   id: string;
@@ -13,6 +14,7 @@ interface Product {
   category: string | null;
   imageUrl: string | null;
   priceCashCents: number | null;
+  costCents?: number | null;
   priceCardFullCents: number | null;
   priceCardInstallmentsCents: number | null;
   priceCreditCents: number | null;
@@ -35,6 +37,25 @@ interface Product {
 }
 interface LabOpt { id: string; name: string }
 
+/**
+ * Bloco recolhível do formulário. `<details>` nativo, de propósito: abre e
+ * fecha sem estado em React, sobrevive a re-render e o navegador já sabe
+ * anunciar pro leitor de tela. `aberto` só define o estado INICIAL — depois é
+ * do usuário.
+ */
+function Bloco({ titulo, resumo, aberto, children }: { titulo: string; resumo?: string; aberto?: boolean; children: React.ReactNode }) {
+  return (
+    <details open={aberto} className="group rounded-xl border border-line bg-surface-2">
+      <summary className="flex cursor-pointer list-none items-center gap-2 p-4 text-xs font-semibold uppercase tracking-wider text-muted transition hover:text-fg">
+        <span className="transition group-open:rotate-90">▸</span>
+        {titulo}
+        {resumo && <span className="ml-1 hidden normal-case tracking-normal text-[11px] font-normal text-muted/70 group-open:hidden sm:inline">· {resumo}</span>}
+      </summary>
+      <div className="border-t border-line/60 p-4">{children}</div>
+    </details>
+  );
+}
+
 function brl(cents: number | null): string {
   if (cents == null) return "—";
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -49,6 +70,7 @@ function toCents(v: FormDataEntryValue | null): number | null {
 export function ProductsClient({ initialProducts, total: totalServidor = 0, labs = [], stores = [], niche = null }: { initialProducts: Product[]; total?: number; labs?: LabOpt[]; stores?: Array<{ id: string; name: string }>; niche?: string | null }) {
   const isOtica = niche === "otica";
   const router = useRouter();
+  const dialog = useDialog();
   const [isPending, startTransition] = useTransition();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Product | null>(null);
@@ -101,7 +123,9 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
     const data = {
       priceCashCents: toCents(fd.get("priceCash")),
       priceCardInstallmentsCents: toCents(fd.get("priceCardInst")),
-      costCents: (editing as any)?.costCents ?? null,
+      // o custo agora vem do formulário (campo novo), não do produto salvo —
+      // assim as dicas da IA já reagem ao custo que está sendo digitado
+      costCents: toCents(fd.get("cost")) ?? (editing as any)?.costCents ?? null,
       stockQty: editing?.stockQty ?? Number(fd.get("stock") ?? 0),
       minStockQty: Number(fd.get("minStock") ?? 0),
       trackStock: fd.get("trackStock") === "on",
@@ -160,12 +184,26 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
     e.preventDefault();
     setError(null);
     const fd = new FormData(e.currentTarget);
+    // PRODUTO SEM PREÇO À VISTA NÃO É VENDÁVEL — e o PDV não avisava.
+    // `priceFor()` no PDV cai em `?? 0`, então o item entrava no carrinho a
+    // R$ 0,00 e a venda fechava de graça, sem ninguém ver. Aqui não é bloqueio:
+    // cadastrar mercadoria que acabou de chegar e precificar depois é fluxo
+    // real. É uma confirmação — não dá pra passar sem querer.
+    if (!toCents(fd.get("priceCash"))) {
+      const segue = await dialog.confirm({
+        title: "Sem preço à vista",
+        message: "Este produto não pode ser vendido no PDV sem preço à vista — ele entraria no carrinho a R$ 0,00. Ele vai aparecer marcado como SEM PREÇO na lista até você preencher. Salvar assim mesmo?",
+        confirmLabel: "Salvar sem preço",
+      });
+      if (!segue) return;
+    }
     const payload = {
       name: String(fd.get("name") ?? "").trim(),
       sku: String(fd.get("sku") ?? "").trim() || null,
       category: String(fd.get("category") ?? "").trim() || null,
       imageUrl: String(fd.get("imageUrlLink") ?? "").trim() || imageUrl || null,
       priceCashCents: toCents(fd.get("priceCash")),
+      costCents: toCents(fd.get("cost")),
       priceCardFullCents: toCents(fd.get("priceCardFull")),
       priceCardInstallmentsCents: toCents(fd.get("priceCardInst")),
       priceCreditCents: toCents(fd.get("priceCredit")),
@@ -205,6 +243,18 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
     atualizar();
   }
 
+  // UM BLOCO RECOLHIDO QUE ESCONDE DADO É DADO PERDIDO. No modo edição cada
+  // bloco abre sozinho se já tiver qualquer coisa preenchida — quem vai editar
+  // um produto com NCM não precisa descobrir onde o NCM foi morar.
+  const temPrecoExtra = !!editing && [
+    editing.priceCardFullCents, editing.priceCardInstallmentsCents, editing.priceCreditCents,
+    editing.creditInterestPct, editing.earlyPaymentDiscountPct, editing.maxInstallments,
+  ].some((v) => v != null);
+  const temFiscal = !!editing && [
+    editing.ncm, editing.cfop, editing.cest, editing.cst, editing.csosn,
+  ].some((v) => v != null && String(v).trim() !== "");
+  const temIdent = !!editing && (!!editing.sku || !!(editing as any).minStockQty);
+
   const formOpen = creating || editing;
 
   return (
@@ -234,26 +284,23 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
               ))}
             </div>
           )}
+          {/* ==================================================================
+              CADASTRO RÁPIDO — o que uma armação precisa pra ser vendida.
+              Os 17 campos deste formulário ficavam todos abertos ao mesmo
+              tempo, e 13 deles são opcionais: 7 fiscais e 6 de cartão e
+              crediário. Cadastrar uma armação que acabou de chegar exigia
+              atravessar a nota fiscal inteira com os olhos.
+              Agora são 5 campos à vista e três blocos que abrem quando
+              precisam — e abrem SOZINHOS no modo edição se já tiverem dado
+              dentro, senão esconder viraria perder.
+              ================================================================== */}
           <div className="grid gap-4 sm:grid-cols-3">
             <Field name="name" label="Nome" required defaultValue={editing?.name} />
-            <Field name="sku" label="SKU" help={editing ? undefined : "vazio = gerado automaticamente"} defaultValue={editing?.sku ?? ""} />
-            <Field name="category" label="Categoria" defaultValue={editing?.category ?? ""} />
-          </div>
-          <div>
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">Preços (R$)</h3>
-            <div className="grid gap-4 sm:grid-cols-4">
-              <Field name="priceCash" label="À vista" defaultValue={editing?.priceCashCents != null ? String(editing.priceCashCents / 100) : ""} />
-              <Field name="priceCardFull" label="Cartão à vista" defaultValue={editing?.priceCardFullCents != null ? String(editing.priceCardFullCents / 100) : ""} />
-              <Field name="priceCardInst" label="Cartão parcelado" defaultValue={editing?.priceCardInstallmentsCents != null ? String(editing.priceCardInstallmentsCents / 100) : ""} />
-              <Field name="priceCredit" label="Crediário" help="vazio = calcula com juros" defaultValue={editing?.priceCreditCents != null ? String(editing.priceCreditCents / 100) : ""} />
-            </div>
+            <Field name="category" label="Categoria" help={isOtica ? 'use "lentes" pra vincular laboratório' : undefined} defaultValue={editing?.category ?? ""} />
+            <Field name="priceCash" label="Preço à vista (R$)" help="sem ele o PDV não vende" defaultValue={editing?.priceCashCents != null ? String(editing.priceCashCents / 100) : ""} />
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
-            <Field name="creditInterest" label="Juros crediário %" help="se preço crediário vazio" defaultValue={editing?.creditInterestPct != null ? String(editing.creditInterestPct) : ""} />
-            <Field name="earlyDiscount" label="Desc. antecipação %" defaultValue={editing?.earlyPaymentDiscountPct != null ? String(editing.earlyPaymentDiscountPct) : ""} />
-            <Field name="maxInst" label="Máx parcelas" defaultValue={editing?.maxInstallments != null ? String(editing.maxInstallments) : ""} />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+            <Field name="cost" label="Custo (R$)" help="pra saber a margem" defaultValue={editing?.costCents != null ? String(editing.costCents / 100) : ""} />
             {editing ? (
               <label className="block">
                 <span className="mb-1 block text-xs font-medium uppercase tracking-wider text-muted">Estoque atual (total)</span>
@@ -263,8 +310,27 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
             ) : (
               <Field name="stock" label="Estoque inicial" help="entra na loja principal" defaultValue="0" />
             )}
-            <Field name="minStock" label="Estoque mínimo" help="alerta quando o total ficar igual/abaixo" defaultValue={String((editing as any)?.minStockQty ?? 0)} />
           </div>
+
+          <Bloco titulo="Outros preços e crediário" aberto={temPrecoExtra} resumo="cartão, parcelado, juros, máx. parcelas">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field name="priceCardFull" label="Cartão à vista" defaultValue={editing?.priceCardFullCents != null ? String(editing.priceCardFullCents / 100) : ""} />
+              <Field name="priceCardInst" label="Cartão parcelado" defaultValue={editing?.priceCardInstallmentsCents != null ? String(editing.priceCardInstallmentsCents / 100) : ""} />
+              <Field name="priceCredit" label="Crediário" help="vazio = calcula com juros" defaultValue={editing?.priceCreditCents != null ? String(editing.priceCreditCents / 100) : ""} />
+              <Field name="creditInterest" label="Juros crediário %" help="se preço crediário vazio" defaultValue={editing?.creditInterestPct != null ? String(editing.creditInterestPct) : ""} />
+              <Field name="earlyDiscount" label="Desc. antecipação %" defaultValue={editing?.earlyPaymentDiscountPct != null ? String(editing.earlyPaymentDiscountPct) : ""} />
+              <Field name="maxInst" label="Máx parcelas" defaultValue={editing?.maxInstallments != null ? String(editing.maxInstallments) : ""} />
+            </div>
+            <p className="mt-2 text-[11px] text-muted">Vazio = o PDV usa o preço à vista nessa forma de pagamento.</p>
+          </Bloco>
+
+          <Bloco titulo="Identificação e estoque mínimo" aberto={temIdent} resumo="SKU, estoque mínimo">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Field name="sku" label="SKU" help={editing ? undefined : "vazio = gerado automaticamente"} defaultValue={editing?.sku ?? ""} />
+              <Field name="minStock" label="Estoque mínimo" help="alerta quando o total ficar igual/abaixo" defaultValue={String((editing as any)?.minStockQty ?? 0)} />
+            </div>
+          </Bloco>
+
           {/* Imagem */}
           <div className="rounded-xl border border-line bg-surface-2 p-4">
             <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted">Imagem (opcional)</h3>
@@ -321,8 +387,7 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
           )}
 
           {/* Fiscal (NFC-e) — usados na emissão da nota */}
-          <div className="rounded-xl border border-line bg-surface-2 p-4">
-            <h3 className="mb-1 text-xs font-semibold uppercase tracking-wider text-muted">Fiscal (NFC-e)</h3>
+          <Bloco titulo="Fiscal (NFC-e)" aberto={temFiscal} resumo="NCM, CFOP, CEST, origem, unidade, CSOSN/CST">
             <p className="mb-3 text-[11px] text-muted">Preencha para emitir nota deste produto. <b>Simples Nacional</b> usa CSOSN (ex.: 102/500); <b>Regime Normal</b> usa CST (ex.: 00/60). Deixe em branco se ainda não emite.</p>
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="relative block">
@@ -370,7 +435,7 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
               <Field name="csosn" label="CSOSN (Simples)" help="ex.: 102, 500" defaultValue={editing?.csosn ?? ""} />
               <Field name="cst" label="CST (Normal)" help="ex.: 00, 60" defaultValue={editing?.cst ?? ""} />
             </div>
-          </div>
+          </Bloco>
 
           {error && <p className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</p>}
           <div className="flex justify-end gap-3">
@@ -438,7 +503,13 @@ export function ProductsClient({ initialProducts, total: totalServidor = 0, labs
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3">{brl(p.priceCashCents)}</td>
+                <td className="px-4 py-3" data-label="À vista">
+                  {/* SEM PREÇO é o que torna o produto invendável no PDV — tem
+                      que ser visível na varredura da lista, não só ao abrir. */}
+                  {!p.priceCashCents
+                    ? <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-semibold text-amber-300" title="O PDV não vende sem preço à vista: o item entraria no carrinho a R$ 0,00">sem preço</span>
+                    : brl(p.priceCashCents)}
+                </td>
                 <td className="px-4 py-3">{brl(p.priceCardInstallmentsCents)}</td>
                 <td className="px-4 py-3">{brl(p.priceCreditCents) ?? "—"}</td>
                 <td className="px-4 py-3 text-xs">

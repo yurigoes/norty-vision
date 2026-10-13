@@ -32,6 +32,8 @@ interface CartItem {
   name: string;
   qty: number;
   unitPriceCents: number;
+  /** preço digitado a mão no carrinho — trocar a forma de pagamento não mexe nele */
+  precoManual?: boolean;
 }
 
 interface Tender {
@@ -264,9 +266,13 @@ export function SalesClient({
 
   function updateMethod(m: PayMethod) {
     setMethod(m);
-    // recalcula precos do carrinho pra forma escolhida
+    // Recalcula os preços do carrinho pra forma escolhida — MENOS os que foram
+    // digitados a mão. Sem essa exceção, informar o preço de um item sem preço
+    // (ou dar um desconto no balcão) e depois trocar de "à vista" pra "cartão"
+    // apagava o valor em silêncio, e o item voltava a R$ 0,00.
     setCart((c) =>
       c.map((it) => {
+        if (it.precoManual) return it;
         const p = products.find((x) => x.id === it.productId);
         return p ? { ...it, unitPriceCents: priceFor(p, m) } : it;
       }),
@@ -784,15 +790,48 @@ export function SalesClient({
           {cart.length === 0 ? (
             <p className="text-sm text-muted">Carrinho vazio.</p>
           ) : (
-            <ul className="space-y-1 text-sm">
-              {cart.map((it) => (
-                <li key={it.productId} className="flex items-center justify-between gap-2">
-                  <span className="flex-1 truncate">{it.qty}× {it.name}</span>
-                  <span>{brl(it.unitPriceCents * it.qty)}</span>
-                  <button onClick={() => setCart((c) => c.filter((x) => x.productId !== it.productId))} className="text-muted hover:text-red-300">×</button>
-                </li>
-              ))}
+            <>
+            <ul className="space-y-1.5 text-sm">
+              {/* ============================================================
+                  PREÇO UNITÁRIO EDITÁVEL NO CARRINHO.
+                  `priceFor()` cai em `?? 0` quando o produto não tem preço na
+                  forma de pagamento escolhida — o item entrava a R$ 0,00 e a
+                  venda fechava de graça, sem aviso e sem jeito de corrigir no
+                  balcão. Agora o zero aparece em vermelho, pedindo o valor, e
+                  qualquer preço pode ser ajustado na hora (desconto, produto
+                  sem cadastro de preço, acerto com o cliente).
+                  O que vai pro servidor é este valor — `unitPriceCents` do
+                  item já era o que o payload enviava.
+                  ============================================================ */}
+              {cart.map((it) => {
+                const semPreco = it.unitPriceCents <= 0;
+                return (
+                  <li key={it.productId} className="flex items-center gap-2">
+                    <span className="flex-1 truncate">{it.qty}× {it.name}</span>
+                    <input
+                      value={it.unitPriceCents ? (it.unitPriceCents / 100).toFixed(2).replace(".", ",") : ""}
+                      onChange={(e) => {
+                        const cents = Math.max(0, Math.round((Number(e.target.value.replace(/[^\d,.-]/g, "").replace(",", ".")) || 0) * 100));
+                        setCart((c) => c.map((x) => (x.productId === it.productId ? { ...x, unitPriceCents: cents, precoManual: true } : x)));
+                      }}
+                      inputMode="decimal"
+                      placeholder="0,00"
+                      aria-label={`Preço unitário de ${it.name}`}
+                      title={semPreco ? "Este produto não tem preço cadastrado para esta forma de pagamento — informe o valor" : "Preço unitário (editável)"}
+                      className={`w-20 rounded-md border bg-bg/40 px-2 py-1 text-right text-xs tabular-nums ${semPreco ? "border-red-500/60 text-red-300 placeholder:text-red-300/60" : "border-line"}`}
+                    />
+                    <span className="w-24 text-right tabular-nums">{brl(it.unitPriceCents * it.qty)}</span>
+                    <button onClick={() => setCart((c) => c.filter((x) => x.productId !== it.productId))} className="text-muted hover:text-red-300" aria-label={`Remover ${it.name}`}>×</button>
+                  </li>
+                );
+              })}
             </ul>
+            {cart.some((it) => it.unitPriceCents <= 0) && (
+              <p className="mt-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+                Há item sem preço no carrinho. Informe o valor antes de fechar — a venda sairia a R$ 0,00.
+              </p>
+            )}
+            </>
           )}
           <p className="mt-3 flex items-center justify-between text-lg font-semibold">
             <span>Total</span><span>{brl(total)}</span>

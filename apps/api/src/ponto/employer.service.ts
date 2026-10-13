@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { ctxCan } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 
 /**
@@ -15,9 +16,17 @@ export class EmployerService {
     return ctx.isPlatformAdmin ? { isPlatformAdmin: true as const } : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
   }
   private requireOrg(ctx: RequestContext): string { if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem empresa", 403); return ctx.orgId; }
-  private requireAdmin(ctx: RequestContext) {
-    if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem empresa", 403);
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+  /**
+   * O porteiro deste service. Era `isOrgAdmin` cru — e tela aberta por
+   * permissão respondia 403: vazia, sem explicação. Agora é a chave do
+   * catálogo (`ctxCan` já devolve true pra master e pra owner/admin da org,
+   * então isto só ALARGA: ninguém que entrava deixou de entrar).
+   * Sem argumento vale o piso deste service (`ponto.close`); a leitura que
+   * pede menos, ou a escrita que pede mais, passa a sua.
+   */
+  private requireAdmin(ctx: RequestContext, chave: string = "ponto.close") {
+    if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
+    if (!ctxCan(ctx, chave)) throw new AppError(ErrorCode.Forbidden, `Seu perfil nao tem a permissao: ${chave}`, 403);
   }
 
   /** Lista os empregadores com a contagem de funcionários de cada um. */

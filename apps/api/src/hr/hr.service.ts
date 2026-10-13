@@ -9,6 +9,7 @@ import { UsersService } from "../users/users.service";
 import { PontoService } from "../ponto/ponto.service";
 import { loadEnv } from "../config";
 import { randomBytes } from "crypto";
+import { ctxCan } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 
 @Injectable()
@@ -31,20 +32,39 @@ export class HrService {
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
     return ctx.orgId;
   }
-  private requireAdmin(ctx: RequestContext) {
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+  /**
+   * O porteiro deste service. Era `isOrgAdmin` cru — e tela aberta por
+   * permissão respondia 403: vazia, sem explicação. Agora é a chave do
+   * catálogo (`ctxCan` já devolve true pra master e pra owner/admin da org,
+   * então isto só ALARGA: ninguém que entrava deixou de entrar).
+   * Sem argumento vale o piso deste service (`rh.manage`); a leitura que
+   * pede menos, ou a escrita que pede mais, passa a sua.
+   */
+  private requireAdmin(ctx: RequestContext, chave: string = "rh.manage") {
+    if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
+    if (!ctxCan(ctx, chave)) throw new AppError(ErrorCode.Forbidden, `Seu perfil nao tem a permissao: ${chave}`, 403);
   }
-  /** Admin, gerente ou supervisor podem gerir RH / ajustar ponto. */
+  /**
+   * Admin, gerente, supervisor — ou quem tem `rh.manage` — gerem RH / ajustam ponto.
+   *
+   * A condição olhava `ctx.permissions?.hr === true`: uma chave `hr` que NÃO
+   * existe no `PERMISSION_CATALOG`, logo não havia caixa pra marcar e ela nunca
+   * era true. Virou `rh.manage`, que é a chave do catálogo. A lista de papéis
+   * fica: quem já entrava por ser gerente continua entrando, sem precisar que
+   * alguém vá marcar a caixa (esta troca só ALARGA).
+   */
   private requireHrManager(ctx: RequestContext) {
     const role = (ctx.role ?? "").toLowerCase();
-    const ok = ctx.isPlatformAdmin || ctx.isOrgAdmin
-      || ctx.permissions?.hr === true
+    const ok = ctxCan(ctx, "rh.manage")
       || ["manager", "gerente", "supervisor", "supervisora"].includes(role);
-    if (!ok) throw new AppError(ErrorCode.Forbidden, "Apenas admin, gerente ou supervisor", 403);
+    if (!ok) throw new AppError(ErrorCode.Forbidden, "Apenas admin, gerente, supervisor ou quem tem a permissao rh.manage", 403);
   }
 
   // ============================== EMPLOYEES ==============================
   async listEmployees(ctx: RequestContext, opts?: { status?: string; storeId?: string }) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.employee.findMany({
@@ -59,6 +79,9 @@ export class HrService {
   }
 
   async getEmployee(ctx: RequestContext, id: string) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     const e = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.employee.findFirst({ where: { id } }),
     );
@@ -192,6 +215,9 @@ export class HrService {
 
   // ============================== PAYSLIPS ==============================
   async listPayslips(ctx: RequestContext, opts?: { employeeId?: string }) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       const rows = await tx.payslip.findMany({
@@ -240,6 +266,9 @@ export class HrService {
 
   // ============================== TIME ENTRIES / SHEETS ==============================
   async listTimeEntries(ctx: RequestContext, opts: { employeeId?: string; from?: string; to?: string }) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     const from = opts.from ? new Date(opts.from + "T00:00:00Z") : new Date(Date.now() - 30 * 86400_000);
     const to = opts.to ? new Date(opts.to + "T23:59:59Z") : new Date();
@@ -279,6 +308,9 @@ export class HrService {
 
   // ============================== HR SETTINGS (fechamento de folha) ==============================
   async getSettings(ctx: RequestContext) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     const orgId = this.requireOrg(ctx);
     const s = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.hrSettings.findUnique({ where: { organizationId: orgId } }));
     return s ?? { organizationId: orgId, closingDay: 30, paymentDay: 5, dailyHours: "8.00", defaultSchedule: [], snackThresholdMinutes: 120, snackMinutes: 15 };
@@ -313,6 +345,9 @@ export class HrService {
 
   // ============================== FERIADOS DA EMPRESA ==============================
   async listHolidays(ctx: RequestContext) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.hrHoliday.findMany({ orderBy: { holidayDate: "asc" } }),
@@ -422,6 +457,9 @@ export class HrService {
   }
 
   async listTimeSheets(ctx: RequestContext, opts?: { employeeId?: string }) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.timeSheet.findMany({
@@ -434,6 +472,9 @@ export class HrService {
 
   /** Espelho de ponto imprimível (HTML branded, original × ajustado + totais). */
   async timeSheetHtml(ctx: RequestContext, id: string): Promise<string> {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     const orgId = this.requireOrg(ctx);
     const ts = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.timeSheet.findFirst({ where: { id } }));
     if (!ts) throw new AppError(ErrorCode.NotFound, "Espelho não encontrado", 404);
@@ -463,6 +504,9 @@ export class HrService {
 
   // ============================== REQUESTS ==============================
   async listRequests(ctx: RequestContext, opts?: { status?: string; kind?: string }) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     const reqs = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.hrRequest.findMany({
@@ -583,6 +627,9 @@ export class HrService {
 
   // ============================== SHIFTS / NOTICES ==============================
   async listShifts(ctx: RequestContext, opts: { from?: string; to?: string; storeId?: string }) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     const from = opts.from ? new Date(opts.from) : new Date();
     const to = opts.to ? new Date(opts.to) : new Date(Date.now() + 14 * 86400_000);
@@ -800,6 +847,9 @@ export class HrService {
   }
 
   async listNotices(ctx: RequestContext) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.hrNotice.findMany({ orderBy: [{ pinned: "desc" }, { publishedAt: "desc" }], take: 200 }),
@@ -859,6 +909,9 @@ export class HrService {
 
   // ============================== GEOCERCA (raio da loja) ==============================
   async listStoreGeofences(ctx: RequestContext) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.store.findMany({
@@ -886,6 +939,9 @@ export class HrService {
 
   // ============================== DOCUMENTS ==============================
   async listDocuments(ctx: RequestContext, employeeId: string) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.employeeDocument.findMany({ where: { employeeId }, orderBy: { createdAt: "desc" } }),
@@ -923,6 +979,9 @@ export class HrService {
 
   // ============================== EXAMES OCUPACIONAIS (ASO) ==============================
   async listExams(ctx: RequestContext, employeeId: string) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) => tx.employeeExam.findMany({ where: { employeeId }, orderBy: { examDate: "desc" } }));
   }
@@ -950,6 +1009,9 @@ export class HrService {
   }
   /** Exames ocupacionais vencidos/a vencer (próx. N dias) — para alertas. */
   async expiringExams(ctx: RequestContext, days = 30) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     const today = new Date(); today.setUTCHours(0, 0, 0, 0);
     const limit = new Date(today.getTime() + days * 86400000);
@@ -962,6 +1024,9 @@ export class HrService {
 
   // ============================== TREINAMENTOS / CERTIFICAÇÕES ==============================
   async listTrainings(ctx: RequestContext, employeeId: string) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) => tx.employeeTraining.findMany({ where: { employeeId }, orderBy: { completedDate: "desc" } }));
   }
@@ -989,6 +1054,9 @@ export class HrService {
   }
   /** Treinamentos vencidos/a vencer (próx. N dias) — para alertas/dashboard. */
   async expiringTrainings(ctx: RequestContext, days = 30) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     const today = new Date(); today.setUTCHours(0, 0, 0, 0);
     const limit = new Date(today.getTime() + days * 86400000);
@@ -1001,6 +1069,9 @@ export class HrService {
 
   // ============================== ADVERTÊNCIAS / OCORRÊNCIAS ==============================
   async listWarnings(ctx: RequestContext, employeeId: string) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) => tx.employeeWarning.findMany({ where: { employeeId }, orderBy: { date: "desc" } }));
   }
@@ -1028,6 +1099,9 @@ export class HrService {
 
   // ============================== RESCISÃO / DESLIGAMENTO ==============================
   async getTermination(ctx: RequestContext, employeeId: string) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) => tx.employeeTermination.findFirst({ where: { employeeId } }));
   }
@@ -1068,6 +1142,9 @@ export class HrService {
   }
   /** Comunicado/termo de desligamento em PDF (com checklist e aviso prévio). */
   async terminationPdf(ctx: RequestContext, employeeId: string): Promise<{ buffer: Buffer; filename: string }> {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     const t = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.employeeTermination.findFirst({ where: { employeeId } }));
     if (!t) throw new AppError(ErrorCode.NotFound, "Desligamento não encontrado", 404);
@@ -1113,6 +1190,9 @@ export class HrService {
   // ============================== DASHBOARD DE RH ==============================
   /** KPIs do RH: headcount, turnover, aniversariantes, ASO, advertências, ponto, férias. */
   async dashboard(ctx: RequestContext) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     const rls = this.rls(ctx);
     const today = new Date(); today.setUTCHours(0, 0, 0, 0);
@@ -1197,6 +1277,9 @@ export class HrService {
 
   // ============================== EMPRÉSTIMOS ==============================
   async listLoans(ctx: RequestContext, employeeId?: string) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       const loans = await tx.employeeLoan.findMany({ where: { ...(employeeId ? { employeeId } : {}) }, orderBy: { createdAt: "desc" }, take: 500 });
@@ -1258,6 +1341,9 @@ export class HrService {
 
   /** Parcelas em aberto de um funcionário (pro admin marcar pagas ao lançar holerite). */
   async openLoanInstallments(ctx: RequestContext, employeeId: string) {
+    // sem porteiro nenhum até aqui: qualquer usuário logado da empresa lia isto
+    // pela URL. A barra é a mesma das ações de RH.
+    this.requireHrManager(ctx);
     this.requireOrg(ctx);
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.employeeLoanInstallment.findMany({ where: { employeeId, status: "pending" }, orderBy: { dueMonth: "asc" } }),

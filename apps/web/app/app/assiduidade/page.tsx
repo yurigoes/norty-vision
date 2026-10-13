@@ -9,16 +9,11 @@ export const dynamic = "force-dynamic";
 export default async function AssiduidadePage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
-  if (!session.user?.isOrgAdmin && !session.master) {
-    return (
-      <div className="max-w-3xl">
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-muted">
-          Apenas administradores ou owners da organização podem acessar a
-          assiduidade.
-        </p>
-      </div>
-    );
-  }
+  // O porteiro desta tela é o `nav.ts` + `lib/acesso.ts`, aplicados no
+  // `app/app/layout.tsx`. Havia aqui um segundo porteiro, `isOrgAdmin` à mão —
+  // e dois porteiros numa porta foi o defeito medido em produção: conceder a
+  // permissão fazia o item APARECER no menu e a tela responder "Apenas
+  // administradores". `acesso.check.mts` confere que não volte.
 
   return (
     <div className="max-w-5xl">

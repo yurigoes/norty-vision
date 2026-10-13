@@ -47,7 +47,7 @@ interface UpsertRoleInput {
  * owner/admin tem acesso total e ignoram este mapa.
  *
  * Convenção: chaves planas no formato "<modulo>.<acao>". Granular o suficiente
- * pra delegação real, sem virar 200 checkboxes (~70 itens em ~17 módulos).
+ * pra delegação real, sem virar 200 checkboxes (82 itens em 18 módulos).
  */
 export const PERMISSION_CATALOG: Array<{
   group: string;
@@ -188,6 +188,16 @@ export const PERMISSION_CATALOG: Array<{
       { key: "lens.batches", label: "Lotes do laboratório" },
       { key: "payouts.manage", label: "Repasses (médico/lab)" },
       { key: "suppliers.manage", label: "Fornecedores" },
+    ],
+  },
+  {
+    group: "RH & Ponto eletrônico",
+    items: [
+      { key: "ponto.view", label: "Ver ponto (espelho, batidas, relatórios)" },
+      { key: "ponto.adjust", label: "Ajustar marcações, escalas e justificativas" },
+      { key: "ponto.close", label: "Fechar folha, férias, banco de horas e AFD/AEJ" },
+      { key: "ponto.devices", label: "Terminais de ponto (cadastro, facial, RustDesk)" },
+      { key: "rh.manage", label: "RH & Funcionários (cadastro, documentos, alocação)" },
     ],
   },
   {

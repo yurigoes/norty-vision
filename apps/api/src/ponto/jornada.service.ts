@@ -10,6 +10,7 @@ import { StorageService } from "../storage/storage.service";
 import { PontoSignService } from "./sign.service";
 import { PontoService } from "./ponto.service";
 import { EmployerService } from "./employer.service";
+import { ctxCan } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 
 type Seg = [number, number]; // [entrada, saida] em minutos do dia (saida pode passar de 1440)
@@ -28,7 +29,18 @@ export class JornadaService {
     return ctx.isPlatformAdmin ? { isPlatformAdmin: true as const } : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
   }
   private requireOrg(ctx: RequestContext) { if (!ctx.orgId && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Sem org", 403); }
-  private requireAdmin(ctx: RequestContext) { if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403); if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas gestor", 403); }
+  /**
+   * O porteiro deste service. Era `isOrgAdmin` cru — e tela aberta por
+   * permissão respondia 403: vazia, sem explicação. Agora é a chave do
+   * catálogo (`ctxCan` já devolve true pra master e pra owner/admin da org,
+   * então isto só ALARGA: ninguém que entrava deixou de entrar).
+   * Sem argumento vale o piso deste service (`ponto.adjust`); a leitura que
+   * pede menos, ou a escrita que pede mais, passa a sua.
+   */
+  private requireAdmin(ctx: RequestContext, chave: string = "ponto.adjust") {
+    if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
+    if (!ctxCan(ctx, chave)) throw new AppError(ErrorCode.Forbidden, `Seu perfil nao tem a permissao: ${chave}`, 403);
+  }
   private offMin(tz: string) { const s = tz.startsWith("-") ? -1 : 1; return s * (Number(tz.slice(1, 3)) * 60 + Number(tz.slice(3, 5))); }
   /** Componentes locais (data ISO + minutos do dia) de um instante, no fuso. */
   private local(date: Date, tz: string) {
@@ -523,7 +535,7 @@ export class JornadaService {
 
   /** Divergências do período (todos os funcionários ativos ou um). */
   async divergencias(ctx: RequestContext, opts: { from: string; to: string; employeeId?: string }) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     const emps = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.pontoEmployee.findMany({ where: { active: true, ...(opts.employeeId ? { id: opts.employeeId } : {}) }, select: { id: true, name: true } }),
     );
@@ -778,7 +790,7 @@ export class JornadaService {
 
   /** Envia o lote de espelhos do mês ao e-mail da contabilidade (anexo PDF). */
   async sendEspelhosToAccountant(ctx: RequestContext, refMonth: string) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.close");
     const orgId = ctx.orgId!;
     const cfg = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.findFirst({ where: {}, select: { accountantEmail: true, razaoOuNome: true } }));
     const org = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.organization.findFirst({ where: {}, select: { name: true, logoUrl: true } })).catch(() => null);

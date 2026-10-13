@@ -10,15 +10,11 @@ export const dynamic = "force-dynamic";
 export default async function RhPage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
-  if (!session.user?.isOrgAdmin && !session.master) {
-    return (
-      <div className="max-w-3xl">
-        <p className="rounded-2xl border border-line bg-surface p-6 text-muted">
-          Apenas administradores podem gerenciar o RH.
-        </p>
-      </div>
-    );
-  }
+  // O porteiro desta tela é o `nav.ts` + `lib/acesso.ts`, aplicados no
+  // `app/app/layout.tsx`. Havia aqui um segundo porteiro, `isOrgAdmin` à mão —
+  // e dois porteiros numa porta foi o defeito medido em produção: conceder a
+  // permissão fazia o item APARECER no menu e a tela responder "Apenas
+  // administradores". `acesso.check.mts` confere que não volte.
 
   const [empRes, storesRes] = await Promise.all([
     apiFetch<{ items: any[] }>("/api/hr/employees"),

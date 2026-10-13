@@ -5,6 +5,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { JornadaService } from "./jornada.service";
 import { EmployerService } from "./employer.service";
 import { OrgAiService } from "../ai/org-ai.service";
+import { ctxCan } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { PAYROLL_LAYOUTS, getPayrollLayout, renderPayroll, type PayrollRow } from "./payroll-layouts";
 
@@ -18,11 +19,22 @@ export class FolhaService {
   private rls(ctx: RequestContext) {
     return ctx.isPlatformAdmin ? { isPlatformAdmin: true as const } : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
   }
-  private requireAdmin(ctx: RequestContext) { if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403); if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403); }
+  /**
+   * O porteiro deste service. Era `isOrgAdmin` cru — e tela aberta por
+   * permissão respondia 403: vazia, sem explicação. Agora é a chave do
+   * catálogo (`ctxCan` já devolve true pra master e pra owner/admin da org,
+   * então isto só ALARGA: ninguém que entrava deixou de entrar).
+   * Sem argumento vale o piso deste service (`ponto.close`); a leitura que
+   * pede menos, ou a escrita que pede mais, passa a sua.
+   */
+  private requireAdmin(ctx: RequestContext, chave: string = "ponto.close") {
+    if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
+    if (!ctxCan(ctx, chave)) throw new AppError(ErrorCode.Forbidden, `Seu perfil nao tem a permissao: ${chave}`, 403);
+  }
 
   // ----- BANCO DE HORAS -----
   async listBank(ctx: RequestContext, employeeId: string) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankMovement.findMany({ where: { employeeId }, orderBy: { day: "desc" }, take: 500 }));
     // "he" = horas extras a pagar (decisão do RH no espelho); NÃO entra no saldo compensável.
     const balance = rows.filter((r) => r.kind !== "he").reduce((s, r) => s + r.minutes, 0);
@@ -88,7 +100,7 @@ export class FolhaService {
 
   /** Saldo de férias: a cada 12 meses de admissão = 30 dias; menos os dias agendados/gozados. */
   async vacationBalance(ctx: RequestContext, employeeId: string) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     const adm = await this.admissionDate(ctx, employeeId);
     const vacs = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoVacation.findMany({ where: { employeeId, status: { not: "canceled" } }, select: { days: true } }));
     const usedDays = vacs.reduce((s, v) => s + v.days, 0);
@@ -102,7 +114,7 @@ export class FolhaService {
   }
 
   async listVacations(ctx: RequestContext, employeeId: string) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     const items = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoVacation.findMany({ where: { employeeId }, orderBy: { startDate: "desc" }, take: 200 }));
     return { items };
   }
@@ -132,7 +144,7 @@ export class FolhaService {
 
   /** Recibo de férias em PDF (aviso + recibo simples). */
   async vacationReceiptPdf(ctx: RequestContext, id: string): Promise<{ buffer: Buffer; filename: string }> {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     const v = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoVacation.findFirst({ where: { id } }));
     if (!v) throw new AppError(ErrorCode.NotFound, "Férias não encontradas", 404);
     const [emp, cfg, org] = await Promise.all([
@@ -201,12 +213,12 @@ export class FolhaService {
   }
 
   async listClosings(ctx: RequestContext) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     return { items: await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoClosing.findMany({ where: {}, orderBy: { refMonth: "desc" }, take: 24 })) };
   }
   /** Calcula o resumo do mês (totais por funcionário) — base do fechamento e do export. */
   async summary(ctx: RequestContext, refMonth: string, opts?: { employerId?: string | null }) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     const { from, to } = this.monthRange(refMonth);
     const emps = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findMany({ where: { active: true, ...(opts?.employerId ? { employerId: opts.employerId } : {}) }, select: { id: true, name: true, cpf: true, pis: true, matricula: true, matEsocial: true, employerId: true, storeId: true, cargo: true } }));
     const employers = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployer.findMany({ where: {}, select: { id: true, name: true } })).catch(() => [] as any[]);
@@ -241,7 +253,7 @@ export class FolhaService {
     return { refMonth, from, to, rows };
   }
   async getClosing(ctx: RequestContext, refMonth: string) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     const { first } = this.monthRange(refMonth);
     const c = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoClosing.findFirst({ where: { refMonth: first } }));
     return c ?? { status: "open", refMonth: first };
@@ -279,7 +291,7 @@ export class FolhaService {
   // ----- DASHBOARD EM TEMPO REAL -----
   /** Quem está trabalhando agora, atrasos do dia e feed das últimas marcações. */
   async realtime(ctx: RequestContext) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
     const emps = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findMany({ where: { active: true }, select: { id: true, name: true } }));
     const nameOf = new Map(emps.map((e) => [e.id, e.name]));
@@ -301,7 +313,7 @@ export class FolhaService {
   // ----- IA DE ABSENTEÍSMO -----
   /** Estatística de faltas/atrasos do período + leitura da IA (best-effort). */
   async absenteismo(ctx: RequestContext, refMonth: string) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     const sum = await this.summary(ctx, refMonth);
     const ranked = [...sum.rows].map((r: any) => ({ name: r.name, faltaMin: r.faltaMin, lateMin: r.lateMin })).sort((a, b) => (b.faltaMin + b.lateMin) - (a.faltaMin + a.lateMin));
     const totalFaltaMin = ranked.reduce((s, r) => s + r.faltaMin, 0);

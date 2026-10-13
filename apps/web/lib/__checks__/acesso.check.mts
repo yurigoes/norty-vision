@@ -134,11 +134,9 @@ const SO_ADMIN = new Set([
   // (`commissions.pay`) antes de sair daqui.
   "comissoes",
 
-  // RH e ponto: o catálogo não tem NENHUMA chave para esta área — foram 111
-  // rotas de ponto portadas e nenhuma pode ser concedida a ninguém. Precisa de
-  // chaves novas (ponto.view, ponto.adjust, ponto.close, rh.manage…) antes de
-  // deixar de ser admin-only.
-  "rh", "alocacoes", "assiduidade",
+  // (RH, alocações e assiduidade saíram daqui: o catálogo ganhou
+  // `ponto.view/adjust/close/devices` e `rh.manage`, as três telas têm `perm`
+  // no nav.ts e os porteiros à mão foram removidos das páginas.)
 ]);
 
 // a tabela do menu já está importada aqui como `todos` — usar ela, e não um

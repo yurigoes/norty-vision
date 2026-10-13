@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "crypto";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { NotificationService } from "../notifications/notification.service";
+import { ctxCan } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 
 export type PunchInput = { employeeId: string; pin?: string; origin?: string; device?: string; deviceAt?: string; offline?: boolean; lat?: number; lng?: number; accuracy?: number; photoUrl?: string; faceScore?: number | null; faceMatch?: boolean | null; livenessOk?: boolean | null; fraudFlags?: string[] };
@@ -22,7 +23,28 @@ export class PontoService {
     return ctx.isPlatformAdmin ? { isPlatformAdmin: true as const } : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
   }
   private requireOrg(ctx: RequestContext) { if (!ctx.orgId && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Sem org", 403); }
-  private requireAdmin(ctx: RequestContext) { if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403); if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403); }
+  /**
+   * O porteiro deste service. Era `isOrgAdmin` cru — e tela aberta por
+   * permissão respondia 403: vazia, sem explicação. Agora é a chave do
+   * catálogo (`ctxCan` já devolve true pra master e pra owner/admin da org,
+   * então isto só ALARGA: ninguém que entrava deixou de entrar).
+   * Sem argumento vale o piso deste service (`ponto.adjust`); a leitura que
+   * pede menos, ou a escrita que pede mais, passa a sua.
+   */
+  private requireAdmin(ctx: RequestContext, chave: string = "ponto.adjust") {
+    if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
+    if (!ctxCan(ctx, chave)) throw new AppError(ErrorCode.Forbidden, `Seu perfil nao tem a permissao: ${chave}`, 403);
+  }
+  /**
+   * ADMIN DE VERDADE, sem chave do catálogo. Só pra `resetMarcacoes`, que
+   * apaga as marcações da empresa: nenhuma caixa de permissão deve poder
+   * marcar "zerar o ponto fiscal". Destrutivo e irreversível fica com quem
+   * responde pela empresa.
+   */
+  private requireAdminEstrito(ctx: RequestContext) {
+    if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
+    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apagar as marcacoes e exclusivo do administrador da empresa", 403);
+  }
   /** Bloqueia alteração de ponto em meses já FECHADOS (status closed). Reabra o fechamento para editar. */
   private async assertDaysNotClosed(ctx: RequestContext, days: string[]) {
     const firsts = [...new Set(days.map((d) => (d || "").slice(0, 7)).filter((m) => /^\d{4}-\d{2}$/.test(m)))].map((m) => new Date(`${m}-01T00:00:00.000Z`));
@@ -105,7 +127,7 @@ export class PontoService {
     };
   }
   async updateConfig(ctx: RequestContext, input: { tpIdtEmpregador?: number; idtEmpregador?: string; caepf?: string; cno?: string; razaoOuNome?: string; repAProcesso?: string; timezone?: string; localPrestacao?: string; responsavelCpf?: string; devTpIdt?: number; devIdt?: string; faceProvider?: string; faceProviderUrl?: string; faceProviderKey?: string; faceThreshold?: number; requireFace?: boolean; requireLiveness?: boolean; faceEnforce?: boolean; nightReducedHour?: boolean; dsrLossEnabled?: boolean; bgImageUrl?: string; bgUntil?: string | null; webhookUrl?: string; webhookSecret?: string; alertsEnabled?: boolean; alertWhatsapp?: string; alertEmail?: string; alertSummaryHour?: number; overtimeWeeklyAlertMin?: number; bankExpiryMonths?: number; showBankToEmployee?: boolean; requestsRestrictHours?: boolean; requestsWindowStart?: string; requestsWindowEnd?: string; requestsWindowDays?: string; requestsRestrictMachine?: boolean; assidBonusCents?: number; assidMaxAtestadoDays?: number; assidMaxLates?: number; assidBlockMeasure?: boolean; assidBlockFalta?: boolean; assidProportional?: boolean; accountantEmail?: string }) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.close");
     const orgId = ctx.orgId!;
     const data: any = {};
     if (input.tpIdtEmpregador !== undefined) data.tpIdtEmpregador = input.tpIdtEmpregador === 2 ? 2 : 1;
@@ -174,7 +196,7 @@ export class PontoService {
     return rows.map(({ faceRefKey, ...e }) => ({ ...e, faceEnrolled: !!faceRefKey }));
   }
   async upsertEmployee(ctx: RequestContext, input: { id?: string; name: string; cpf?: string; pis?: string; matricula?: string; matEsocial?: string; cargo?: string; scheduleCode?: string; pin?: string; active?: boolean; allowedDeviceIds?: string[] }) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "rh.manage");
     const orgId = ctx.orgId!;
     if (!input.name?.trim()) throw new AppError(ErrorCode.ValidationFailed, "Nome obrigatório", 400);
     const data: any = {
@@ -208,7 +230,7 @@ export class PontoService {
 
   /** Define os terminais liberados de um funcionário ([] = sem restrição). */
   async setAllowedDevices(ctx: RequestContext, employeeId: string, deviceIds: string[]) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.devices");
     const ids = (Array.isArray(deviceIds) ? deviceIds : []).filter((x) => typeof x === "string").slice(0, 200);
     await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.update({ where: { id: employeeId }, data: { allowedDeviceIds: ids } }));
     return { ok: true, allowedDeviceIds: ids };
@@ -217,7 +239,7 @@ export class PontoService {
   // ----- SOLICITAÇÕES DE SALDO DE BANCO (somente RH; o líder NÃO vê) -----
   /** Lista as solicitações de visualização de saldo (RH). */
   async listBankRequests(ctx: RequestContext) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankRequest.findMany({ where: {}, orderBy: [{ status: "asc" }, { requestedAt: "desc" }], take: 300 }));
     const ids = [...new Set(rows.map((r) => r.pontoEmployeeId))];
     const emps = ids.length ? await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } })) : [];
@@ -226,7 +248,7 @@ export class PontoService {
   }
   /** RH responde (aprova = libera a visualização; rejeita = nega). */
   async respondBankRequest(ctx: RequestContext, id: string, input: { approve: boolean; note?: string }) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.close");
     const req = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoBankRequest.findFirst({ where: { id } }));
     if (!req) throw new AppError(ErrorCode.NotFound, "Solicitação não encontrada", 404);
     let balanceMin: number | null = null;
@@ -257,20 +279,20 @@ export class PontoService {
 
   // ----- MÁQUINAS HOMOLOGADAS (libera solicitações no portal) -----
   async listMachines(ctx: RequestContext) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoHomologatedMachine.findMany({ where: {}, orderBy: [{ revokedAt: "asc" }, { createdAt: "desc" }], select: { id: true, label: true, lastSeenAt: true, lastSeenIp: true, revokedAt: true, createdAt: true } }));
     return rows;
   }
   /** Cria uma máquina homologada e devolve a CHAVE crua (exibida só agora). */
   async createMachine(ctx: RequestContext, label: string) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.devices");
     const name = (label || "").trim().slice(0, 80); if (!name) throw new AppError(ErrorCode.ValidationFailed, "Informe um nome para a máquina", 400);
     const key = randomBytes(24).toString("base64url");
     const row = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoHomologatedMachine.create({ data: { organizationId: ctx.orgId!, label: name, keyHash: this.sha(key) }, select: { id: true } }));
     return { id: row.id, label: name, key }; // chave crua só aqui
   }
   async revokeMachine(ctx: RequestContext, id: string, revoke: boolean) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.devices");
     await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoHomologatedMachine.updateMany({ where: { id }, data: { revokedAt: revoke ? new Date() : null } }));
     return { ok: true };
   }
@@ -286,7 +308,7 @@ export class PontoService {
   /** Une registros de ponto duplicados (mesmo CPF): mantém o vinculado ao RH (ou o mais antigo)
    *  e migra batidas/justificativas/banco/férias/assinaturas para ele; remove os duplicados. */
   async dedupeEmployees(ctx: RequestContext) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "rh.manage");
     const orgId = ctx.orgId!;
     return this.prisma.runWithContext(this.rls(ctx), async (tx) => {
       const all = await tx.pontoEmployee.findMany({ where: {}, select: { id: true, cpf: true, hrEmployeeId: true, createdAt: true } });
@@ -372,7 +394,7 @@ export class PontoService {
 
   // ----- AVISOS (painel de marcação) -----
   async listNotices(ctx: RequestContext) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     return this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoNotice.findMany({ where: {}, orderBy: { createdAt: "desc" }, take: 200 }));
   }
   async createNotice(ctx: RequestContext, input: { employeeId?: string | null; message: string; until?: string }) {
@@ -469,7 +491,7 @@ export class PontoService {
 
   /** Garante um segredo de webhook (gera na 1ª vez) e devolve info + URLs prontas pra empresa. */
   async webhookInfo(ctx: RequestContext) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.devices");
     const orgId = ctx.orgId!;
     let cfg = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.findFirst({ where: {}, select: { webhookUrl: true, webhookSecret: true } }));
     if (!cfg?.webhookSecret) {
@@ -481,14 +503,14 @@ export class PontoService {
   }
   /** Regenera o segredo do webhook. */
   async regenWebhookSecret(ctx: RequestContext) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.devices");
     const secret = "whsec_" + randomBytes(24).toString("base64url");
     await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.upsert({ where: { organizationId: ctx.orgId! }, update: { webhookSecret: secret }, create: { organizationId: ctx.orgId!, webhookSecret: secret } }));
     return { secret };
   }
   /** Feed de eventos do ponto (inbox interno por empresa). */
   async listEvents(ctx: RequestContext, opts?: { limit?: number }) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     const take = Math.min(200, Math.max(1, opts?.limit ?? 50));
     const items = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoWebhookEvent.findMany({ where: {}, orderBy: { createdAt: "desc" }, take, select: { id: true, event: true, payload: true, delivered: true, statusCode: true, targetUrl: true, createdAt: true } }));
     return { items };
@@ -609,7 +631,7 @@ export class PontoService {
    * foram apagadas). O espelho é derivado das batidas, então recalcula sozinho.
    */
   async resetMarcacoes(ctx: RequestContext, opts?: { justifications?: boolean; bank?: boolean; signatures?: boolean }) {
-    this.requireAdmin(ctx);
+    this.requireAdminEstrito(ctx);
     const orgId = ctx.orgId!;
     return this.prisma.runWithContext({ orgId }, async (tx) => {
       const punches = (await tx.pontoPunch.deleteMany({ where: { organizationId: orgId } })).count;
@@ -624,7 +646,7 @@ export class PontoService {
 
   /** Verifica a integridade da cadeia de hash das marcações (auditoria). */
   async verifyChain(ctx: RequestContext) {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.view");
     // cadeia POR EMPREGADOR: ordena por (empregador, nsr) e reinicia a cada empregador
     const rows = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoPunch.findMany({ where: {}, orderBy: [{ employerId: "asc" }, { nsr: "asc" }], select: { nsr: true, employerId: true, employeeId: true, punchedAt: true, source: true, prevHash: true, hash: true } }));
     let prev: string | null = null;
@@ -692,7 +714,7 @@ export class PontoService {
    *  PENDENTE (complete:false): confirmar variante do CRC-16 com arquivo-teste oficial e
    *  trocar a assinatura placeholder pela real P7S/ICP-Brasil (Fase 4). */
   async afd(ctx: RequestContext, opts: { from?: string; to?: string; employerId?: string }): Promise<{ content: string; counts: Record<string, number>; complete: boolean; missing: string[]; employer?: { id: string; name: string } }> {
-    this.requireAdmin(ctx);
+    this.requireAdmin(ctx, "ponto.close");
     const cfg = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoConfig.findFirst({ where: {} }));
     // AFD é POR EMPREGADOR (CNPJ). Sem employerId, usa o empregador padrão.
     const employer = await this.prisma.runWithContext(this.rls(ctx), (tx) =>

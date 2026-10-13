@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { JornadaService } from "./jornada.service";
+import { ctxCan } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 
 export type IncKind = "incompleta" | "falta" | "atraso" | "saida" | "extra" | "folga";
@@ -36,7 +37,7 @@ export class InconsistenciasService {
 
   async list(ctx: RequestContext, q: { from?: string; to?: string; storeId?: string }) {
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem empresa no contexto", 403);
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas gestor", 403);
+    if (!ctxCan(ctx, "ponto.view")) throw new AppError(ErrorCode.Forbidden, "Seu perfil nao tem a permissao: ponto.view", 403);
     const iso = /^\d{4}-\d{2}-\d{2}$/;
     if (!iso.test(q?.from ?? "") || !iso.test(q?.to ?? "")) {
       throw new AppError(ErrorCode.ValidationFailed, "Informe o período (de / até)", 400);

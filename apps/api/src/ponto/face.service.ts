@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
+import { ctxCan } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 
 export type FaceConfig = { faceProvider: string; faceProviderUrl: string | null; faceProviderKey: string | null; faceThreshold: number; requireFace: boolean; requireLiveness: boolean; faceEnforce: boolean } | null;
@@ -33,7 +34,7 @@ export class FaceService {
   /** Enrolla (cadastra) o rosto de referência do funcionário no bucket privado. */
   async enroll(ctx: RequestContext, employeeId: string, selfieDataUrl: string) {
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "ponto.devices")) throw new AppError(ErrorCode.Forbidden, "Seu perfil nao tem a permissao: ponto.devices", 403);
     const { contentType, buf } = this.parseDataUrl(selfieDataUrl);
     const { key } = await this.storage.putPrivate({ keyPrefix: `ponto/faces/${ctx.orgId}`, contentType, body: buf });
     await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoEmployee.update({ where: { id: employeeId }, data: { faceRefKey: key, faceEnrolledAt: new Date() } }));

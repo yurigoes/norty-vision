@@ -6,6 +6,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { JornadaService } from "./jornada.service";
 import { PontoSignService } from "./sign.service";
 import { StorageService } from "../storage/storage.service";
+import { ctxCan } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 
 /**
@@ -18,7 +19,18 @@ export class AssiduidadeService {
   constructor(private readonly prisma: PrismaService, private readonly jornada: JornadaService, private readonly sign: PontoSignService, private readonly storage: StorageService) {}
 
   private rls(ctx: RequestContext) { return ctx.isPlatformAdmin ? { isPlatformAdmin: true as const } : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin }; }
-  private requireAdmin(ctx: RequestContext) { if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403); if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403); }
+  /**
+   * O porteiro deste service. Era `isOrgAdmin` cru — e tela aberta por
+   * permissão respondia 403: vazia, sem explicação. Agora é a chave do
+   * catálogo (`ctxCan` já devolve true pra master e pra owner/admin da org,
+   * então isto só ALARGA: ninguém que entrava deixou de entrar).
+   * Sem argumento vale o piso deste service (`rh.manage`); a leitura que
+   * pede menos, ou a escrita que pede mais, passa a sua.
+   */
+  private requireAdmin(ctx: RequestContext, chave: string = "rh.manage") {
+    if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
+    if (!ctxCan(ctx, chave)) throw new AppError(ErrorCode.Forbidden, `Seu perfil nao tem a permissao: ${chave}`, 403);
+  }
   private monthRange(ref: string) {
     const m = /^(\d{4})-(\d{2})/.exec(ref || ""); const now = new Date();
     const y = m ? Number(m[1]) : now.getUTCFullYear(); const mo = m ? Number(m[2]) : now.getUTCMonth() + 1;

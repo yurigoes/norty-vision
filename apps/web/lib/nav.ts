@@ -98,10 +98,10 @@ export const NAV_ADMIN: Array<{ title: string; items: NavItem[] }> = [
     { href: "/app/empresa-contrato", label: "Contrato da plataforma" },
   ] },
   { title: "Pessoas", items: [
-    { key: "rh", href: "/app/rh", label: "RH & Funcionários" },
-    { href: "/app/ponto", label: "Ponto eletrônico" },
-    { href: "/app/alocacoes", label: "Alocações" },
-    { href: "/app/assiduidade", label: "Assiduidade" },
+    { key: "rh", href: "/app/rh", label: "RH & Funcionários", perm: "rh.manage" },
+    { href: "/app/ponto", label: "Ponto eletrônico", perm: "ponto.view" },
+    { href: "/app/alocacoes", label: "Alocações", perm: "rh.manage" },
+    { href: "/app/assiduidade", label: "Assiduidade", perm: "rh.manage" },
   ] },
   { title: "Configuração", items: [
     { href: "/app/lojas", label: "Lojas", perm: "stores.manage" },

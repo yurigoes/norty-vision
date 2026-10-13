@@ -1,6 +1,6 @@
 import { Body, Controller, Get, HttpCode, Param, Post, Query, Req, Res } from "@nestjs/common";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { CurrentContext, Public } from "../auth/decorators";
+import { CurrentContext, Public, RequirePermission } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { PontoPwaService } from "./ponto-pwa.service";
 import { FaceService } from "./face.service";
@@ -28,18 +28,24 @@ export class PontoPwaController {
   // nenhum. Quem cria e edita loja é a tela /app/lojas, pelo módulo de lojas.
   //
   // `apps/api/src/__checks__/rotas.check.mts` passou a cobrir isso.
+  @RequirePermission("ponto.devices")
   @Get("ponto/devices")
   async devices(@CurrentContext() ctx: RequestContext) { return { items: await this.svc.listDevices(ctx) }; }
+  @RequirePermission("ponto.devices")
   @Post("ponto/devices")
   @HttpCode(200)
   createDevice(@CurrentContext() ctx: RequestContext, @Body() b: any) { return this.svc.createDevice(ctx, b ?? {}); }
+  @RequirePermission("ponto.devices")
   @Post("ponto/devices/:id")
   @HttpCode(200)
   updateDevice(@CurrentContext() ctx: RequestContext, @Param("id") id: string, @Body() b: any) { return this.svc.updateDevice(ctx, id, b ?? {}); }
+  @RequirePermission("ponto.devices")
   @Get("ponto/devices/:id/rustdesk")
   rustdesk(@CurrentContext() ctx: RequestContext, @Param("id") id: string) { return this.svc.deviceRustdesk(ctx, id); }
+  @RequirePermission("ponto.devices")
   @Get("ponto/devices/:id/punches")
   devicePunches(@CurrentContext() ctx: RequestContext, @Param("id") id: string) { return this.svc.terminalPunches(ctx, id); }
+  @RequirePermission("ponto.devices")
   @Get("ponto/devices-report")
   async devicesReport(@CurrentContext() ctx: RequestContext, @Res() reply: FastifyReply) {
     const { buffer, filename } = await this.svc.terminalsReportPdf(ctx);
@@ -47,21 +53,25 @@ export class PontoPwaController {
   }
 
   /** Cadastra (enrolla) o rosto de referência do funcionário. */
+  @RequirePermission("ponto.devices")
   @Post("ponto/employees/:id/face")
   @HttpCode(200)
   enrollFace(@CurrentContext() ctx: RequestContext, @Param("id") id: string, @Body() b: any) { return this.face.enroll(ctx, id, b?.selfie ?? ""); }
 
   /** Sobe a imagem de fundo do painel de marcação (com validade). */
+  @RequirePermission("ponto.devices")
   @Post("ponto/background")
   @HttpCode(200)
   background(@CurrentContext() ctx: RequestContext, @Body() b: any) { return this.svc.setBackground(ctx, b?.image ?? "", b?.until); }
 
   /** Testa o reconhecimento facial (calibração): mostra quem o sistema acha que é, sem bater ponto. */
+  @RequirePermission("ponto.devices")
   @Post("ponto/face-test")
   @HttpCode(200)
   faceTest(@CurrentContext() ctx: RequestContext, @Body() b: any) { return this.svc.faceTest(ctx, b?.selfie ?? ""); }
 
   /** Selfie da marcação (bucket privado) — só admin. */
+  @RequirePermission("ponto.devices")
   @Get("ponto/punches/:id/selfie")
   async selfie(@CurrentContext() ctx: RequestContext, @Param("id") id: string, @Res() reply: FastifyReply) {
     const { body, contentType } = await this.svc.selfie(ctx, id);
@@ -69,6 +79,18 @@ export class PontoPwaController {
   }
 
   // ----- PÚBLICO (token do dispositivo) -----
+  //
+  // NÃO PONHA `@RequirePermission` NEM REMOVA `@Public()` DAQUI PRA BAIXO.
+  // Estas quatro rotas são o RELÓGIO DE PAREDE: o terminal (Windows/Android)
+  // se autentica pelo TOKEN DO DISPOSITIVO, não por sessão de usuário — não há
+  // cookie, não há `membership`, não há papel, logo não há permissão pra
+  // conferir. O `AuthGuard` responde ao `@Public()` antes de olhar permissão,
+  // então uma chave aqui não "protegeria" nada: ela recusaria TODA batida de
+  // TODO terminal da empresa, no mesmo instante do deploy, com o funcionário
+  // na frente da máquina.
+  //
+  // `apps/api/src/__checks__/permissoes.check.mts` confere que continuem
+  // públicas e sem chave.
   @Public()
   @Get("ponto-pwa/bootstrap")
   bootstrap(@Query("token") token: string, @Query("v") v: string, @Req() req: FastifyRequest) { return this.svc.bootstrap(token, clientIp(req), v ?? null); }

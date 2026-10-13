@@ -7,6 +7,7 @@ import { StorageService } from "../storage/storage.service";
 import { PontoService } from "./ponto.service";
 import { FaceService } from "./face.service";
 import { loadEnv } from "../config";
+import { ctxCan } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 
 /**
@@ -21,7 +22,18 @@ export class PontoPwaService {
   private rls(ctx: RequestContext) {
     return ctx.isPlatformAdmin ? { isPlatformAdmin: true as const } : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
   }
-  private requireAdmin(ctx: RequestContext) { if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403); if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403); }
+  /**
+   * O porteiro deste service. Era `isOrgAdmin` cru — e tela aberta por
+   * permissão respondia 403: vazia, sem explicação. Agora é a chave do
+   * catálogo (`ctxCan` já devolve true pra master e pra owner/admin da org,
+   * então isto só ALARGA: ninguém que entrava deixou de entrar).
+   * Sem argumento vale o piso deste service (`ponto.devices`); a leitura que
+   * pede menos, ou a escrita que pede mais, passa a sua.
+   */
+  private requireAdmin(ctx: RequestContext, chave: string = "ponto.devices") {
+    if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
+    if (!ctxCan(ctx, chave)) throw new AppError(ErrorCode.Forbidden, `Seu perfil nao tem a permissao: ${chave}`, 403);
+  }
   private hash(s: string) { return createHash("sha256").update(s, "utf8").digest("hex"); }
   // cripto de credenciais (RustDesk) — AES-256-GCM com chave derivada do COOKIE_SECRET
   private aesKey(): Buffer { return createHash("sha256").update(`${loadEnv().COOKIE_SECRET}:ponto-terminal`).digest(); }
@@ -265,7 +277,7 @@ export class PontoPwaService {
   /** Sobe a imagem de fundo do painel (bucket público) com validade. */
   async setBackground(ctx: RequestContext, dataUrl: string, until?: string) {
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "ponto.devices")) throw new AppError(ErrorCode.Forbidden, "Seu perfil nao tem a permissao: ponto.devices", 403);
     const m = dataUrl.match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/);
     if (!m) throw new AppError(ErrorCode.ValidationFailed, "Imagem inválida", 400);
     const buf = Buffer.from(m[2]!, "base64");
@@ -355,7 +367,7 @@ export class PontoPwaService {
   /** Teste de calibração (admin): identifica o rosto e devolve quem é + similaridade, SEM bater ponto. */
   async faceTest(ctx: RequestContext, selfie: string) {
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "ponto.devices")) throw new AppError(ErrorCode.Forbidden, "Seu perfil nao tem a permissao: ponto.devices", 403);
     const m = (selfie || "").match(/^data:(image\/(?:png|jpeg|webp));base64,(.+)$/);
     if (!m) throw new AppError(ErrorCode.ValidationFailed, "Selfie inválida", 400);
     const probeBuf = Buffer.from(m[2]!, "base64");
@@ -372,7 +384,9 @@ export class PontoPwaService {
 
   /** Serve a selfie (bucket privado) para o admin. */
   async selfie(ctx: RequestContext, punchId: string) {
-    if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
+    // A selfie da batida é a cara do funcionário num bucket privado. Não tinha
+    // porteiro nenhum aqui: o `@RequirePermission` da rota era a única trava.
+    this.requireAdmin(ctx, "ponto.devices");
     const p = await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.pontoPunch.findFirst({ where: { id: punchId }, select: { photoUrl: true } }));
     if (!p?.photoUrl) throw new AppError(ErrorCode.NotFound, "Sem selfie", 404);
     return this.storage.getPrivate(p.photoUrl);

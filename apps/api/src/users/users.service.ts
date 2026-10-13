@@ -725,7 +725,7 @@ export class UsersService {
     return this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.membership.update({
         where: { id: m.id },
-        data: { permissions: this.sanitizePermissions(permissions) as any },
+        data: { permissions: this.sanitizeMembershipOverrides(permissions) as any },
         select: { id: true, permissions: true },
       }),
     ).then(async (r) => {
@@ -810,7 +810,7 @@ export class UsersService {
             slug,
             name: input.name,
             description: input.description ?? null,
-            permissions: this.sanitizePermissions(input.permissions),
+            permissions: this.sanitizeRolePermissions(input.permissions),
             isSystem: false,
             isDefault: false,
           },
@@ -842,7 +842,7 @@ export class UsersService {
         if (input.description !== undefined) data.description = input.description;
         if ((input as any).isActive !== undefined) data.isActive = (input as any).isActive;
         if (input.permissions !== undefined) {
-          data.permissions = this.sanitizePermissions(input.permissions);
+          data.permissions = this.sanitizeRolePermissions(input.permissions);
         }
         return tx.role.update({ where: { id: roleId }, data });
       },
@@ -892,15 +892,53 @@ export class UsersService {
    * tolera papeis legados que tinham permissions em formato aninhado
    * ({"appointments":{"read":"store"}}) sem estourar o request inteiro.
    */
-  private sanitizePermissions(perms: Record<string, unknown>): Record<string, boolean> {
-    const valid = new Set(
-      PERMISSION_CATALOG.flatMap((g) => g.items.map((i) => i.key)),
-    );
+  /**
+   * PERMISSÃO DE PAPEL: presença é concessão, ausência é negação.
+   *
+   * Guardar `false` num papel não teria significado — o papel é a lista do que
+   * ele dá. Então só `true` entra, e chave fora do catálogo é descartada
+   * (papéis legados tinham objetos aninhados tipo
+   * {"appointments":{"read":"store"}}, que não casam com @RequirePermission
+   * "appointments.read" e vazariam como truthy).
+   */
+  private sanitizeRolePermissions(perms: Record<string, unknown>): Record<string, boolean> {
+    const valid = this.chavesValidas();
     const out: Record<string, boolean> = {};
     for (const [k, v] of Object.entries(perms ?? {})) {
       if (valid.has(k) && v === true) out[k] = true;
     }
     return out;
+  }
+
+  /**
+   * OVERRIDE DO USUÁRIO: três estados, e é isso que faz a personalização
+   * funcionar.
+   *
+   *   chave ausente  → herda o papel
+   *   true           → concede, mesmo que o papel não dê
+   *   false          → NEGA, mesmo que o papel dê
+   *
+   * Antes esta função era a mesma do papel e só guardava `true`. O `false` que
+   * a tela mandava ao desmarcar uma caixa era DESCARTADO, o override ficava sem
+   * a chave, e `mergePermissions({...papel, ...usuario})` deixava o `true` do
+   * papel ganhar. Resultado medido: desmarcar uma permissão que o papel concede
+   * não fazia absolutamente nada — a tela dizia "Permissões personalizadas
+   * salvas" e o acesso continuava igual.
+   *
+   * Conceder funcionava; revogar nunca funcionou. E revogar é justamente o que
+   * se quer de uma personalização por usuário.
+   */
+  private sanitizeMembershipOverrides(perms: Record<string, unknown>): Record<string, boolean> {
+    const valid = this.chavesValidas();
+    const out: Record<string, boolean> = {};
+    for (const [k, v] of Object.entries(perms ?? {})) {
+      if (valid.has(k) && typeof v === "boolean") out[k] = v;
+    }
+    return out;
+  }
+
+  private chavesValidas(): Set<string> {
+    return new Set(PERMISSION_CATALOG.flatMap((g) => g.items.map((i) => i.key)));
   }
 
   private validatePassword(password: string) {

@@ -67,7 +67,10 @@ export function UsersClient({
   const [error, setError] = useState<string | null>(null);
   const [pwValue, setPwValue] = useState("");
   const [showPerms, setShowPerms] = useState(false);
+  // `perms` é o estado EFETIVO que a tela mostra (papel + exceções).
+  // `permsDoPapel` é a referência: o que salvar é a DIFERENÇA entre os dois.
   const [perms, setPerms] = useState<Record<string, boolean>>({});
+  const [permsDoPapel, setPermsDoPapel] = useState<Record<string, boolean>>({});
   const [busyAction, setBusyAction] = useState<string | null>(null);
 
   const primaryOf = (u: UserRow) => u.memberships.find((m) => m.isPrimary) ?? u.memberships[0];
@@ -80,13 +83,17 @@ export function UsersClient({
     // permissions aninhados ({"appointments":{"read":"store"}}) que quebram
     // o Zod do backend. Aqui só pegamos chaves do catálogo com valor boolean.
     const validKeys = new Set(catalog.flatMap((g) => g.items.map((i) => i.key)));
-    const merged: Record<string, boolean> = {};
-    for (const src of [m?.role.permissions ?? {}, m?.permissions ?? {}]) {
-      for (const [k, v] of Object.entries(src)) {
-        if (validKeys.has(k) && typeof v === "boolean") merged[k] = v;
+    const soValidas = (src: Record<string, unknown>) => {
+      const out: Record<string, boolean> = {};
+      for (const [k, v] of Object.entries(src ?? {})) {
+        if (validKeys.has(k) && typeof v === "boolean") out[k] = v;
       }
-    }
-    setPerms(merged);
+      return out;
+    };
+    const doPapel = soValidas((m?.role.permissions ?? {}) as Record<string, unknown>);
+    const excecoes = soValidas((m?.permissions ?? {}) as Record<string, unknown>);
+    setPermsDoPapel(doPapel);
+    setPerms({ ...doPapel, ...excecoes });
     setEditing(u);
     setError(null);
   }
@@ -104,12 +111,35 @@ export function UsersClient({
     } finally { setBusyAction(null); }
   }
 
+  /**
+   * SÓ A DIFERENÇA EM RELAÇÃO AO PAPEL vai pro servidor.
+   *
+   * Antes a tela mandava o mapa inteiro (papel + exceções), e o efeito era
+   * colar o papel no usuário: todo `true` do papel virava exceção própria dele.
+   * Depois disso, mudar o PAPEL não mexia mais nesse usuário nessas chaves —
+   * "personalizar uma permissão" congelava silenciosamente todas as outras.
+   *
+   * Agora o override guarda apenas o que DIVERGE: ausente = herda o papel,
+   * `true` = concede a mais, `false` = nega o que o papel dá.
+   */
+  function excecoesParaSalvar(): Record<string, boolean> {
+    const out: Record<string, boolean> = {};
+    for (const g of catalog) {
+      for (const it of g.items) {
+        const efetivo = !!perms[it.key];
+        const noPapel = !!permsDoPapel[it.key];
+        if (efetivo !== noPapel) out[it.key] = efetivo;
+      }
+    }
+    return out;
+  }
+
   async function savePerms(membershipId: string) {
     setBusyAction("perms");
     try {
       const res = await fetch(`/api/users/memberships/${membershipId}/permissions`, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({ permissions: perms }),
+        body: JSON.stringify({ permissions: excecoesParaSalvar() }),
       });
       if (!res.ok) { const d = await res.json().catch(() => ({})); setError(d?.error?.message ?? "Falha ao salvar permissões"); return; }
       dialog.toast("Permissões personalizadas salvas.", "success");
@@ -383,28 +413,62 @@ export function UsersClient({
               </button>
               {showPerms && (
                 <div className="mt-3 space-y-3">
-                  <p className="text-[11px] text-muted">Marque o que este usuário pode fazer (sobrepõe o papel). Owner/admin têm acesso total.</p>
+                  <div className="space-y-1 text-[11px] text-muted">
+                    <p>A marcação começa no que o <b>papel</b> dá. O que você mudar vira exceção <b>deste usuário</b> — marcar concede a mais, desmarcar <b>nega</b> mesmo que o papel dê.</p>
+                    <p>O que você não mexer continua herdando o papel: mudar o papel depois muda este usuário também. <b>Owner e admin têm acesso total e ignoram isto.</b></p>
+                  </div>
+                  {(() => {
+                    // Quantas exceções existem agora. Sem este contador não há
+                    // como saber se o usuário está no papel puro ou tem
+                    // personalização — e era isso que fazia "não entra em vigor"
+                    // ser indistinguível de "não personalizei".
+                    const diff = catalog.flatMap((g) => g.items).filter((it) => !!perms[it.key] !== !!permsDoPapel[it.key]);
+                    if (diff.length === 0) return <p className="text-[11px] text-muted">Sem exceções: este usuário segue exatamente o papel.</p>;
+                    return (
+                      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-brand/30 bg-brand/5 px-3 py-2">
+                        <span className="text-[11px] text-brand">
+                          {diff.length} exceção(ões) ao papel: {diff.map((it) => `${!!perms[it.key] ? "+" : "−"}${it.label}`).join(", ")}
+                        </span>
+                        <button type="button" onClick={() => setPerms({ ...permsDoPapel })} className="ml-auto rounded-lg border border-line px-2 py-1 text-[11px] text-muted transition hover:text-fg">
+                          voltar tudo ao papel
+                        </button>
+                      </div>
+                    );
+                  })()}
                   {catalog.map((g) => (
                     <div key={g.group}>
                       <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-brand">{g.group}</p>
                       <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                        {g.items.map((it) => (
-                          <label key={it.key} className="flex items-center gap-2 rounded-lg border border-line bg-surface-2 px-2 py-1.5 text-xs">
-                            <input
-                              type="checkbox"
-                              checked={!!perms[it.key]}
-                              onChange={() => setPerms((p) => ({ ...p, [it.key]: !p[it.key] }))}
-                              className="accent-brand"
-                            />
-                            <span>{it.label}</span>
-                          </label>
-                        ))}
+                        {g.items.map((it) => {
+                          const efetivo = !!perms[it.key];
+                          const noPapel = !!permsDoPapel[it.key];
+                          const excecao = efetivo !== noPapel;
+                          return (
+                            <label
+                              key={it.key}
+                              title={excecao
+                                ? `Exceção deste usuário: ${efetivo ? "concedido" : "negado"} (o papel ${noPapel ? "dá" : "não dá"})`
+                                : `Herdado do papel (${noPapel ? "concedido" : "não concedido"})`}
+                              className={`flex items-center gap-2 rounded-lg border px-2 py-1.5 text-xs ${excecao ? "border-brand/60 bg-brand/5" : "border-line bg-surface-2"}`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={efetivo}
+                                onChange={() => setPerms((p) => ({ ...p, [it.key]: !p[it.key] }))}
+                                className="accent-brand"
+                              />
+                              <span className="flex-1">{it.label}</span>
+                              {excecao && <span className="text-[10px] font-semibold text-brand" aria-label="exceção ao papel">{efetivo ? "+" : "−"}</span>}
+                            </label>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
                   <button type="button" onClick={() => savePerms(primaryOf(editing)!.id)} disabled={busyAction === "perms"} className="rounded-xl border border-brand px-4 py-2 text-xs font-semibold text-brand transition hover:bg-brand hover:text-white disabled:opacity-50">
                     {busyAction === "perms" ? "Salvando..." : "Salvar permissões"}
                   </button>
+                  <p className="text-[11px] text-muted">A sessão do usuário é atualizada na hora — ele não precisa sair e entrar.</p>
                 </div>
               )}
             </div>

@@ -1,0 +1,152 @@
+// ============================================================================
+// Conferência das PERMISSÕES: a personalização por usuário tem que valer.
+//
+// Rodar:  node --experimental-strip-types apps/api/src/__checks__/permissoes.check.mts
+//
+// O QUE ACONTECIA — dois defeitos, e o segundo era pior
+//
+// (A) REVOGAR NUNCA FUNCIONOU. `sanitizePermissions` guardava só `v === true`.
+//     O `false` que a tela manda ao DESMARCAR uma caixa era descartado, o
+//     override ficava sem a chave, e `mergePermissions({...papel, ...usuario})`
+//     deixava o `true` do papel ganhar. A tela dizia "Permissões personalizadas
+//     salvas" e o acesso continuava idêntico. Conceder funcionava; revogar, que
+//     é o que se quer de uma personalização, não.
+//
+// (B) PERSONALIZAR UMA PERMISSÃO CONGELAVA AS OUTRAS. A tela mandava o mapa
+//     inteiro (papel + exceções), então todo `true` do papel virava exceção
+//     própria do usuário. Depois disso, mudar o PAPEL não mexia mais nele
+//     nessas chaves. Ninguém percebia, porque o efeito aparece semanas depois,
+//     quando se edita o papel e um usuário não acompanha.
+//
+// A REGRA, agora escrita em um lugar só:
+//
+//     chave ausente do override  → herda o papel
+//     true                       → concede, mesmo que o papel não dê
+//     false                      → NEGA, mesmo que o papel dê
+//
+// ----------------------------------------------------------------------------
+// Leitura por TEXTO, sem banco e sem Nest de pé — roda no `npm run check`.
+// ============================================================================
+
+import { readFileSync, readdirSync, statSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const api = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
+const src = join(api, "src");
+const web = join(api, "..", "web");
+
+function arquivos(dir: string, achados: string[] = []): string[] {
+  for (const n of readdirSync(dir)) {
+    const p = join(dir, n);
+    if (statSync(p).isDirectory()) { if (n !== "node_modules") arquivos(p, achados); }
+    else if (p.endsWith(".ts") || p.endsWith(".tsx")) achados.push(p);
+  }
+  return achados;
+}
+
+const users = readFileSync(join(src, "users", "users.service.ts"), "utf8");
+const guard = readFileSync(join(src, "auth", "auth.guard.ts"), "utf8");
+const tela = readFileSync(join(web, "app", "app", "usuarios", "UsersClient.tsx"), "utf8");
+/**
+ * Comentário fora ANTES de procurar decorator. É a terceira conferência desta
+ * base a tropeçar nisso: `users.service.ts` tem, num JSDoc, o texto
+ * `@RequirePermission("chave")` explicando como se usa o decorator — e o grep
+ * cru acusava uma permissão chamada "chave" que não existe.
+ *
+ * Conferência que grita no lugar errado ensina a ignorar conferência, então
+ * isto aqui não é zelo: é o que mantém as outras seis asserções confiáveis.
+ */
+const semComentario = (t: string) =>
+  t.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, "");
+const todoApi = arquivos(src).map((f) => semComentario(readFileSync(f, "utf8"))).join("\n");
+
+const falhas: string[] = [];
+const exige = (ok: boolean, msg: string) => { if (!ok) falhas.push(msg); };
+
+// --- 1. o catálogo ----------------------------------------------------------
+const bloco = users.slice(users.indexOf("export const PERMISSION_CATALOG"));
+const catalogo = [...new Set([...bloco.slice(0, bloco.indexOf("\n];")).matchAll(/key:\s*"([^"]+)"/g)].map((m) => m[1]!))];
+exige(catalogo.length >= 70, `só ${catalogo.length} chaves lidas do PERMISSION_CATALOG — eram 77. A leitura cegou.`);
+
+// --- 2. o `false` do override tem que ser GUARDADO --------------------------
+exige(
+  /sanitizeMembershipOverrides/.test(users) && /typeof v === "boolean"/.test(users),
+  "o sanitizador do override do usuário voltou a filtrar por `v === true`: desmarcar " +
+    "uma permissão que o papel concede para de ter efeito (defeito A)",
+);
+exige(
+  /sanitizeRolePermissions/.test(users),
+  "papel e override voltaram a usar o MESMO sanitizador — eles têm semânticas " +
+    "diferentes (no papel, ausência é negação; no override, ausência é herança)",
+);
+
+// --- 3. o merge tem que deixar o override vencer ----------------------------
+exige(
+  /\{ \.\.\.norm\(rolePerms\), \.\.\.norm\(userPerms\) \}/.test(guard),
+  "`mergePermissions` não dá mais a última palavra ao override do usuário",
+);
+exige(
+  /permissions\[requirePermission\] !== true/.test(guard),
+  "o guard não nega mais por `!== true` — com `=== false` ou truthy, chave ausente " +
+    "ou valor estranho passaria a liberar",
+);
+
+// --- 4. a tela manda SÓ a diferença em relação ao papel ---------------------
+exige(
+  /excecoesParaSalvar/.test(tela) && /efetivo !== noPapel/.test(tela),
+  "a tela de usuários voltou a mandar o mapa inteiro de permissões: personalizar " +
+    "uma chave congela todas as outras no usuário e o papel perde efeito (defeito B)",
+);
+exige(
+  !/body: JSON\.stringify\(\{ permissions: perms \}\)/.test(tela),
+  "a tela manda `perms` cru (o mapa efetivo) em vez da diferença — é exatamente o defeito B",
+);
+
+// --- 5. toda chave exigida por rota tem que existir no catálogo -------------
+// Senão não há caixa pra marcar: a permissão existe no código e é inalcançável.
+const exigidas = [...new Set([
+  ...[...todoApi.matchAll(/@RequirePermission\("([^"]+)"\)/g)].map((m) => m[1]!),
+  ...[...todoApi.matchAll(/ctxCan\(ctx,\s*"([^"]+)"\)/g)].map((m) => m[1]!),
+])];
+const semCaixa = exigidas.filter((k) => !catalogo.includes(k));
+exige(semCaixa.length === 0,
+  `rota exige permissão que não está no catálogo (não há como conceder na tela): ${semCaixa.join(", ")}`);
+
+/**
+ * CHAVES DO CATÁLOGO QUE NENHUMA ROTA EXIGE — dívida conhecida, declarada aqui
+ * pra não crescer calada. Cada uma é uma caixa que o admin marca e que o
+ * servidor ignora: a tela promete um controle que não existe.
+ *
+ * Três delas (`roles.manage`, `users.manage`, `voip.admin`) escondem item do
+ * menu via `nav.ts`, então fazem metade do trabalho — esconder sem barrar a
+ * rota é conveniência, não controle de acesso.
+ *
+ * Tirar uma daqui = ou a rota passou a exigir a permissão, ou a chave saiu do
+ * catálogo. Acrescentar uma = alguém criou uma caixa que não faz nada.
+ */
+const SEM_ROTA = new Set([
+  "agenda.view_others", "cashbox.adjust", "chat.respond", "chat.view_all",
+  "credit.write_off", "crm.pipeline_manage", "customers.export", "fiscal.nfe.cancel",
+  "production.cancel", "production.update_status", "products.price", "reports.production",
+  "roles.manage", "sales.discount", "sales.refund", "settings.org",
+  "tickets.create", "tickets.view", "users.manage",
+  "voip.admin", "voip.call_external", "voip.call_internal",
+]);
+const orfas = catalogo.filter((k) => !exigidas.includes(k) && !SEM_ROTA.has(k));
+exige(orfas.length === 0,
+  `permissão nova no catálogo que NENHUMA rota exige — a caixa não faz nada: ${orfas.join(", ")}`);
+const quitadas = [...SEM_ROTA].filter((k) => exigidas.includes(k));
+if (quitadas.length) {
+  console.log(`  (${quitadas.length} saíram da dívida — tire de SEM_ROTA: ${quitadas.join(", ")})`);
+}
+
+console.log(`catálogo: ${catalogo.length} chaves · exigidas por rota: ${exigidas.length} · dívida declarada: ${SEM_ROTA.size}`);
+
+if (falhas.length) {
+  console.error(`\n✖ permissões: a personalização por usuário não vale\n`);
+  for (const f of falhas) console.error(`  • ${f}`);
+  console.error("");
+  process.exit(1);
+}
+console.log("✔ permissões: negar, conceder e herdar do papel — os três estados valem");

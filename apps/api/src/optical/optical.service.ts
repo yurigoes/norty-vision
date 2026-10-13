@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { applyStoreStockDelta } from "../products/products.service";
 import { NotificationService } from "../notifications/notification.service";
 import { SurveysService } from "../surveys/surveys.service";
 import type { RequestContext } from "../auth/session.middleware";
@@ -229,13 +230,38 @@ export class OpticalService {
           measuredAt: new Date(),
         },
       });
-      // baixa de estoque do óculos (frame), se controlar estoque.
-      // Quando veio de uma venda, o estoque já baixou no PDV — não baixa de novo.
+      // BAIXA DE ESTOQUE DA ARMAÇÃO, quando o produto controla estoque.
+      // Quando o pedido veio de uma venda, o PDV já baixou — não baixa de novo.
+      //
+      // Antes aqui havia um `product.updateMany({ stockQty: { decrement: 1 } })`
+      // cru, e ele mentia de duas formas. `products.stock_qty` é o TOTAL, soma
+      // das lojas: mexer nele sem mexer em `product_store_stock` deixava a loja
+      // mostrando uma armação que não tinha mais, e a soma das lojas deixava de
+      // fechar com o total. E não gravava `stock_movements`, então a aba
+      // Movimentações do produto não tinha linha nenhuma explicando o
+      // desaparecimento — estoque sumindo sem rastro.
+      //
+      // Agora usa o mesmo caminho do PDV: `applyStoreStockDelta` (que mantém a
+      // loja e o total coerentes) e um movimento com `referenceType: "lens_order"`,
+      // que é o que permite chegar do movimento ao pedido que o causou.
       if (frameProductId && !input.saleId) {
-        await tx.product.updateMany({
-          where: { id: frameProductId, trackStock: true },
-          data: { stockQty: { decrement: 1 } },
-        }).catch(() => undefined);
+        const frame = await tx.product.findFirst({
+          where: { id: frameProductId, deletedAt: null },
+          select: { trackStock: true, storeId: true },
+        });
+        if (frame?.trackStock) {
+          const loja = storeId ?? frame.storeId ?? null;
+          const after = await applyStoreStockDelta(tx, orgId, frameProductId, loja, -1);
+          await tx.stockMovement.create({
+            data: {
+              organizationId: orgId, storeId: loja, productId: frameProductId,
+              kind: "sale", qty: -1, qtyAfter: after,
+              reason: "Armação usada em pedido de lente",
+              referenceType: "lens_order", referenceId: order.id,
+              createdByUserId: ctx.userId ?? null,
+            },
+          });
+        }
       }
       return order;
     });

@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { createHash, randomBytes, createCipheriv, createDecipheriv } from "crypto";
 import PDFDocument from "pdfkit";
 import { AppError, ErrorCode } from "@yugo/shared";
@@ -17,6 +17,7 @@ import type { RequestContext } from "../auth/session.middleware";
  */
 @Injectable()
 export class PontoPwaService {
+  private readonly logger = new Logger("PontoPwa");
   constructor(private readonly prisma: PrismaService, private readonly storage: StorageService, private readonly ponto: PontoService, private readonly face: FaceService) {}
 
   private rls(ctx: RequestContext) {
@@ -234,7 +235,19 @@ export class PontoPwaService {
     }
     const emp = emps.find((e) => e.id === r.id)!;
     if (r.score < cfg.faceThreshold + 8) flags.push("rosto_baixa_confianca"); // reconheceu por pouco → revisar
-    const { key } = await this.storage.putPrivate({ keyPrefix: `ponto/selfies/${orgId}`, contentType: m[1]!, body: probeBuf });
+    // Mesmo caso do `punch` acima: o rosto JÁ foi reconhecido (o `identify`
+    // rodou em memória, com o `probeBuf`), então a identidade está estabelecida.
+    // Deixar o upload da foto derrubar a batida com 500 seria descartar um
+    // registro válido por causa do arquivo de prova.
+    let key: string | undefined;
+    try {
+      key = (await this.storage.putPrivate({ keyPrefix: `ponto/selfies/${orgId}`, contentType: m[1]!, body: probeBuf })).key;
+    } catch (e) {
+      flags.push("selfie_nao_armazenada");
+      this.logger.error(
+        `selfie do facial nao subiu no terminal ${d.name} (${d.id}) — a batida segue SEM foto: ${String((e as any)?.message ?? e)}`,
+      );
+    }
     const res = await this.ponto.punchCore(orgId, {
       employeeId: emp.id, origin: "pwa", lat: body.lat, lng: body.lng, accuracy: body.accuracy,
       photoUrl: key, faceScore: r.score, faceMatch: true, livenessOk: cfg.requireLiveness ? !!body.livenessOk : null, fraudFlags: flags,
@@ -332,8 +345,34 @@ export class PontoPwaService {
       if (!m) throw new AppError(ErrorCode.ValidationFailed, "Selfie inválida", 400);
       probeBuf = Buffer.from(m[2]!, "base64");
       if (probeBuf.length > 4_000_000) throw new AppError(ErrorCode.ValidationFailed, "Selfie muito grande", 400);
-      const { key } = await this.storage.putPrivate({ keyPrefix: `ponto/selfies/${targetOrgId}`, contentType: m[1]!, body: probeBuf });
-      photoUrl = key; // bucket privado: guardamos a key, servida via endpoint autenticado
+      // A SELFIE É PROVA. A BATIDA É O REGISTRO.
+      // ----------------------------------------------------------------------
+      // Este `putPrivate` não tinha proteção: com o storage inalcançável ele
+      // estourava e derrubava a batida INTEIRA com 500. Medido aqui, com o
+      // MinIO fora do ar:
+      //
+      //   Error: getaddrinfo ENOTFOUND minio
+      //   POST /api/ponto-pwa/punch -> 500
+      //
+      // Ou seja: um soluço de rede no bucket, disco cheio ou restart do MinIO
+      // e TODO terminal da empresa para de bater ponto — o funcionário na
+      // frente da máquina, e o registro que a Portaria 671 exige simplesmente
+      // não acontece. Perder a marcação é muito pior que perder a foto.
+      //
+      // Agora a foto é opcional na prática: se não subir, a batida segue sem
+      // ela e o fato fica GRAVADO na marcação (`selfie_nao_armazenada`), que é
+      // o que impede "a foto sumiu" de virar alegação sem rastro. A verificação
+      // facial continua funcionando: ela usa o `probeBuf` da memória, que já
+      // está lido acima — não depende do upload.
+      try {
+        const { key } = await this.storage.putPrivate({ keyPrefix: `ponto/selfies/${targetOrgId}`, contentType: m[1]!, body: probeBuf });
+        photoUrl = key; // bucket privado: guardamos a key, servida via endpoint autenticado
+      } catch (e) {
+        flags.push("selfie_nao_armazenada");
+        this.logger.error(
+          `selfie nao subiu no terminal ${d.name} (${d.id}) — a batida segue SEM foto: ${String((e as any)?.message ?? e)}`,
+        );
+      }
     }
     // Reconhecimento facial — só para funcionário da própria empresa do terminal.
     // Para ALOCADOS, o rosto cadastrado vive na empregadora (outro tenant) e o provedor

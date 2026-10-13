@@ -126,12 +126,28 @@ exige(semCaixa.length === 0,
  * catálogo. Acrescentar uma = alguém criou uma caixa que não faz nada.
  */
 const SEM_ROTA = new Set([
-  "agenda.view_others", "cashbox.adjust", "chat.respond", "chat.view_all",
+  "agenda.view_others", "chat.respond", "chat.view_all",
   "credit.write_off", "crm.pipeline_manage", "customers.export", "fiscal.nfe.cancel",
-  "production.cancel", "production.update_status", "products.price", "reports.production",
-  "roles.manage", "sales.discount", "sales.refund", "settings.org",
+  "production.cancel", "production.update_status", "reports.production",
+  "roles.manage", "settings.org",
   "tickets.create", "tickets.view", "users.manage",
   "voip.admin", "voip.call_external", "voip.call_internal",
+
+  // --- as duas abaixo não são guarda faltando: é OPERAÇÃO que não existe ---
+  //
+  // "cashbox.adjust" ("Sangria/suprimento"): o módulo de caixa tem abrir e
+  // fechar, e nada entre os dois. Não há retirada nem suprimento pra barrar.
+  // Pendurar a chave no fechamento seria mentira diferente: desmarcar
+  // "Sangria" passaria a bloquear "Fechar caixa", que tem caixa própria.
+  //
+  // "sales.refund" ("Estornar venda"): a única reversão de venda é
+  // `PATCH /sales/:id/cancel`, que devolve o estoque e já é barrada por
+  // `sales.cancel`. Devolução de dinheiro de venda não existe como operação —
+  // o `POST /production/:id/estorno` é de pedido de produção, não de venda.
+  //
+  // Enquanto as operações não existirem, as duas caixas prometem um controle
+  // sem objeto. O conserto é construir a operação, não ligar a permissão.
+  "cashbox.adjust", "sales.refund",
 ]);
 const orfas = catalogo.filter((k) => !exigidas.includes(k) && !SEM_ROTA.has(k));
 exige(orfas.length === 0,

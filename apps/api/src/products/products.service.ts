@@ -236,6 +236,46 @@ export class ProductsService {
     ] as const) {
       if ((input as any)[k] !== undefined) data[k] = (input as any)[k];
     }
+
+    // ------------------------------------------------------------------
+    // `products.price` ("Alterar preço/promo") era uma caixa no catálogo que o
+    // servidor ignorava. Quem podia editar produto podia mexer em preço, e não
+    // havia como separar as duas coisas.
+    //
+    // A trava é por MUDANÇA, não por presença do campo: o formulário manda o
+    // payload inteiro em toda edição, inclusive os preços que ficaram iguais.
+    // Exigir a permissão só porque o campo veio no corpo faria "corrigir o nome
+    // do produto" precisar de permissão de preço.
+    //
+    // Entram os valores que mudam o que o CLIENTE paga. `costCents` fica de
+    // fora: custo é compra, não preço de venda — e quem dá entrada de
+    // mercadoria informa custo, o que é outra permissão (`products.stock`).
+    // ------------------------------------------------------------------
+    const CAMPOS_DE_PRECO = [
+      "priceCashCents", "priceCardFullCents", "priceCardInstallmentsCents",
+      "priceCreditCents", "creditInterestPct", "earlyPaymentDiscountPct",
+    ] as const;
+    if (CAMPOS_DE_PRECO.some((k) => k in data)) {
+      const atual = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
+        tx.product.findFirst({
+          where: { id },
+          select: Object.fromEntries(CAMPOS_DE_PRECO.map((k) => [k, true])) as any,
+        }),
+      );
+      const mudou = CAMPOS_DE_PRECO.filter((k) => {
+        if (!(k in data)) return false;
+        const antes = (atual as any)?.[k] ?? null;
+        const depois = (data as any)[k] ?? null;
+        return Number(antes ?? NaN) !== Number(depois ?? NaN) && !(antes == null && depois == null);
+      });
+      if (mudou.length > 0 && !ctxCan(ctx, "products.price")) {
+        throw new AppError(
+          ErrorCode.Forbidden,
+          "Seu perfil não pode alterar preço de produto",
+          403,
+        );
+      }
+    }
     return this.prisma.runWithContext(this.rls(ctx), (tx) =>
       tx.product.update({ where: { id }, data }),
     );

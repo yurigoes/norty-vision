@@ -134,8 +134,22 @@ export class SalesService {
       throw new AppError(ErrorCode.ValidationFailed, "Venda sem itens", 400);
     }
 
-    // valida desconto do operador vs config (regra 3)
+    // DESCONTO: duas travas em camadas, e elas respondem perguntas diferentes.
+    //
+    //   `sales.discount`  → esta pessoa pode dar QUALQUER desconto?
+    //   maxOperatorDiscountPct → até QUANTO, sem gerente autorizar?
+    //
+    // A segunda já existia; a primeira era uma caixa no catálogo de permissões
+    // que o servidor ignorava — marcada ou desmarcada, o desconto passava do
+    // mesmo jeito. Quem não pode descontar agora não desconta nem 1%.
     if (input.discountPctApplied && input.discountPctApplied > 0) {
+      if (!ctxCan(ctx, "sales.discount")) {
+        throw new AppError(
+          ErrorCode.Forbidden,
+          "Seu perfil não pode aplicar desconto nesta venda",
+          403,
+        );
+      }
       const cfg = await this.credit.getConfig(ctx);
       const maxOperator = cfg.maxOperatorDiscountPct;
       if (

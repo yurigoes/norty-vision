@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { ctxCan } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 
 interface CreateStoreInput {
@@ -82,8 +83,8 @@ export class StoresService {
   }
 
   async create(ctx: RequestContext, input: CreateStoreInput) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode criar loja", 403);
+    if (!ctxCan(ctx, "stores.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para criar loja (stores.manage)", 403);
     }
 
     const targetOrgId = ctx.isPlatformAdmin
@@ -127,8 +128,8 @@ export class StoresService {
   }
 
   async update(ctx: RequestContext, id: string, input: UpdateStoreInput) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode editar loja", 403);
+    if (!ctxCan(ctx, "stores.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para editar loja (stores.manage)", 403);
     }
 
     return this.prisma.runWithContext(
@@ -158,8 +159,8 @@ export class StoresService {
   }
 
   async softDelete(ctx: RequestContext, id: string) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode arquivar loja", 403);
+    if (!ctxCan(ctx, "stores.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para arquivar loja (stores.manage)", 403);
     }
     return this.prisma.runWithContext(
       ctx.isPlatformAdmin

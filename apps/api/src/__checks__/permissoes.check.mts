@@ -129,9 +129,9 @@ const SEM_ROTA = new Set([
   "agenda.view_others", "chat.respond", "chat.view_all",
   "credit.write_off", "crm.pipeline_manage", "customers.export", "fiscal.nfe.cancel",
   "production.cancel", "production.update_status", "reports.production",
-  "roles.manage", "settings.org",
-  "tickets.create", "tickets.view", "users.manage",
-  "voip.admin", "voip.call_external", "voip.call_internal",
+  "settings.org",
+  "tickets.create", "tickets.view",
+  "voip.call_external", "voip.call_internal",
 
   // --- as duas abaixo não são guarda faltando: é OPERAÇÃO que não existe ---
   //
@@ -155,6 +155,34 @@ exige(orfas.length === 0,
 const quitadas = [...SEM_ROTA].filter((k) => exigidas.includes(k));
 if (quitadas.length) {
   console.log(`  (${quitadas.length} saíram da dívida — tire de SEM_ROTA: ${quitadas.join(", ")})`);
+}
+
+// --- 7. tela aberta por permissão tem que LER os dados -------------------
+// O defeito: o porteiro do nav.ts abriu /app/usuarios pra quem tem
+// `users.manage`, e `users.service.list()` continuou exigindo `isOrgAdmin`. A
+// tela abria e o endpoint respondia 403 — lista vazia, sem explicação nenhuma.
+// Pior que a mensagem "Apenas administradores" que havia antes.
+//
+// `ctxCan` é a régua certa nesses serviços: ele já devolve true pra platform
+// admin e pra owner/admin, então trocar não tira acesso de ninguém — só faz a
+// permissão do catálogo valer. O padrão cru `!isOrgAdmin` aqui volta a abrir a
+// tela sem os dados.
+for (const [arq, chave] of [
+  ["users/users.service.ts", "users.manage"],
+  ["stores/stores.service.ts", "stores.manage"],
+  ["voip/voip-admin.service.ts", "voip.admin"],
+] as const) {
+  const t = semComentario(readFileSync(join(src, arq), "utf8"));
+  exige(
+    new RegExp(`ctxCan\\(ctx, "${chave.replace(".", "\\.")}"\\)`).test(t),
+    `${arq} não usa mais \`ctxCan(ctx, "${chave}")\` — a tela abre pelo nav.ts e os ` +
+      "endpoints respondem 403: tela vazia sem explicação",
+  );
+  exige(
+    !/if \(!ctx\.isPlatformAdmin && !ctx\.isOrgAdmin\) \{/.test(t) && !/if \(!ctx\.isOrgAdmin\) \{/.test(t),
+    `${arq} voltou a barrar por \`isOrgAdmin\` cru em vez de \`ctxCan\` — permissão ` +
+      "concedida deixa de ler os dados",
+  );
 }
 
 console.log(`catálogo: ${catalogo.length} chaves · exigidas por rota: ${exigidas.length} · dívida declarada: ${SEM_ROTA.size}`);

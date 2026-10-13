@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { randomBytes } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
+import { ctxCan } from "../auth/decorators";
 import { ArgonService } from "../auth/argon.service";
 import { ProvisioningService } from "../integrations/provisioning.service";
 import { NotificationService } from "../notifications/notification.service";
@@ -252,8 +253,13 @@ export class UsersService {
     if (!ctx.orgId) {
       throw new AppError(ErrorCode.Forbidden, "Sem organizacao no contexto", 403);
     }
-    if (!ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode listar usuarios", 403);
+    // `ctxCan` em vez de `isOrgAdmin`: ele já devolve true pra platform admin e
+    // pra owner/admin, então ninguém que entrava perde acesso — o que muda é
+    // que a permissão do catálogo passa a valer. Sem isso a tela abre (o
+    // porteiro do nav.ts deixa) e o endpoint responde 403: lista vazia, sem
+    // explicação nenhuma na tela. Era o pior dos dois mundos.
+    if (!ctxCan(ctx, "users.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para ver usuários (users.manage)", 403);
     }
 
     return this.prisma.runWithContext(
@@ -305,8 +311,8 @@ export class UsersService {
   }
 
   async create(ctx: RequestContext, input: CreateUserInput) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode criar usuario", 403);
+    if (!ctxCan(ctx, "users.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para criar usuário (users.manage)", 403);
     }
 
     const targetOrgId = ctx.isPlatformAdmin ? input.organizationId : ctx.orgId;
@@ -417,8 +423,8 @@ export class UsersService {
   }
 
   async update(ctx: RequestContext, id: string, input: UpdateUserInput) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode editar usuario", 403);
+    if (!ctxCan(ctx, "users.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para editar usuário (users.manage)", 403);
     }
     const target = await this.getById(ctx, id);
 
@@ -455,8 +461,8 @@ export class UsersService {
    * no proximo login. Util quando o usuario perde o app autenticador.
    */
   async disableMfa(ctx: RequestContext, id: string) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode desativar 2FA", 403);
+    if (!ctxCan(ctx, "users.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para desativar 2FA (users.manage)", 403);
     }
     const target = await this.getById(ctx, id); // confirma org do alvo
     return this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
@@ -472,8 +478,8 @@ export class UsersService {
     userId: string,
     input: CreateMembershipInput,
   ) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode adicionar acesso", 403);
+    if (!ctxCan(ctx, "users.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para dar acesso (users.manage)", 403);
     }
     const targetOrgId = ctx.isPlatformAdmin ? input.organizationId : ctx.orgId;
     if (!targetOrgId) {
@@ -513,8 +519,8 @@ export class UsersService {
   }
 
   async revokeMembership(ctx: RequestContext, membershipId: string) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode revogar acesso", 403);
+    if (!ctxCan(ctx, "users.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para revogar acesso (users.manage)", 403);
     }
     return this.prisma.runWithContext(
       { isPlatformAdmin: true },
@@ -603,8 +609,8 @@ export class UsersService {
 
   /** Define a comissao (%) do vendedor no membership da org. Admin only. */
   async setCommission(ctx: RequestContext, userId: string, pct: number | null) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "users.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para gerenciar usuários (users.manage)", 403);
     }
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
     if (pct != null && (pct < 0 || pct > 100)) {
@@ -625,8 +631,8 @@ export class UsersService {
    * o admin repassar.
    */
   async resetPassword(ctx: RequestContext, userId: string) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "users.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para gerenciar usuários (users.manage)", 403);
     }
     // org-admin só pode resetar usuário da própria org
     if (!ctx.isPlatformAdmin) {
@@ -652,8 +658,8 @@ export class UsersService {
    * e reativa o usuário (status=active). Admin da org ou master.
    */
   async unblock(ctx: RequestContext, userId: string) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "users.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para gerenciar usuários (users.manage)", 403);
     }
     if (!ctx.isPlatformAdmin) {
       const member = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
@@ -669,8 +675,8 @@ export class UsersService {
 
   /** Marca/desmarca o membro como vendedor na org. Admin only. */
   async setSeller(ctx: RequestContext, userId: string, isSeller: boolean) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "users.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para gerenciar usuários (users.manage)", 403);
     }
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
     return this.prisma.runWithContext({ isPlatformAdmin: true }, async (tx) => {
@@ -684,8 +690,8 @@ export class UsersService {
 
   /** Garante que o admin só mexe em membership da própria org. */
   private async loadMembershipForAdmin(ctx: RequestContext, membershipId: string) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "users.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para gerenciar usuários (users.manage)", 403);
     }
     const m = await this.prisma.runWithContext({ isPlatformAdmin: true }, (tx) =>
       tx.membership.findUnique({ where: { id: membershipId } }),
@@ -739,8 +745,8 @@ export class UsersService {
    * A senha vem do admin (recém gerada/definida) — não armazenamos plaintext.
    */
   async sendCredentials(ctx: RequestContext, userId: string, opts: { password?: string | null }) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin", 403);
+    if (!ctxCan(ctx, "users.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para gerenciar usuários (users.manage)", 403);
     }
     if (!ctx.orgId && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Sem org", 403);
     const orgId = ctx.orgId ?? undefined;
@@ -779,8 +785,8 @@ export class UsersService {
 
   /** Cria um papel customizado da org (admin/owner ou master). */
   async createRole(ctx: RequestContext, input: UpsertRoleInput, orgIdParam?: string) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode criar papeis", 403);
+    if (!ctxCan(ctx, "roles.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para criar papéis (roles.manage)", 403);
     }
     const targetOrgId = ctx.isPlatformAdmin ? orgIdParam : ctx.orgId;
     if (!targetOrgId) {
@@ -821,8 +827,8 @@ export class UsersService {
 
   /** Atualiza um papel customizado (nao permite editar templates de sistema). */
   async updateRole(ctx: RequestContext, roleId: string, input: Partial<UpsertRoleInput>) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode editar papeis", 403);
+    if (!ctxCan(ctx, "roles.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para editar papéis (roles.manage)", 403);
     }
     return this.prisma.runWithContext(
       ctx.isPlatformAdmin
@@ -856,8 +862,8 @@ export class UsersService {
 
   /** Remove um papel customizado que nao esteja em uso. */
   async deleteRole(ctx: RequestContext, roleId: string) {
-    if (!ctx.isPlatformAdmin && !ctx.isOrgAdmin) {
-      throw new AppError(ErrorCode.Forbidden, "Apenas admin/owner pode remover papeis", 403);
+    if (!ctxCan(ctx, "roles.manage")) {
+      throw new AppError(ErrorCode.Forbidden, "Sem permissão para remover papéis (roles.manage)", 403);
     }
     return this.prisma.runWithContext(
       ctx.isPlatformAdmin

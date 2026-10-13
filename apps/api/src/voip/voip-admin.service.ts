@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { AppError, ErrorCode } from "@yugo/shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { ctxCan } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
 import { encryptSipPass } from "./voip.service";
 
@@ -13,9 +14,16 @@ export class VoipAdminService {
   constructor(private readonly prisma: PrismaService) {}
 
   private rls(ctx: RequestContext) { return ctx.isPlatformAdmin ? ADM : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin }; }
+  /**
+   * O porteiro da configuração de telefonia. `ctxCan("voip.admin")` em vez de
+   * `isOrgAdmin`: ele já devolve true pra platform admin e pra owner/admin,
+   * então ninguém perde acesso — o que muda é que a permissão do catálogo passa
+   * a valer. Sem isso /app/voip-admin abre (o nav.ts já declara `voip.admin`) e
+   * todo endpoint responde 403: tela vazia, sem explicação.
+   */
   private requireAdmin(ctx: RequestContext) {
     if (!ctx.orgId) throw new AppError(ErrorCode.Forbidden, "Sem empresa", 403);
-    if (!ctx.isOrgAdmin && !ctx.isPlatformAdmin) throw new AppError(ErrorCode.Forbidden, "Só admin", 403);
+    if (!ctxCan(ctx, "voip.admin")) throw new AppError(ErrorCode.Forbidden, "Sem permissão para configurar a telefonia", 403);
   }
   private redactTrunk<T extends { sipPassEnc?: string | null }>(t: T): Omit<T, "sipPassEnc"> & { hasPass: boolean } {
     const { sipPassEnc, ...rest } = t as any;

@@ -445,14 +445,28 @@ export class JornadaService {
         ? (faltaMin === 0 && lateMin === 0 && earlyMin === 0)
         : anyApproved);
       const abonado = !leaveType && anyApproved && (rawDivergentMin > 0 || c.incomplete);
-      // CRÉDITO NO SALDO — isto é do Vision, não do RH, e segue limitado ao
-      // abono DE HORAS. Os minutos abonados pagam o déficit do dia e entram no
-      // saldo, nunca passando do déficit. No abono de dia inteiro o saldo
-      // continua negativo, exatamente como hoje e como no RH: mudar isso mexe
-      // em número de folha e é decisão de quem fecha a folha, não minha.
+      // CRÉDITO NO SALDO — abono não deixa dívida no banco de horas.
+      //
+      // Isto é do Vision, não do RH. No RH (e aqui, até esta mudança) um
+      // atestado de dia inteiro zerava a falta e DEIXAVA o saldo em -08:00: o
+      // dia não era cobrado como falta, mas o banco de horas continuava
+      // devendo as 8 horas. O funcionário pagava o atestado duas vezes — uma
+      // vez não, e outra em hora extra pra compensar um débito que o atestado
+      // já tinha abonado.
+      //
+      // Abono abona as horas. Então:
+      //   • abono de DIA INTEIRO (ou qualquer justificativa aprovada que valha
+      //     o dia) credita o DÉFICIT INTEIRO — saldo vai a zero;
+      //   • abono DE HORAS credita só o que foi consumido do orçamento, e
+      //     nunca mais que o déficit do dia.
+      //
+      // Afastamento não entra na conta porque já zera o esperado do dia (segs
+      // vazio), então déficit é zero e não há o que creditar.
       const deficitMin = Math.max(0, c.expectedMin - c.workedMin);
       const consumidoMin = Math.max(0, rawDivergentMin - (faltaMin + lateMin + earlyMin));
-      const abonoMin = partialOnly ? Math.min(deficitMin, consumidoMin) : 0;
+      const abonoMin = abonoBudget === Infinity
+        ? deficitMin
+        : partialOnly ? Math.min(deficitMin, consumidoMin) : 0;
       const adjEarly = earlyMin;
       const adjLate = lateMin;
       const adjBalance = c.balanceMin + abonoMin;

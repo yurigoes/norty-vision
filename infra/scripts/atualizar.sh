@@ -3,15 +3,19 @@
 # atualizar.sh — atualiza o código do git e roda o deploy completo (1 comando).
 #
 # Uso no VPS (dentro do repo):
-#   bash infra/scripts/atualizar.sh           # usa a branch dev (padrão)
-#   bash infra/scripts/atualizar.sh main      # ou outra branch
+#   bash infra/scripts/atualizar.sh                 # usa main (padrão)
+#   bash infra/scripts/atualizar.sh outra-branch    # ou outra branch
 #
 # Faz: git fetch + checkout + pull --ff-only da branch, depois deploy-prod.sh
 # (que rebuilda api/web, aplica migrations e sobe a stack).
 # ==============================================================================
 set -euo pipefail
 
-BRANCH="${1:-dev}"
+# O padrão era `dev`, uma branch que NÃO EXISTE no remoto (há `main` e as de
+# trabalho). Rodar sem argumento morria no `git fetch origin dev` — falha alta
+# e sem dano, mas o padrão mentia sobre o que o script fazia. `main` é o que
+# realmente se quer quando ninguém diz nada.
+BRANCH="${1:-main}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_DIR"

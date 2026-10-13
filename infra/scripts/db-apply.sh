@@ -135,6 +135,41 @@ for f in $(ls "$SQL_DIR"/*.sql | sort); do
   esac
 done
 
+# --- 2b. GRANTs DE NOVO, agora que todas as tabelas existem -----------------
+# 019_grants_refresh.sql e o arquivo 019 de 214, e `GRANT ... ON ALL TABLES`
+# so alcanca o que JA EXISTE quando ele roda. As 195 migrations seguintes criam
+# tabelas que ele nao viu — e o unico mecanismo desenhado pra REPARAR grant
+# faltando nao conseguia ver justamente as tabelas mais novas.
+#
+# Isso derrubou o ponto da producao: `permission denied for table
+# ponto_employer` (criada no 200) dentro do `consumeNsr`, entao nenhuma batida
+# conseguia NSR e toda marcacao virava 500.
+#
+# O arquivo e idempotente de proposito. Rodar duas vezes custa um segundo e
+# fecha a janela inteira.
+log "Reaplicando GRANTs (de novo, agora com TODAS as tabelas criadas)..."
+if psql_run_file "$POSTGRES_USER" "$POSTGRES_PASSWORD" "$SQL_DIR/019_grants_refresh.sql"; then
+  ok "GRANTs reaplicados sobre o schema completo."
+else
+  die "Falhou ao reaplicar os GRANTs. A API vai responder 42501 (permission denied)."
+fi
+
+# --- 2c. e nenhuma tabela pode ter ficado sem o yugo_app --------------------
+SEM_GRANT=$(psql_run "$POSTGRES_USER" "$POSTGRES_PASSWORD" -tAc "
+SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE n.nspname = 'public' AND c.relkind = 'r'
+   AND NOT has_table_privilege('yugo_app', c.oid, 'UPDATE');" | tr -d '[:space:]')
+if [[ "$SEM_GRANT" == "0" ]]; then
+  ok "yugo_app escreve em todas as tabelas de public."
+else
+  psql_run "$POSTGRES_USER" "$POSTGRES_PASSWORD" -c "
+SELECT c.relname AS tabela_sem_permissao
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+ WHERE n.nspname = 'public' AND c.relkind = 'r'
+   AND NOT has_table_privilege('yugo_app', c.oid, 'UPDATE') ORDER BY 1;"
+  die "$SEM_GRANT tabela(s) sem permissao pro yugo_app (listadas acima). A API responde 42501 nelas."
+fi
+
 # --- 3. Resumo ---------------------------------------------------------------
 log "Resumo do schema:"
 psql_run yugo_migrator "$YUGO_MIGRATOR_PASSWORD" -c "

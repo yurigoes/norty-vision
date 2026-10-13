@@ -159,6 +159,58 @@ done
 pct exec "$CT" -- bash -c "docker exec $CONTAINER rm -f /tmp/mig.sql" 2>/dev/null || true
 ok "$FEITAS de $QUANTAS aplicadas"
 
+# --- GRANTs DE NOVO, agora que todas as tabelas existem ---------------------
+# O 019_grants_refresh.sql e o arquivo 019 de 214, e `GRANT ... ON ALL TABLES`
+# so alcanca o que JA EXISTE quando ele roda. As 195 migrations seguintes criam
+# tabelas que ele nao viu.
+#
+# Aqui o furo e maior que no db-apply.sh: este script aplica TUDO como
+# `postgres` (veja o loop acima), e o `000_roles.sql` chama
+# `ALTER DEFAULT PRIVILEGES` SEM `FOR ROLE` — o que registra o padrao so pro
+# papel que executou AQUELE arquivo. Onde a rede nao pegou, tabela criada
+# depois nasce sem permissao nenhuma pro yugo_app.
+#
+# Foi o que parou o ponto: `permission denied for table ponto_employer`
+# (criada no 200) dentro do `consumeNsr` — nenhuma batida conseguia NSR, e
+# toda marcacao do terminal virava 500.
+log "reaplicando GRANTs sobre o schema completo"
+GRANTS="$SQL_DIR/019_grants_refresh.sql"
+if [[ -f "$GRANTS" ]]; then
+  pct push "$CT" "$GRANTS" /tmp/grants.sql
+  pct exec "$CT" -- bash -c "docker cp /tmp/grants.sql $CONTAINER:/tmp/grants.sql"
+  if pct exec "$CT" -- bash -c "cd $INFRA && set -a && . ./.env && set +a && \
+      docker exec -e PGPASSWORD=\"\$POSTGRES_PASSWORD\" $CONTAINER \
+      psql -U postgres -d $BANCO -v ON_ERROR_STOP=1 -q -f /tmp/grants.sql" 2>&1 | sed 's/^/      /'; then
+    ok "GRANTs reaplicados"
+  else
+    morre "falhou ao reaplicar os GRANTs. A API responde 42501 (permission denied)."
+  fi
+  pct exec "$CT" -- rm -f /tmp/grants.sql 2>/dev/null || true
+  pct exec "$CT" -- bash -c "docker exec $CONTAINER rm -f /tmp/grants.sql" 2>/dev/null || true
+else
+  aviso "nao achei $GRANTS — pulei a reaplicacao dos GRANTs"
+fi
+
+# --- e nenhuma tabela pode ter ficado sem o yugo_app -------------------------
+# Esta e a conferencia que faltava: o script "passava" e o erro aparecia
+# quando alguem ia bater ponto. `has_table_privilege` levanta erro se o papel
+# nao existe, entao confere o papel primeiro.
+TEM_APP=$(psql_ct -tAc "\"select count(*) from pg_roles where rolname='yugo_app'\"" | tr -d '[:space:]')
+if [[ "$TEM_APP" != "1" ]]; then
+  aviso "papel yugo_app nao existe neste banco — pulei a conferencia de permissao"
+else
+  SEM_GRANT=$(psql_ct -tAc "\"select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not has_table_privilege('yugo_app', c.oid, 'UPDATE')\"" | tr -d '[:space:]')
+  if [[ "$SEM_GRANT" == "0" ]]; then
+    ok "yugo_app escreve em todas as tabelas de public"
+  elif [[ -z "$SEM_GRANT" ]]; then
+    aviso "nao consegui conferir as permissoes do yugo_app (o psql nao respondeu)"
+  else
+    aviso "$SEM_GRANT tabela(s) SEM permissao pro yugo_app — a API responde 42501 nelas:"
+    psql_ct -tAc "\"select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not has_table_privilege('yugo_app', c.oid, 'UPDATE') order by 1\"" | sed 's/^/      /'
+    morre "GRANT faltando depois de reaplicar — nao suba o deploy assim: o ponto nao bate."
+  fi
+fi
+
 # --- conferência: o banco tem o que o Prisma Client espera? ------------------
 # Sem isto o script "passa" e o erro só aparece quando alguém abre o Ponto.
 log "conferindo o que o código novo precisa"

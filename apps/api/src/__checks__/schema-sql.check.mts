@@ -166,4 +166,84 @@ if (semTabela.length || faltando.length) {
   process.exit(1);
 }
 
+// ============================================================================
+// E O BANCO DEIXA O CÓDIGO ESCREVER? (os GRANTs)
+//
+// Ter a coluna não basta: a API conecta como `yugo_app`, que é um papel SEM
+// privilégio implícito. Sem GRANT, o Postgres responde 42501 e a tela estoura.
+//
+// Foi o que parou o ponto da produção:
+//
+//     PostgresError 42501: permission denied for table ponto_employer
+//     at PontoService.consumeNsr -> punchCore -> PontoPwaService.punch
+//     POST /api/ponto-pwa/punch -> 500
+//
+// `ponto_employer` nasce no 200_ponto_employer.sql. O único arquivo que REPARA
+// grant faltando é o `019_grants_refresh.sql` — o 019 de 214. E
+// `GRANT ... ON ALL TABLES` só alcança o que JÁ EXISTE quando roda: as 195
+// migrations seguintes criam tabelas que ele nunca viu. O mecanismo de reparo
+// era cego justamente para as tabelas mais novas.
+//
+// Duas regras, então:
+//   1. os dois `db-apply*.sh` rodam o refresh DE NOVO no fim, depois de todas;
+//   2. o refresh declara default privileges para `postgres` TAMBÉM — porque é
+//      esse o papel que cria as tabelas no `db-apply-nv-thor.sh`, e o
+//      `000_roles.sql` chama `ALTER DEFAULT PRIVILEGES` sem `FOR ROLE` (ou
+//      seja, só vale pro papel que executou aquele arquivo).
+// ============================================================================
+const infra = join(api, "..", "..", "infra", "scripts");
+const grantsSql = semComentario(readFileSync(join(sqlDir, "019_grants_refresh.sql"), "utf8"));
+const problemas: string[] = [];
+
+for (const papel of ["yugo_migrator", "postgres"] as const) {
+  const re = new RegExp(`ALTER DEFAULT PRIVILEGES FOR ROLE ${papel} IN SCHEMA public\\s+GRANT[^;]*ON TABLES TO yugo_app`, "i");
+  if (!re.test(grantsSql)) {
+    problemas.push(
+      `019_grants_refresh.sql não declara default privileges para o papel \`${papel}\` — ` +
+        `tabela criada por ele depois do refresh nasce sem permissão pro yugo_app (42501)`,
+    );
+  }
+}
+
+/**
+ * COMENTÁRIO FORA ANTES DE PROCURAR — a quarta vez nesta base.
+ *
+ * A primeira versão desta regra leu o `.sh` cru e passou VERDE com o
+ * `019_grants_refresh.sql` removido da execução: o nome do arquivo continuava
+ * no bloco de comentário que explica POR QUE ele roda no fim. Conferência que
+ * não pega o defeito é pior que conferência nenhuma — ocupa o lugar de uma que
+ * pegaria.
+ *
+ * Em shell, comentário é `#` até o fim da linha. Apagar só as linhas que
+ * COMEÇAM com `#` (depois de espaços) é o bastante aqui e não arrisca comer um
+ * `#` dentro de string.
+ */
+const semComentarioSh = (s: string) =>
+  s.split("\n").map((l) => (/^\s*#/.test(l) ? "" : l)).join("\n");
+
+// os dois aplicadores têm que reaplicar o refresh DEPOIS do laço das migrations
+for (const script of ["db-apply.sh", "db-apply-nv-thor.sh"] as const) {
+  const s = semComentarioSh(readFileSync(join(infra, script), "utf8"));
+  const laco = s.lastIndexOf("019_grants_refresh.sql");
+  const fimDoLaco = s.indexOf("done");
+  if (laco < 0) {
+    problemas.push(`${script} não reaplica \`019_grants_refresh.sql\` — grant de tabela nova fica faltando, e a API responde 42501`);
+    continue;
+  }
+  if (laco < fimDoLaco) {
+    problemas.push(`${script} menciona o refresh de GRANTs ANTES do laço das migrations — tem que ser DEPOIS, senão não vê as tabelas novas`);
+  }
+  if (!/has_table_privilege\('yugo_app'/.test(s)) {
+    problemas.push(`${script} não confere, no fim, se sobrou tabela sem permissão pro yugo_app`);
+  }
+}
+
+if (problemas.length) {
+  console.error(`\n✖ o banco tem as colunas, mas não deixa a API escrever\n`);
+  for (const f of problemas) console.error(`  • ${f}`);
+  console.error("");
+  process.exit(1);
+}
+
 console.log("✔ toda coluna do schema.prisma é criada por alguma migration");
+console.log("✔ e o yugo_app tem GRANT nelas — o refresh roda DEPOIS de todas as migrations");

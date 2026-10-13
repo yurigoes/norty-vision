@@ -28,16 +28,11 @@ interface Store {
 export default async function LojasPage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
-  if (!session.user?.isOrgAdmin && !session.master) {
-    return (
-      <div className="max-w-3xl">
-        <p className="rounded-lg border border-line bg-bg/60 p-6 text-muted">
-          Apenas administradores ou owners da organização podem acessar a
-          gestão de lojas.
-        </p>
-      </div>
-    );
-  }
+  // O PORTEIRO DESTA TELA É O `perm` DELA NO `nav.ts` (lib/acesso.ts, aplicado
+  // no layout de /app). Aqui havia um segundo porteiro à mão, exigindo
+  // isOrgAdmin — e ele VENCIA, porque a página roda depois do layout. O efeito:
+  // conceder a permissão fazia o item APARECER no menu e a tela responder
+  // "Apenas administradores". Permissão concedida que não abre nada.
 
   const { data } = await apiFetch<{ items: Store[] }>("/api/stores");
   const stores = data?.items ?? [];

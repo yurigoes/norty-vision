@@ -9,7 +9,11 @@ export const dynamic = "force-dynamic";
 export default async function VoipAdminPage() {
   const session = await getSession();
   if (!session.authenticated) redirect(await loginPath());
-  if (!session.user?.isOrgAdmin && !session.master) redirect("/app");
+  // O PORTEIRO DESTA TELA É O `perm` DELA NO `nav.ts` (lib/acesso.ts, aplicado
+  // no layout de /app). Aqui havia um segundo porteiro à mão, exigindo
+  // isOrgAdmin — e ele VENCIA, porque a página roda depois do layout. O efeito:
+  // conceder a permissão fazia o item APARECER no menu e a tela responder
+  // "Apenas administradores". Permissão concedida que não abre nada.
   return (
     <div className="max-w-5xl">
       <PageHeader

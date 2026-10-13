@@ -18,7 +18,7 @@
 //   4. o layout continua chamando o porteiro.
 // ============================================================================
 
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { bloqueioDaRota, itemDaRota } from "../acesso.ts";
@@ -105,7 +105,65 @@ if (!/RotaBloqueada/.test(layout)) falhas.push("app/app/layout.tsx não mostra a
 const mw = readFileSync(join(web, "middleware.ts"), "utf8");
 if (!/x-nv-path/.test(mw)) falhas.push("middleware.ts parou de publicar `x-nv-path` — o porteiro fica cego");
 
-console.log(`telas do menu que o porteiro cobre: ${gateaveis}`);
+// ============================================================================
+// 6. UM PORTEIRO SÓ POR TELA.
+//
+// O porteiro do `nav.ts` roda no LAYOUT. Uma página que, além dele, barra à mão
+// por `isOrgAdmin` vence — ela roda depois. Quando a tela TEM `perm`, as duas
+// travas se contradizem, e o resultado medido em produção foi: conceder a
+// permissão fazia o item APARECER no menu e a tela responder "Apenas
+// administradores". Permissão concedida que não abre nada — e nenhuma das duas
+// travas parecia errada isolada.
+//
+// Tela sem `perm` e barrando por isOrgAdmin é coerente (é admin-only de fato),
+// mas tem que ser DECLARADA aqui: senão "só admin" vira o padrão silencioso e
+// o catálogo de 77 permissões deixa de poder abrir o que quer que seja.
+// ============================================================================
+const SO_ADMIN = new Set([
+  // Configuração e dinheiro da própria empresa — permissão não deve abrir.
+  "billing", "empresa-contrato", "pagamentos", "suporte-sistema",
+  // Dívida conhecida: estas MERECEM `perm` no nav.ts e hoje são admin-only,
+  // então nenhuma permissão do catálogo as alcança. Tirar daqui = ganhou
+  // `perm`. Acrescentar = alguém fechou mais uma tela para o catálogo.
+  "agenda", "clientes", "cobranca", "comissoes", "crediario", "fornecedores",
+  "mala-direta", "modelos", "pedidos-lente", "produtos", "prospector",
+  "relatorios", "repasses", "vendas-historico",
+  // RH e ponto: o catálogo não tem NENHUMA chave para esta área, então não há
+  // o que pendurar. Precisa de chaves novas antes de deixar de ser admin-only.
+  "rh", "alocacoes", "assiduidade",
+]);
+
+// a tabela do menu já está importada aqui como `todos` — usar ela, e não um
+// regex sobre o arquivo, é o que garante que esta regra olhe a MESMA lista que
+// o porteiro recebe.
+const telasComPerm = new Map<string, string>();
+for (const it of todos) {
+  const seg = it.href.startsWith("/app/") ? it.href.slice(5).split("/")[0] : null;
+  if (seg && it.perm) telasComPerm.set(seg, it.perm);
+}
+const appDir = join(web, "app", "app");
+for (const nome of readdirSync(appDir)) {
+  const pagina = join(appDir, nome, "page.tsx");
+  let src: string;
+  try { src = readFileSync(pagina, "utf8"); } catch { continue; }
+  // o gate à mão: `!session.user?.isOrgAdmin` barrando a renderização
+  const barraAMao = /!session\.user\?\.isOrgAdmin/.test(src);
+  if (!barraAMao) continue;
+  const perm = telasComPerm.get(nome);
+  if (perm) {
+    falhas.push(
+      `/app/${nome} declara \`perm: "${perm}"\` no nav.ts E barra à mão por isOrgAdmin — ` +
+        "a trava da página vence, então conceder a permissão mostra o item no menu e a tela recusa",
+    );
+  } else if (!SO_ADMIN.has(nome)) {
+    falhas.push(
+      `/app/${nome} barra à mão por isOrgAdmin e não tem \`perm\` no nav.ts — ` +
+        "nenhuma permissão do catálogo abre essa tela. Dê um `perm` a ela, ou declare em SO_ADMIN com o motivo",
+    );
+  }
+}
+
+console.log(`telas do menu que o porteiro cobre: ${gateaveis} · admin-only declaradas: ${SO_ADMIN.size}`);
 if (falhas.length) {
   console.log(`\nFALHA — ${falhas.length} problema(s):`);
   falhas.forEach((f) => console.log("  " + f));

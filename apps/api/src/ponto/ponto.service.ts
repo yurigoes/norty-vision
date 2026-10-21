@@ -382,14 +382,52 @@ export class PontoService {
   }
 
   /** Resolve um funcionário pelo identificador batido no painel: código de barras, CPF ou matrícula. */
-  async resolveIdentifier(orgId: string, raw: string): Promise<{ id: string; name: string; requiresPin: boolean } | null> {
+  /**
+   * O que o terminal aceita no lugar do nome: código de barras (como veio do
+   * leitor e só-dígitos), CPF (só dígitos, que é como é gravado) e matrícula.
+   *
+   * Fica numa função só porque a busca é usada DUAS vezes — entre os ativos e
+   * entre os inativos. Em duas cópias elas divergiriam no primeiro campo novo,
+   * e o sintoma seria "o leitor acha e o teclado não".
+   */
+  private identifierWhere(raw: string): any[] | null {
     const id = (raw ?? "").trim(); if (!id) return null;
     const dig = this.digits(id);
+    return [{ barcode: id }, { barcode: dig }, ...(dig ? [{ cpf: dig } as any] : []), { matricula: id }];
+  }
+
+  async resolveIdentifier(orgId: string, raw: string): Promise<{ id: string; name: string; requiresPin: boolean } | null> {
+    const ou = this.identifierWhere(raw);
+    if (!ou) return null;
     const emp = await this.prisma.runWithContext({ orgId }, (tx) => tx.pontoEmployee.findFirst({
-      where: { active: true, OR: [{ barcode: id }, { barcode: dig }, ...(dig ? [{ cpf: dig } as any] : []), { matricula: id }] },
+      where: { active: true, OR: ou },
       select: { id: true, name: true, pinHash: true },
     }));
     return emp ? { id: emp.id, name: emp.name, requiresPin: !!emp.pinHash } : null;
+  }
+
+  /**
+   * A MESMA busca, só entre os INATIVOS.
+   * ==========================================================================
+   * "Não encontrei esse funcionário. Confira o código, CPF ou matrícula." era
+   * a resposta tanto pra quem NÃO EXISTE quanto pra quem existe e está
+   * INATIVO. São dois problemas opostos — um é erro de digitação, o outro é
+   * cadastro desligado — e a mesma frase mandava procurar o erro no lugar
+   * errado.
+   *
+   * Custou dias aqui: uma funcionária ativada no sistema continuava levando
+   * "não encontrei" no terminal, e a investigação foi atrás de rede, de
+   * permissão do banco e de RLS por empresa antes de alguém suspeitar do
+   * cadastro. A busca estava certa desde o começo; a MENSAGEM é que mentia.
+   */
+  async resolveInactiveIdentifier(orgId: string, raw: string): Promise<{ name: string } | null> {
+    const ou = this.identifierWhere(raw);
+    if (!ou) return null;
+    const emp = await this.prisma.runWithContext({ orgId }, (tx) => tx.pontoEmployee.findFirst({
+      where: { active: false, OR: ou },
+      select: { name: true },
+    }));
+    return emp ? { name: emp.name } : null;
   }
 
   // ----- AVISOS (painel de marcação) -----

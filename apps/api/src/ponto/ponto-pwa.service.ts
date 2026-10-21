@@ -284,6 +284,18 @@ export class PontoPwaService {
       const e = await this.ponto.resolveIdentifier(oid, identifier);
       if (e && allowed.has(e.id)) return { ...e, allocated: true };
     }
+    // 3) existe, mas está INATIVO — e isso não é "não encontrei".
+    // Dizer a mesma frase pros dois casos manda a pessoa conferir a digitação
+    // de um código que está certo. O cadastro inativo é decisão do RH, então é
+    // pro RH que a mensagem tem que apontar.
+    const inativo = await this.ponto.resolveInactiveIdentifier(d.organizationId, identifier);
+    if (inativo) {
+      throw new AppError(
+        ErrorCode.Forbidden,
+        `${inativo.name}: seu cadastro está INATIVO no ponto. Procure o RH para reativar — o código está correto.`,
+        403,
+      );
+    }
     throw new AppError(ErrorCode.NotFound, "Não encontrei esse funcionário. Confira o código, CPF ou matrícula.", 404);
   }
 

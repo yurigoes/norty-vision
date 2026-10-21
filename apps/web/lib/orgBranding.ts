@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { headers } from "next/headers";
 import { PRODUCT_NAME, ROOT_DOMAIN as BRAND_ROOT_DOMAIN } from "./brand";
+import { SUBDOMINIOS_RESERVADOS as RESERVED } from "./subdominios";
 
 export interface OrgBranding {
   /** Slug da org, se estamos num subdomínio dela. null = apex (sem org). */
@@ -16,10 +17,7 @@ export interface OrgBranding {
 }
 
 const ROOT = BRAND_ROOT_DOMAIN.toLowerCase();
-const RESERVED = new Set([
-  "www", "app", "api", "admin", "painel", "mail", "static", "cdn", "assets", "n8n",
-  "chat", "chatwoot", "glpi", "evolution", "minio", "s3",
-]);
+
 
 /**
  * Detecta o slug da org pelo host da request (server-side).
@@ -59,7 +57,14 @@ export const getOrgBrandingFromHost = cache(async (): Promise<OrgBranding> => {
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) {
-      // erro de rede / 5xx → mantém slug mas sem detalhes; UI usa o slug bonito
+      // 404 = NÃO EXISTE empresa com esse slug. Devolver `slug` aqui fazia o
+      // resto do app acreditar num tenant inexistente (era o caso do
+      // `by-slug/vision`): a tela se dava por "dentro da empresa vision".
+      // Agora 404 vira apex (slug null); só erro de rede/5xx, que é transitório,
+      // mantém o slug.
+      if (res.status === 404) {
+        return { slug: null, name: PRODUCT_NAME, logoUrl: null, faviconUrl: null, primaryColor: null };
+      }
       return { slug, name: slug, logoUrl: null, faviconUrl: null, primaryColor: null };
     }
     const d = (await res.json()) as any;

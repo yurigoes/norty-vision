@@ -91,6 +91,49 @@ for (const metodo of ["punch", "facePunch"] as const) {
   );
 }
 
+// ============================================================================
+// 3b. "NÃO ENCONTREI" E "ESTÁ INATIVO" SÃO PROBLEMAS OPOSTOS.
+//
+// O `identify` devolvia a MESMA frase — "Não encontrei esse funcionário.
+// Confira o código, CPF ou matrícula." — pra quem não existe E pra quem existe
+// mas está com o cadastro desligado. Um é erro de digitação; o outro é decisão
+// do RH. A frase mandava procurar o defeito no lugar errado.
+//
+// Custou dias: uma funcionária cadastrada e ativada continuava levando "não
+// encontrei", e a investigação passou por rede, GRANT do Postgres e RLS por
+// empresa antes de alguém suspeitar do `active`. A busca estava certa desde o
+// começo — a MENSAGEM é que mentia.
+//
+// Medido depois do conserto: ativo → 200; inativo (por CPF e por código de
+// barras) → 403 nomeando a pessoa e mandando pro RH; inexistente → 404.
+// ============================================================================
+const svc = readFileSync(join(src, "ponto", "ponto.service.ts"), "utf8")
+  .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, "");
+
+exige(
+  /async resolveInactiveIdentifier\(/.test(svc) && /where:\s*\{\s*active:\s*false/.test(svc),
+  "`resolveInactiveIdentifier` sumiu do ponto.service: o terminal volta a dizer " +
+    "'não encontrei' pra quem só está com o cadastro inativo",
+);
+exige(
+  /private identifierWhere\(/.test(svc),
+  "a lista do que o terminal aceita (código/CPF/matrícula) voltou a ser duplicada — " +
+    "em duas cópias ela diverge, e o sintoma é 'o leitor acha e o teclado não'",
+);
+{
+  const i = t.indexOf("resolveInactiveIdentifier");
+  const j = t.indexOf('"Não encontrei esse funcionário');
+  exige(
+    i >= 0 && j >= 0 && i < j,
+    "`identify` não consulta mais os inativos ANTES de responder 'não encontrei' — " +
+      "as duas situações voltaram a ter a mesma mensagem",
+  );
+  exige(
+    /INATIVO/.test(t) && /Procure o RH/.test(t),
+    "a mensagem do cadastro inativo não aponta mais pro RH",
+  );
+}
+
 // 4. e as 4 rotas do terminal seguem sendo as únicas públicas do controller
 const ctrl = readFileSync(join(src, "ponto", "ponto-pwa.controller.ts"), "utf8")
   .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, "");

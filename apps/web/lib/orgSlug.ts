@@ -3,12 +3,7 @@
 import { ROOT_DOMAIN } from "./brand";
 
 
-const RESERVED = new Set([
-  "www", "app", "api", "admin", "painel", "mail", "static", "cdn", "assets",
-  "n8n", "chat", "chatwoot", "glpi", "evolution", "minio", "s3", "localhost",
-  // reservados do esquema 1-nível sob norty.com.br (apex/master do Vision + serviços do PRM)
-  "vision", "norty", "sorva", "license", "app-sorva",
-]);
+import { SUBDOMINIOS_RESERVADOS as RESERVED } from "./subdominios";
 
 /**
  * Deriva o slug da empresa a partir do subdomínio atual.

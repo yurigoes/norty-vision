@@ -249,16 +249,25 @@ if [[ "$FALTOU" == "1" ]]; then
   — a API vai estourar em toda consulta do ponto. Veja o que faltou acima."
 fi
 
+# A branch que o clone está mesmo apontando — não uma cravada aqui.
+# Estava escrito `claude/ponto-paridade-rh`, que ficou para trás: quem seguiu
+# esta tela depois disso subiu uma branch SEM os consertos. E o
+# `deploy-nv-thor.sh` sem `REF=` usa `main` por padrão, que normalmente está
+# ATRÁS do que acabou de ser migrado — o banco novo com o código velho.
+BRANCH_ATUAL=$(git -C "$FONTE" rev-parse --abbrev-ref HEAD 2>/dev/null || true)
+[[ -n "$BRANCH_ATUAL" && "$BRANCH_ATUAL" != "HEAD" ]] || BRANCH_ATUAL="<a-sua-branch>"
+
 cat <<FIM
 
 $(printf '%s' "$C_OK")[PRONTO]$(printf '%s' "$C_0") O banco tem o que o ponto novo precisa.
 
-Agora, e só agora, o código:
+Agora, e só agora, o código. O \`REF=\` NÃO é opcional: sem ele o deploy sobe
+a \`main\`, que costuma estar atrás do que acabou de ser migrado.
 
   cd $FONTE
-  git fetch origin && git checkout claude/ponto-paridade-rh && git pull --ff-only
-  bash infra/scripts/deploy-nv-thor.sh --dry-run
-  bash infra/scripts/deploy-nv-thor.sh
+  git fetch origin && git checkout $BRANCH_ATUAL && git pull --ff-only
+  REF=$BRANCH_ATUAL bash infra/scripts/deploy-nv-thor.sh --dry-run
+  REF=$BRANCH_ATUAL bash infra/scripts/deploy-nv-thor.sh
 
 Depois do deploy, confira no navegador: /app/ponto deve abrir com as abas
 novas (Trocas, Empregadores, Dispositivos, Alocações), e o Espelho tem que

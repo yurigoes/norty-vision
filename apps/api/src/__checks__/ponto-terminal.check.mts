@@ -169,6 +169,67 @@ exige(
   }
 }
 
+// ============================================================================
+// 3d. EXTRA NÃO ENTRA NO PONTO OFICIAL — e a consulta dele não pode barrar batida.
+//
+// Diarista/hora extra avulsa tem tabela PRÓPRIA (`ponto_extra_punch`), e a
+// separação é física de propósito: extra em `ponto_punch` entraria no AFD e no
+// eSocial como jornada da escala oficial, o que é errado perante a Portaria 671.
+// Um filtro numa tabela compartilhada alguém esquece; uma tabela separada, não.
+//
+// E a consulta tem que ser À PROVA DE FALHA. O `findTodayShift` roda em TODA
+// batida do terminal: se ele estourar (tabela ausente numa réplica, erro de
+// conexão), o relógio de parede da empresa para. Por isso ele tem
+// `.catch(() => null)` por dentro — erro vira "não tem extra" e a batida segue
+// o caminho normal.
+//
+// Medido contra API de pé:
+//   sem extra escalado  -> ponto_punch 15->16 · ponto_extra_punch 0->0 · nsr numérico
+//   com extra escalado  -> ponto_punch 15->15 · ponto_extra_punch 0->1 · nsr "EXTRA"
+// ============================================================================
+{
+  const ex = readFileSync(join(src, "ponto", "extras.service.ts"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, "");
+  const i = ex.indexOf("async findTodayShift");
+  if (i < 0) {
+    falhas.push("`findTodayShift` sumiu do extras.service — o terminal não sabe mais quem está escalado como extra");
+  } else if (!/\.catch\(\(\)\s*=>\s*null\)/.test(ex.slice(i, i + 700))) {
+    falhas.push(
+      "`findTodayShift` perdeu o `.catch(() => null)`. Ele roda em TODA batida: " +
+        "um erro ali (tabela ausente, conexão) para o ponto da empresa inteira",
+    );
+  }
+  // a batida do extra NÃO pode ir pra tabela oficial
+  if (/pontoPunch\.create|punchCore/.test(ex)) {
+    falhas.push(
+      "`extras.service` passou a escrever em `ponto_punch`/`punchCore` — extra entraria no " +
+        "AFD/eSocial como jornada oficial. A tabela separada é a garantia, não um detalhe",
+    );
+  }
+  if (!/pontoExtraPunch\.create/.test(ex)) {
+    falhas.push("`extras.service` não grava mais em `ponto_extra_punch` — a batida do extra se perde");
+  }
+  // O desvio vem ANTES do `punchCore`, nas DUAS rotas de batida.
+  //
+  // A primeira versão desta regra comparava `indexOf` no ARQUIVO inteiro — e
+  // acusou falsamente, porque o `punchCore` do `facePunch` aparece antes do
+  // `findTodayShift` do `punch`. Posição no arquivo não é ordem de execução.
+  // Consertando isso apareceu o defeito DE VERDADE: o port tinha ligado o
+  // desvio só no `punch`, e quem batesse por reconhecimento facial caía no
+  // ponto oficial mesmo escalado como extra.
+  for (const metodo of ["punch", "facePunch"] as const) {
+    const c = corpo(metodo);
+    if (!c) continue; // a ausência do método já é acusada acima
+    const iExtra = c.indexOf("findTodayShift");
+    const iCore = c.indexOf("punchCore");
+    if (iExtra < 0) {
+      falhas.push(`\`${metodo}\`: não consulta o extra — quem está escalado como extra cai no ponto OFICIAL e entra no AFD`);
+    } else if (iCore >= 0 && iExtra > iCore) {
+      falhas.push(`\`${metodo}\`: o desvio do extra ficou DEPOIS do \`punchCore\` — a batida já entrou no ponto oficial`);
+    }
+  }
+}
+
 // 4. e as 4 rotas do terminal seguem sendo as únicas públicas do controller
 const ctrl = readFileSync(join(src, "ponto", "ponto-pwa.controller.ts"), "utf8")
   .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, "");

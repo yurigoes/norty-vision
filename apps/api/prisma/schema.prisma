@@ -4174,6 +4174,46 @@ model PontoScheduleOverride {
   @@map("ponto_schedule_override")
 }
 
+/// Extra/diarista escalado pra um dia, FORA da escala oficial. A batida dele
+/// vive em PontoExtraPunch, nunca em PontoPunch — ver 216_ponto_extras.sql.
+model PontoExtraShift {
+  id                  String    @id @default(uuid()) @db.Uuid
+  organizationId      String    @map("organization_id") @db.Uuid
+  pontoEmployeeId     String    @map("ponto_employee_id") @db.Uuid
+  storeId             String?   @map("store_id") @db.Uuid
+  workDate            DateTime  @map("work_date") @db.Date
+  dailyValueCents     BigInt    @default(0) @map("daily_value_cents")
+  note                String?
+  status              String    @default("escalado")
+  documentGeneratedAt DateTime? @map("document_generated_at")
+  statusConfirmedAt   DateTime? @map("status_confirmed_at")
+  statusConfirmedBy   String?   @map("status_confirmed_by") @db.Uuid
+  createdAt           DateTime  @default(now()) @map("created_at")
+  createdBy           String?   @map("created_by") @db.Uuid
+  updatedAt           DateTime  @default(now()) @map("updated_at")
+
+  @@unique([organizationId, pontoEmployeeId, workDate])
+  @@index([organizationId, workDate])
+  @@index([pontoEmployeeId])
+  @@index([organizationId, status])
+  @@map("ponto_extra_shift")
+}
+
+/// Batida do extra. Tabela SEPARADA de propósito: é o que garante, por
+/// construção, que extra não entra no AFD/eSocial.
+model PontoExtraPunch {
+  id             String   @id @default(uuid()) @db.Uuid
+  extraShiftId   String   @map("extra_shift_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  punchedAt      DateTime @default(now()) @map("punched_at")
+  photoUrl       String?  @map("photo_url")
+  deviceId       String?  @map("device_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([extraShiftId])
+  @@map("ponto_extra_punch")
+}
+
 model PontoShiftSwap {
   id                  String    @id @default(uuid()) @db.Uuid
   organizationId      String    @map("organization_id") @db.Uuid

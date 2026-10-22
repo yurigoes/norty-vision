@@ -14,6 +14,7 @@ import { AllocationService } from "./allocation.service";
 import { AssiduidadeService } from "./assiduidade.service";
 import { InconsistenciasService } from "./inconsistencias.service";
 import { EscalaPlanilhaService } from "./escala-planilha.service";
+import { ExtrasService } from "./extras.service";
 
 /**
  * PERMISSÕES DO PONTO — o piso é da CLASSE, a exceção é da rota.
@@ -46,13 +47,38 @@ import { EscalaPlanilhaService } from "./escala-planilha.service";
 @Controller("ponto")
 @RequirePermission("ponto.view")
 export class PontoController {
-  constructor(private readonly svc: PontoService, private readonly jornada: JornadaService, private readonly sign: PontoSignService, private readonly folha: FolhaService, private readonly aej: AejService, private readonly swap: ShiftSwapService, private readonly employers: EmployerService, private readonly reports: ReportsService, private readonly alloc: AllocationService, private readonly assid: AssiduidadeService, private readonly inc: InconsistenciasService, private readonly escala: EscalaPlanilhaService) {}
+  constructor(private readonly svc: PontoService, private readonly jornada: JornadaService, private readonly sign: PontoSignService, private readonly folha: FolhaService, private readonly aej: AejService, private readonly swap: ShiftSwapService, private readonly employers: EmployerService, private readonly reports: ReportsService, private readonly alloc: AllocationService, private readonly assid: AssiduidadeService, private readonly inc: InconsistenciasService, private readonly escala: EscalaPlanilhaService, private readonly extras: ExtrasService) {}
 
   // ----- Fila de pontos inconsistentes -----
   /** Funcionários com dia ainda sem decisão: batida incompleta, falta, atraso, saída antecipada, extra. */
   @Get("inconsistencias")
   inconsistencias(@CurrentContext() ctx: RequestContext, @Query() q: { from?: string; to?: string; storeId?: string }) {
     return this.inc.list(ctx, q ?? {});
+  }
+
+  // ----- Extras (diarista / hora extra avulsa fora da escala oficial) -----
+  // A batida do extra vive em tabela SEPARADA e nunca entra no AFD/eSocial —
+  // ver `216_ponto_extras.sql`. Literais antes de `:id`.
+  @Get("extras")
+  extrasList(@CurrentContext() ctx: RequestContext, @Query() q: { from?: string; to?: string }) { return this.extras.list(ctx, q ?? {}); }
+  /** Escala N pessoas num dia e devolve na hora o recibo A4 (2 vias por pessoa). */
+  @Post("extras")
+  @RequirePermission("ponto.adjust")
+  @HttpCode(200)
+  async extrasCreate(@CurrentContext() ctx: RequestContext, @Res() reply: FastifyReply, @Body() b: any) {
+    const { buffer, filename } = await this.extras.create(ctx, b ?? {});
+    reply.type("application/pdf").header("Content-Disposition", `inline; filename="${filename}"`).send(buffer);
+  }
+  /** Com o papel assinado em mãos: pago / trabalhou mas não pago / não compareceu. */
+  @Post("extras/:id/status")
+  @RequirePermission("ponto.close")
+  @HttpCode(200)
+  extrasSetStatus(@CurrentContext() ctx: RequestContext, @Param("id") id: string, @Body() b: any) { return this.extras.setStatus(ctx, id, b?.status); }
+  /** Reimprime o recibo de uma escalação. */
+  @Get("extras/:id/document")
+  async extrasReprint(@CurrentContext() ctx: RequestContext, @Res() reply: FastifyReply, @Param("id") id: string) {
+    const { buffer, filename } = await this.extras.reprint(ctx, id);
+    reply.type("application/pdf").header("Content-Disposition", `inline; filename="${filename}"`).send(buffer);
   }
 
   // ----- Escala em massa por planilha (vigência por data) -----

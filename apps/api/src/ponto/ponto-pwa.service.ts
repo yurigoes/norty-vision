@@ -6,6 +6,7 @@ import { PrismaService } from "../prisma/prisma.service";
 import { StorageService } from "../storage/storage.service";
 import { PontoService } from "./ponto.service";
 import { FaceService } from "./face.service";
+import { ExtrasService } from "./extras.service";
 import { loadEnv } from "../config";
 import { ctxCan } from "../auth/decorators";
 import type { RequestContext } from "../auth/session.middleware";
@@ -18,7 +19,7 @@ import type { RequestContext } from "../auth/session.middleware";
 @Injectable()
 export class PontoPwaService {
   private readonly logger = new Logger("PontoPwa");
-  constructor(private readonly prisma: PrismaService, private readonly storage: StorageService, private readonly ponto: PontoService, private readonly face: FaceService) {}
+  constructor(private readonly prisma: PrismaService, private readonly storage: StorageService, private readonly ponto: PontoService, private readonly face: FaceService, private readonly extras: ExtrasService) {}
 
   private rls(ctx: RequestContext) {
     return ctx.isPlatformAdmin ? { isPlatformAdmin: true as const } : { orgId: ctx.orgId!, userId: ctx.userId ?? undefined, isOrgAdmin: ctx.isOrgAdmin };
@@ -248,6 +249,24 @@ export class PontoPwaService {
         `selfie do facial nao subiu no terminal ${d.name} (${d.id}) — a batida segue SEM foto: ${String((e as any)?.message ?? e)}`,
       );
     }
+    // EXTRA ESCALADO PRA HOJE — mesma regra do `punch`: vai pro registro
+    // paralelo, nunca em `ponto_punch`.
+    //
+    // Faltava aqui: o port tinha ligado o desvio só no `punch`, então quem
+    // batesse por RECONHECIMENTO FACIAL caía no ponto oficial mesmo escalado
+    // como extra — e o extra entrava no AFD/eSocial, exatamente o que a tabela
+    // separada existe pra impedir. O RH consulta nos dois caminhos.
+    //
+    // Vem DEPOIS do upload da selfie de propósito: a foto sobe UMA vez e os
+    // dois caminhos usam a mesma `key`. A primeira versão disto duplicava o
+    // `putPrivate`, e aí a falha do upload no ramo do extra não registrava
+    // nada — foi a conferência da selfie que acusou.
+    const extraFace = await this.extras.findTodayShift(orgId, emp.id);
+    if (extraFace) {
+      await this.extras.registerPunch(extraFace.id, orgId, key ?? null, d.id);
+      const avisosExtra = await this.ponto.activeNotices(orgId, emp.id);
+      return { id: extraFace.id, nsr: "EXTRA", punchedAt: new Date().toISOString(), employeeName: emp.name, faceScore: r.score, extra: true, notices: avisosExtra };
+    }
     const res = await this.ponto.punchCore(orgId, {
       employeeId: emp.id, origin: "pwa", lat: body.lat, lng: body.lng, accuracy: body.accuracy,
       photoUrl: key, faceScore: r.score, faceMatch: true, livenessOk: cfg.requireLiveness ? !!body.livenessOk : null, fraudFlags: flags,
@@ -404,6 +423,27 @@ export class PontoPwaService {
         // bateu, mas por pouco → sinaliza pra revisão (não bloqueia)
         flags.push("rosto_baixa_confianca");
       }
+    }
+    // EXTRA/DIARISTA ESCALADO PRA HOJE: a batida vai pro registro paralelo.
+    // ------------------------------------------------------------------------
+    // Quem tem uma escalação de extra pra hoje NÃO entra em `ponto_punch`:
+    // extra não é jornada da escala oficial e não pode entrar no AFD/eSocial.
+    // A separação é física (tabela própria), não um filtro que alguém esquece.
+    //
+    // E NÃO MUDA NADA PRA QUEM NÃO TEM EXTRA: `findTodayShift` tem
+    // `.catch(() => null)` por dentro, então tabela ausente, erro de consulta
+    // ou simplesmente nenhuma escalação → `null` → segue o caminho normal,
+    // linha por linha igual a antes. Com zero extras cadastrados (que é o
+    // estado no deploy), este bloco é um SELECT que não encontra nada.
+    const extraShift = await this.extras.findTodayShift(targetOrgId, body.employeeId);
+    if (extraShift) {
+      await this.extras.registerPunch(extraShift.id, targetOrgId, photoUrl ?? null, d.id);
+      const avisos = await this.ponto.activeNotices(targetOrgId, body.employeeId);
+      return {
+        id: extraShift.id, nsr: "EXTRA", punchedAt: new Date().toISOString(),
+        employeeName: (await this.prisma.runWithContext({ orgId: targetOrgId }, (tx) => tx.pontoEmployee.findFirst({ where: { id: body.employeeId }, select: { name: true } })).catch(() => null))?.name ?? "",
+        extra: true, notices: avisos,
+      };
     }
     const res = await this.ponto.punchCore(targetOrgId, {
       employeeId: body.employeeId, pin: body.pin, origin: "pwa",

@@ -134,6 +134,41 @@ exige(
   );
 }
 
+// ============================================================================
+// 3c. PDF DE EMPRESA NÃO LEVA A MARCA DO PRODUTO.
+//
+// `dayPresencePdf` veio do Norty RH, onde o rodapé estampava "norty RH" com o
+// logo buscado em `rh.norty.com.br`. Aqui cada empresa é a própria marca — é o
+// que `loadBrand(ctx)` faz — e o resto desta base é explícito sobre isso:
+// "NUNCA mistura branding da plataforma numa página que pertence a uma
+// empresa". Um copiar-e-colar entregaria PDFs da ótica assinados "norty RH".
+//
+// Medido: PDF gerado contra API de pé, texto extraído com `pdftotext` —
+// 0 ocorrências de "norty", nome da empresa 2x (cabeçalho e rodapé).
+// ============================================================================
+{
+  const j = readFileSync(join(src, "ponto", "jornada.service.ts"), "utf8");
+  const semCom = j.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, "");
+  const i = semCom.indexOf("async dayPresencePdf");
+  if (i < 0) {
+    falhas.push("`dayPresencePdf` desapareceu do jornada.service — o PDF de presença do dia era do RH e foi portado");
+  } else {
+    const corpo = semCom.slice(i, i + 14000);
+    if (/norty/i.test(corpo)) {
+      falhas.push(
+        "o PDF de presença do dia voltou a carregar a marca do PRODUTO (\"norty\"). " +
+          "Documento de empresa leva a marca DA EMPRESA — use `loadBrand(ctx)`",
+      );
+    }
+    if (!/loadBrand\(ctx\)/.test(corpo)) {
+      falhas.push("`dayPresencePdf` não usa mais `loadBrand(ctx)` — perdeu a marca da empresa");
+    }
+    if (!/requireAdmin\(ctx, "ponto\.view"\)/.test(corpo)) {
+      falhas.push("`dayPresencePdf` não exige mais `ponto.view` — relatório com o nome de todo mundo ficou aberto");
+    }
+  }
+}
+
 // 4. e as 4 rotas do terminal seguem sendo as únicas públicas do controller
 const ctrl = readFileSync(join(src, "ponto", "ponto-pwa.controller.ts"), "utf8")
   .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, "");

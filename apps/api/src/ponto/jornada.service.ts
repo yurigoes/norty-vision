@@ -666,6 +666,208 @@ export class JornadaService {
     } catch { return null; }
   }
 
+  /**
+   * PRESENÇA DO DIA (PDF) — quem bateu ponto numa data, com a escala do dia,
+   * entrada, saída, todas as batidas e o que ficou fora do combinado.
+   *
+   * Portado do Norty RH. Quatro coisas mudaram, e nenhuma é cosmética:
+   *
+   * 1. A MARCA É DA EMPRESA. No RH o rodapé estampava "norty RH" com o logo do
+   *    produto, buscado em `rh.norty.com.br`. Aqui cada empresa é a própria
+   *    marca — é o que `loadBrand(ctx)` já faz nos espelhos — e misturar a
+   *    marca da plataforma num documento que pertence à empresa é justamente o
+   *    que o resto desta base evita. Então o `nortyMarkBuf` NÃO veio.
+   * 2. SEM O RAMO DA PLANILHA. O RH consulta `ponto_schedule_plan` (escala
+   *    subida por planilha) antes da escala base. Essa tabela não existe aqui
+   *    ainda — vem com o bloco de escalas. Até lá a ordem é: ajuste do dia
+   *    (troca/folga) > escala base. O lugar de pendurar a planilha está
+   *    marcado abaixo.
+   * 3. Sem `city` no subtítulo: o `resolveBrand` daqui devolve `{name, cnpj}`.
+   * 4. `Creator` do PDF é a empresa, não o nome do produto.
+   *
+   * Dia civil no fuso da empresa (`ponto_config.timezone`), não UTC: uma
+   * batida às 21h de Manaus não pode cair no dia seguinte do relatório.
+   */
+  async dayPresencePdf(ctx: RequestContext, dayIso: string, opts?: { storeId?: string | null }): Promise<{ buffer: Buffer; filename: string; count: number }> {
+    this.requireAdmin(ctx, "ponto.view");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dayIso || "")) throw new AppError(ErrorCode.ValidationFailed, "Informe a data (AAAA-MM-DD)", 400);
+    const rls = this.rls(ctx);
+    const cfg = await this.prisma.runWithContext(rls, (tx) => tx.pontoConfig.findFirst({ where: {}, select: { timezone: true } }));
+    const tz = /^[+-]\d{4}$/.test(cfg?.timezone ?? "") ? cfg!.timezone! : "-0300";
+    const offMin = (tz[0] === "-" ? -1 : 1) * (Number(tz.slice(1, 3)) * 60 + Number(tz.slice(3, 5)));
+    const start = new Date(`${dayIso}T00:00:00${tz.slice(0, 3)}:${tz.slice(3)}`);
+    const end = new Date(start.getTime() + 86400000);
+    const local = (d: Date) => new Date(d.getTime() + offMin * 60000);
+    const hhmm = (d: Date) => { const x = local(d); return `${String(x.getUTCHours()).padStart(2, "0")}:${String(x.getUTCMinutes()).padStart(2, "0")}`; };
+    const ddmm = (d: Date) => { const x = local(d); return `${String(x.getUTCDate()).padStart(2, "0")}/${String(x.getUTCMonth() + 1).padStart(2, "0")}/${x.getUTCFullYear()}`; };
+    const minOfDay = (d: Date) => { const x = local(d); return x.getUTCHours() * 60 + x.getUTCMinutes(); };
+    const toMin = (h: string) => { const [a, b] = String(h).split(":").map(Number); return (a || 0) * 60 + (b || 0); };
+
+    // filtro de loja: a batida não tem relação com o funcionário no Prisma — filtra pelos ids da loja
+    const storeEmpIds = opts?.storeId
+      ? (await this.prisma.runWithContext(rls, (tx) => tx.pontoEmployee.findMany({ where: { storeId: opts.storeId! }, select: { id: true } }))).map((e) => e.id)
+      : null;
+    const punches = await this.prisma.runWithContext(rls, (tx) => tx.pontoPunch.findMany({
+      where: { voided: false, punchedAt: { gte: start, lt: end }, ...(storeEmpIds ? { employeeId: { in: storeEmpIds } } : {}) },
+      orderBy: { punchedAt: "asc" }, select: { employeeId: true, punchedAt: true },
+    }));
+    const byEmp = new Map<string, Date[]>();
+    for (const pu of punches) { const a = byEmp.get(pu.employeeId) ?? []; a.push(pu.punchedAt); byEmp.set(pu.employeeId, a); }
+    const ids = [...byEmp.keys()];
+    const emps = ids.length ? await this.prisma.runWithContext(rls, (tx) => tx.pontoEmployee.findMany({ where: { id: { in: ids } }, select: { id: true, name: true, cargo: true, matricula: true, scheduleCode: true, storeId: true } })) : [];
+    const codes = [...new Set(emps.map((e) => e.scheduleCode).filter(Boolean))] as string[];
+    const schedules = codes.length ? await this.prisma.runWithContext(rls, (tx) => tx.pontoSchedule.findMany({ where: { code: { in: codes } } })) : [];
+    const schedByCode = new Map(schedules.map((s: any) => [s.code, s] as const));
+    const dayD = new Date(dayIso + "T00:00:00Z");
+    const wd = dayD.getUTCDay();
+    const overrides = ids.length
+      ? await this.prisma.runWithContext(rls, (tx) => tx.pontoScheduleOverride.findMany({ where: { employeeId: { in: ids }, day: dayD }, select: { employeeId: true, kind: true, segments: true } })).catch(() => [] as any[])
+      : [];
+    const ovByEmp = new Map(overrides.map((o: any) => [o.employeeId, o] as const));
+    const storeIds = [...new Set(emps.map((e) => e.storeId).filter(Boolean))] as string[];
+    const stores = storeIds.length || opts?.storeId
+      ? await this.prisma.runWithContext(rls, (tx) => tx.store.findMany({ where: { id: { in: [...storeIds, ...(opts?.storeId ? [opts.storeId] : [])] } }, select: { id: true, name: true } })).catch(() => [] as any[])
+      : [];
+    const storeName = new Map(stores.map((s: any) => [s.id, s.name] as const));
+
+    const rows = emps.map((e) => {
+      const times = byEmp.get(e.id) ?? [];
+      const sched: any = e.scheduleCode ? schedByCode.get(e.scheduleCode) : null;
+      const ov: any = ovByEmp.get(e.id);
+      let segs: [string, string][] = [];
+      let escala: string;
+      if (ov) {
+        segs = Array.isArray(ov.segments) ? ov.segments : [];
+        escala = segs.length ? segs.map((s) => `${s[0]}–${s[1]}`).join("  ") : "Folga (ajuste do dia)";
+      // AQUI entra a escala por planilha quando `ponto_schedule_plan` existir:
+      // } else if (plano) { segs = plano.segs; escala = ...; }
+      } else if (sched) {
+        segs = this.rawPattern(sched, dayIso, wd);
+        escala = segs.length ? segs.map((s) => `${s[0]}–${s[1]}`).join("  ") : "Folga pela escala";
+      } else escala = "Sem escala";
+      const tol = Number(sched?.toleranceMin ?? 10);
+      const first = times[0], last = times.length > 1 ? times[times.length - 1] : null;
+      const sit: string[] = [];
+      if (!segs.length) sit.push(escala === "Sem escala" ? "sem escala cadastrada" : "bateu em dia de folga");
+      else if (first) {
+        const late = minOfDay(first) - toMin(segs[0]![0]);
+        if (late > tol) sit.push(`atraso de ${late} min`);
+        else if (late < -60) sit.push("entrada muito antes da escala");
+        else sit.push("entrada no horário");
+      }
+      if (times.length % 2 === 1) sit.push(times.length === 1 ? "sem saída registrada" : "batidas ímpares");
+      return {
+        name: e.name,
+        sub: [e.cargo, e.matricula ? `mat. ${e.matricula}` : null, e.storeId ? storeName.get(e.storeId) : null].filter(Boolean).join(" · "),
+        escala: `${sched ? `${sched.name || sched.code}\n` : ""}${escala}`,
+        entrada: first ? `${ddmm(first)} ${hhmm(first)}` : "—",
+        saida: last ? `${ddmm(last)} ${hhmm(last)}` : "—",
+        batidas: `${times.map(hhmm).join(" · ")}  (${times.length})`,
+        situacao: sit.join("; "),
+        late: sit.some((x) => x.startsWith("atraso")),
+      };
+    }).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+    const brand = await this.loadBrand(ctx);
+    const empr = await this.employer.resolveBrand(ctx, null).catch(() => null);
+    const accent = brand.color && /^#[0-9a-fA-F]{6}$/.test(brand.color) ? brand.color : "#1e3a8a";
+    const WD = ["domingo", "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira", "sexta-feira", "sábado"];
+    const dataLonga = `${dayIso.slice(8, 10)}/${dayIso.slice(5, 7)}/${dayIso.slice(0, 4)} (${WD[wd]})`;
+    const lojaFiltro = opts?.storeId ? storeName.get(opts.storeId) ?? null : null;
+    const empresa = empr?.name || brand.name || "Empresa";
+
+    const buffer = await new Promise<Buffer>((resolve, reject) => {
+      const pdf = new PDFDocument({ size: "A4", layout: "landscape", margins: { top: 30, bottom: 44, left: 30, right: 30 }, bufferPages: true });
+      const chunks: Buffer[] = [];
+      pdf.on("data", (c) => chunks.push(c as Buffer)); pdf.on("end", () => resolve(Buffer.concat(chunks))); pdf.on("error", reject);
+      pdf.info.Title = `Presença do dia ${dataLonga}`; pdf.info.Author = empresa; pdf.info.Creator = empresa;
+      const W = pdf.page.width, L = 30, R = W - 30;
+      const cols = [
+        { k: "func", t: "Funcionário", w: 190 }, { k: "escala", t: "Escala do dia", w: 150 },
+        { k: "entrada", t: "Entrada", w: 88 }, { k: "saida", t: "Saída", w: 88 },
+        { k: "batidas", t: "Batidas do dia", w: 150 },
+        { k: "sit", t: "Situação", w: R - L - 190 - 150 - 88 - 88 - 150 },
+      ];
+
+      const header = () => {
+        pdf.save().rect(0, 0, W, 76).fill(accent).restore();
+        let x = L;
+        if (brand.logoBuf) {
+          pdf.save().roundedRect(L, 12, 124, 52, 8).fill("#ffffff").restore();
+          try { pdf.image(brand.logoBuf, L + 6, 16, { fit: [112, 44], align: "center", valign: "center" }); x = L + 138; } catch { x = L; }
+        }
+        pdf.font("Helvetica-Bold").fontSize(15).fillColor("#ffffff").text(empresa, x, 18, { width: R - x - 190, lineBreak: false });
+        if (empr?.cnpj) pdf.font("Helvetica").fontSize(8.5).fillColor("#e5e7eb").text(`CNPJ ${empr.cnpj}`, x, 38, { width: R - x - 190, lineBreak: false });
+        pdf.font("Helvetica-Bold").fontSize(8).fillColor("#e5e7eb").text("PONTO ELETRÔNICO", R - 180, 20, { width: 180, align: "right", characterSpacing: 1.1 });
+        pdf.font("Helvetica-Bold").fontSize(11).fillColor("#ffffff").text("Presença do dia", R - 180, 34, { width: 180, align: "right" });
+        pdf.font("Helvetica").fontSize(9).fillColor("#e5e7eb").text(dataLonga, R - 180, 50, { width: 180, align: "right" });
+        pdf.y = 90;
+      };
+      const tableHead = () => {
+        let x = L; const y = pdf.y;
+        pdf.save().rect(L, y, R - L, 18).fill("#f1f5f9").restore();
+        for (const c of cols) { pdf.font("Helvetica-Bold").fontSize(8).fillColor("#334155").text(c.t.toUpperCase(), x + 5, y + 5, { width: c.w - 10, lineBreak: false }); x += c.w; }
+        pdf.y = y + 20;
+      };
+
+      header();
+      pdf.font("Helvetica").fontSize(9.5).fillColor("#334155").text(
+        `${rows.length} funcionário(s) bateram ponto nesta data${lojaFiltro ? ` · loja ${lojaFiltro}` : ""}. Horários no fuso da empresa (UTC${tz.slice(0, 3)}:${tz.slice(3)}); batidas do dia civil (00:00–23:59).`,
+        L, pdf.y, { width: R - L });
+      pdf.moveDown(0.6);
+      if (!rows.length) {
+        pdf.moveDown(2);
+        pdf.font("Helvetica").fontSize(12).fillColor("#64748b").text("Ninguém bateu ponto nesta data.", L, pdf.y, { width: R - L, align: "center" });
+      } else tableHead();
+
+      rows.forEach((r, i) => {
+        const cells: Record<string, string> = { func: r.name, escala: r.escala, entrada: r.entrada, saida: r.saida, batidas: r.batidas, sit: r.situacao };
+        // mede cada coluna com a MESMA fonte do desenho — o nome é negrito e maior; medir com a
+        // fonte normal fazia o cargo de quem tem nome longo invadir a linha de baixo
+        const hs = cols.map((c) => {
+          if (c.k === "func") {
+            let h = pdf.font("Helvetica-Bold").fontSize(8.8).heightOfString(r.name, { width: c.w - 10 });
+            if (r.sub) h += 1 + pdf.font("Helvetica").fontSize(7.5).heightOfString(r.sub, { width: c.w - 10 });
+            return h;
+          }
+          return pdf.font(c.k === "entrada" || c.k === "saida" ? "Helvetica-Bold" : "Helvetica").fontSize(8.5).heightOfString(cells[c.k] ?? "", { width: c.w - 10 });
+        });
+        const h = Math.max(22, ...hs) + 8;
+        if (pdf.y + h > pdf.page.height - 50) { pdf.addPage(); header(); tableHead(); }
+        const y = pdf.y;
+        if (i % 2 === 1) pdf.save().rect(L, y, R - L, h).fill("#f8fafc").restore();
+        let x = L;
+        for (const c of cols) {
+          if (c.k === "func") {
+            pdf.font("Helvetica-Bold").fontSize(8.8).fillColor("#0f172a").text(r.name, x + 5, y + 4, { width: c.w - 10 });
+            if (r.sub) pdf.font("Helvetica").fontSize(7.5).fillColor("#64748b").text(r.sub, x + 5, pdf.y + 1, { width: c.w - 10 });
+          } else {
+            const color = c.k === "sit" && r.late ? "#b91c1c" : c.k === "entrada" || c.k === "saida" ? "#0f172a" : "#334155";
+            pdf.font(c.k === "entrada" || c.k === "saida" ? "Helvetica-Bold" : "Helvetica").fontSize(8.5).fillColor(color).text(cells[c.k] ?? "", x + 5, y + 4, { width: c.w - 10 });
+          }
+          x += c.w;
+        }
+        pdf.save().moveTo(L, y + h).lineTo(R, y + h).lineWidth(0.4).strokeColor("#e2e8f0").stroke().restore();
+        pdf.y = y + h;
+      });
+
+      // rodapé em todas as páginas: a marca é da EMPRESA (ver nota 1 no topo)
+      const range = pdf.bufferedPageRange();
+      for (let pg = range.start; pg < range.start + range.count; pg++) {
+        pdf.switchToPage(pg);
+        const H = pdf.page.height, fy = H - 32;
+        const keep = pdf.page.margins.bottom; pdf.page.margins.bottom = 0;
+        pdf.save().moveTo(L, fy - 6).lineTo(R, fy - 6).lineWidth(0.5).strokeColor("#cbd5e1").stroke().restore();
+        pdf.font("Helvetica").fontSize(7.5).fillColor("#64748b").text(`${empresa}  ·  gerado em ${new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`, L, fy + 2, { width: 420, lineBreak: false });
+        pdf.font("Helvetica").fontSize(7.5).fillColor("#64748b").text(`Página ${pg - range.start + 1} de ${range.count}`, R - 120, fy + 2, { width: 120, align: "right", lineBreak: false });
+        pdf.page.margins.bottom = keep;
+      }
+      pdf.end();
+    });
+    const sufixo = lojaFiltro ? "-" + lojaFiltro.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "";
+    return { buffer, filename: `presenca-${dayIso}${sufixo}.pdf`, count: rows.length };
+  }
+
   /** Desenha UM espelho (tabela + carimbo de assinatura) no documento PDF já aberto. */
   private drawEspelhoInto(pdf: any, esp: any, sig: any, hashNow: string, from: string, brand?: { name: string; color: string | null; logoBuf: Buffer | null }) {
     const M = 40, right = pdf.page.width - M;

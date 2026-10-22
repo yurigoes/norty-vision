@@ -136,6 +136,13 @@ export class PontoController {
     const csv = await this.reports.punchesCsv(ctx, q.from, q.to, { storeId: q.storeId || null });
     reply.type("text/csv; charset=utf-8").header("Content-Disposition", `attachment; filename="batidas-${q.from}_${q.to}.csv"`).send(csv);
   }
+  /** Presença do dia (PDF): só quem bateu ponto na data, com escala, entrada e saída. */
+  @Get("relatorios/presenca-dia.pdf")
+  async presencaDia(@CurrentContext() ctx: RequestContext, @Res() reply: FastifyReply, @Query() q: { date: string; storeId?: string }) {
+    const { buffer, filename } = await this.jornada.dayPresencePdf(ctx, q.date, { storeId: q.storeId || null });
+    reply.type("application/pdf").header("Content-Disposition", `inline; filename="${filename}"`).send(buffer);
+  }
+
   /** Espelhos em lote filtrados por loja (PDF). */
   @Get("relatorios/espelhos-loja.pdf")
   async espelhosLoja(@CurrentContext() ctx: RequestContext, @Res() reply: FastifyReply, @Query() q: { refMonth: string; storeId?: string }) {

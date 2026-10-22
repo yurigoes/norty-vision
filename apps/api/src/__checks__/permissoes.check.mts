@@ -190,6 +190,7 @@ for (const [arq, padrao, minimo] of [
   ["ponto/ponto-pwa.service.ts", "this.requireAdmin(ctx", 7],
   ["ponto/escala-planilha.service.ts", "this.requireAdmin(ctx", 8],
   ["ponto/extras.service.ts", "this.requireAdmin(ctx", 4],
+  ["ponto/store-transfer.service.ts", "this.requireAdmin(ctx", 5],
   ["hr/hr.service.ts", "this.requireAdmin(ctx", 14],
   ["hr/hr.service.ts", 'ctxCan(ctx, "rh.manage")', 1],
 
@@ -304,6 +305,7 @@ const PISOS = [
   ["ponto/ponto.service.ts", "ponto.adjust"],
   ["ponto/escala-planilha.service.ts", "ponto.adjust"],
   ["ponto/extras.service.ts", "ponto.adjust"],
+  ["ponto/store-transfer.service.ts", "rh.manage"],
   ["ponto/reports.service.ts", "ponto.view"],
   ["ponto/sign.service.ts", "ponto.close"],
   ["hr/hr.service.ts", "rh.manage"],

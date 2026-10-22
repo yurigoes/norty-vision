@@ -267,6 +267,14 @@ export class PontoPwaService {
       const avisosExtra = await this.ponto.activeNotices(orgId, emp.id);
       return { id: extraFace.id, nsr: "EXTRA", punchedAt: new Date().toISOString(), employeeName: emp.name, faceScore: r.score, extra: true, notices: avisosExtra };
     }
+    // Mesma regra do `punch`: transferido bate na loja destino.
+    {
+      const transf = await this.activeStoreTransfer(orgId, emp.id);
+      if (transf && (!d.storeId || d.storeId !== transf.toStoreId)) {
+        const nome = await this.nomeDaLoja(orgId, transf.toStoreId);
+        throw new AppError(ErrorCode.Forbidden, `Você está transferido para a loja ${nome} até ${this.dataBr(transf.endsAt)}. Bata o ponto lá.`, 403);
+      }
+    }
     const res = await this.ponto.punchCore(orgId, {
       employeeId: emp.id, origin: "pwa", lat: body.lat, lng: body.lng, accuracy: body.accuracy,
       photoUrl: key, faceScore: r.score, faceMatch: true, livenessOk: cfg.requireLiveness ? !!body.livenessOk : null, fraudFlags: flags,
@@ -329,6 +337,27 @@ export class PontoPwaService {
     const { url } = await this.storage.putPublic({ keyPrefix: `ponto/bg/${ctx.orgId}`, contentType: m[1]!, body: buf });
     return this.ponto.updateConfig(ctx, { bgImageUrl: url, bgUntil: until ?? null });
   }
+
+  /**
+   * Transferência de loja ATIVA e vigente hoje. `.catch(() => null)` porque
+   * isto roda em TODA batida: tabela ausente numa réplica ou erro de consulta
+   * vira "sem transferência" e a batida segue — nunca para o terminal.
+   */
+  private async activeStoreTransfer(orgId: string, employeeId: string): Promise<{ toStoreId: string; endsAt: Date } | null> {
+    const hoje = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00Z");
+    const t = await this.prisma.runWithContext({ orgId }, (tx) => tx.pontoStoreTransfer.findFirst({
+      where: { pontoEmployeeId: employeeId, status: "active", startsAt: { lte: hoje }, endsAt: { gte: hoje } },
+      orderBy: { startsAt: "desc" }, select: { toStoreId: true, endsAt: true },
+    })).catch(() => null);
+    return t ? { toStoreId: t.toStoreId, endsAt: t.endsAt } : null;
+  }
+  /** Nome da loja pra mensagem. `isOrgAdmin` no contexto: a policy de `stores`
+   *  só mostra loja pra gestor, e sem isso a mensagem dizia "destino". */
+  private async nomeDaLoja(orgId: string, storeId: string): Promise<string> {
+    const s = await this.prisma.runWithContext({ orgId, isOrgAdmin: true }, (tx) => tx.store.findFirst({ where: { id: storeId }, select: { name: true } })).catch(() => null);
+    return s?.name ?? "destino";
+  }
+  private dataBr(d: Date): string { try { return new Date(d).toLocaleDateString("pt-BR"); } catch { return ""; } }
 
   private distM(aLat: number, aLng: number, bLat: number, bLng: number) {
     const R = 6371000, toRad = (x: number) => (x * Math.PI) / 180;
@@ -444,6 +473,18 @@ export class PontoPwaService {
         employeeName: (await this.prisma.runWithContext({ orgId: targetOrgId }, (tx) => tx.pontoEmployee.findFirst({ where: { id: body.employeeId }, select: { name: true } })).catch(() => null))?.name ?? "",
         extra: true, notices: avisos,
       };
+    }
+    // TRANSFERÊNCIA DE LOJA ATIVA: ele bate na loja DESTINO, não aqui.
+    // Recusa com o nome da loja e até quando vale — "não autorizado" sem dizer
+    // onde bater manda a pessoa procurar o RH pra descobrir algo que o sistema
+    // já sabe. Vem depois do extra (extra é do dia, transferência é do período)
+    // e antes do `punchCore`, pra não gravar uma batida na loja errada.
+    {
+      const transf = await this.activeStoreTransfer(targetOrgId, body.employeeId);
+      if (transf && (!d.storeId || d.storeId !== transf.toStoreId)) {
+        const nome = await this.nomeDaLoja(targetOrgId, transf.toStoreId);
+        throw new AppError(ErrorCode.Forbidden, `Você está transferido para a loja ${nome} até ${this.dataBr(transf.endsAt)}. Bata o ponto lá.`, 403);
+      }
     }
     const res = await this.ponto.punchCore(targetOrgId, {
       employeeId: body.employeeId, pin: body.pin, origin: "pwa",

@@ -230,6 +230,45 @@ exige(
   }
 }
 
+// ============================================================================
+// 3e. TRANSFERIDO BATE NA LOJA DESTINO — e a consulta não pode barrar batida.
+//
+// Enquanto a transferência vale, o terminal da loja de origem recusa com o nome
+// da loja destino e a data. Igual ao extra, a consulta roda em TODA batida:
+// `.catch(() => null)` é o que impede que um erro ali pare o relógio de parede.
+//
+// Medido: sem transferência -> ponto_punch 16->17 · com transferência ativa ->
+// 403 "Você está transferido para a loja Filial Centro até 26/10/2026. Bata o
+// ponto lá." e ponto_punch 17->17 · cancelada -> 17->18.
+// ============================================================================
+{
+  const i = t.indexOf("private async activeStoreTransfer");
+  if (i < 0) {
+    falhas.push("`activeStoreTransfer` sumiu — transferido volta a bater na loja errada");
+  } else if (!/\.catch\(\(\)\s*=>\s*null\)/.test(t.slice(i, i + 700))) {
+    falhas.push(
+      "`activeStoreTransfer` perdeu o `.catch(() => null)`. Roda em TODA batida: " +
+        "erro ali (tabela ausente, conexão) para o ponto da empresa inteira",
+    );
+  }
+  for (const metodo of ["punch", "facePunch"] as const) {
+    const c = corpo(metodo);
+    if (!c) continue;
+    const iT = c.indexOf("activeStoreTransfer");
+    const iCore = c.indexOf("punchCore");
+    if (iT < 0) {
+      falhas.push(`\`${metodo}\`: não confere transferência de loja — quem está transferido bate na loja errada e a batida fica no lugar errado`);
+    } else if (iCore >= 0 && iT > iCore) {
+      falhas.push(`\`${metodo}\`: a conferência da transferência ficou DEPOIS do \`punchCore\` — a batida já foi gravada`);
+    }
+  }
+  // a mensagem tem que DIZER onde bater: "não autorizado" manda a pessoa
+  // procurar o RH pra descobrir algo que o sistema já sabe.
+  if (!/transferido para a loja \$\{nome\}/.test(t)) {
+    falhas.push("a recusa da transferência não nomeia mais a loja destino — a pessoa não sabe onde bater");
+  }
+}
+
 // 4. e as 4 rotas do terminal seguem sendo as únicas públicas do controller
 const ctrl = readFileSync(join(src, "ponto", "ponto-pwa.controller.ts"), "utf8")
   .replace(/\/\*[\s\S]*?\*\//g, " ").replace(/\/\/[^\n]*/g, "");

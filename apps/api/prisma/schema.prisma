@@ -4214,6 +4214,25 @@ model PontoExtraPunch {
   @@map("ponto_extra_punch")
 }
 
+/// Funcionário emprestado pra outra loja da MESMA empresa por um período.
+/// Enquanto está ativa, ele bate o ponto na loja DESTINO — ver 217.
+model PontoStoreTransfer {
+  id              String   @id @default(uuid()) @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  pontoEmployeeId String   @map("ponto_employee_id") @db.Uuid
+  fromStoreId     String?  @map("from_store_id") @db.Uuid
+  toStoreId       String   @map("to_store_id") @db.Uuid
+  startsAt        DateTime @map("starts_at") @db.Date
+  endsAt          DateTime @map("ends_at") @db.Date
+  reason          String?
+  status          String   @default("active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @default(now()) @map("updated_at")
+
+  @@index([organizationId, pontoEmployeeId, status])
+  @@map("ponto_store_transfer")
+}
+
 model PontoShiftSwap {
   id                  String    @id @default(uuid()) @db.Uuid
   organizationId      String    @map("organization_id") @db.Uuid

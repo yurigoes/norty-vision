@@ -16,6 +16,7 @@ import { AejService } from "./aej.service";
 import { InconsistenciasService } from "./inconsistencias.service";
 import { EscalaPlanilhaService } from "./escala-planilha.service";
 import { ExtrasService } from "./extras.service";
+import { StoreTransferService } from "./store-transfer.service";
 import { PontoAlertsScheduler } from "./ponto-alerts.scheduler";
 import { AiModule } from "../ai/ai.module";
 import { NotificationsModule } from "../notifications/notifications.module";
@@ -25,7 +26,8 @@ import { NotificationsModule } from "../notifications/notifications.module";
   controllers: [PontoController, PontoPwaController],
   providers: [PontoService, JornadaService, PontoPwaService, FaceService, PontoSignService, ShiftSwapService, EmployerService, FolhaService, ReportsService, AllocationService, AssiduidadeService, AejService, InconsistenciasService,
     EscalaPlanilhaService,
-    ExtrasService, PontoAlertsScheduler],
+    ExtrasService,
+    StoreTransferService, PontoAlertsScheduler],
   exports: [PontoService, JornadaService, FolhaService, PontoSignService, ShiftSwapService, EmployerService, AssiduidadeService, AejService],
 })
 export class PontoModule {}

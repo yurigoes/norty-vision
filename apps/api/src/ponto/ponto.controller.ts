@@ -15,6 +15,7 @@ import { AssiduidadeService } from "./assiduidade.service";
 import { InconsistenciasService } from "./inconsistencias.service";
 import { EscalaPlanilhaService } from "./escala-planilha.service";
 import { ExtrasService } from "./extras.service";
+import { StoreTransferService } from "./store-transfer.service";
 
 /**
  * PERMISSÕES DO PONTO — o piso é da CLASSE, a exceção é da rota.
@@ -47,7 +48,7 @@ import { ExtrasService } from "./extras.service";
 @Controller("ponto")
 @RequirePermission("ponto.view")
 export class PontoController {
-  constructor(private readonly svc: PontoService, private readonly jornada: JornadaService, private readonly sign: PontoSignService, private readonly folha: FolhaService, private readonly aej: AejService, private readonly swap: ShiftSwapService, private readonly employers: EmployerService, private readonly reports: ReportsService, private readonly alloc: AllocationService, private readonly assid: AssiduidadeService, private readonly inc: InconsistenciasService, private readonly escala: EscalaPlanilhaService, private readonly extras: ExtrasService) {}
+  constructor(private readonly svc: PontoService, private readonly jornada: JornadaService, private readonly sign: PontoSignService, private readonly folha: FolhaService, private readonly aej: AejService, private readonly swap: ShiftSwapService, private readonly employers: EmployerService, private readonly reports: ReportsService, private readonly alloc: AllocationService, private readonly assid: AssiduidadeService, private readonly inc: InconsistenciasService, private readonly escala: EscalaPlanilhaService, private readonly extras: ExtrasService, private readonly transfer: StoreTransferService) {}
 
   // ----- Fila de pontos inconsistentes -----
   /** Funcionários com dia ainda sem decisão: batida incompleta, falta, atraso, saída antecipada, extra. */
@@ -55,6 +56,25 @@ export class PontoController {
   inconsistencias(@CurrentContext() ctx: RequestContext, @Query() q: { from?: string; to?: string; storeId?: string }) {
     return this.inc.list(ctx, q ?? {});
   }
+
+  // ----- Transferência temporária de loja -----
+  // Enquanto vale, a pessoa bate na loja DESTINO e o terminal da origem recusa
+  // dizendo onde bater. Não confundir com alocação/cessão (`alocacoes`), que é
+  // entre EMPRESAS e muda quem assina a folha.
+  @Get("transferencias")
+  transferList(@CurrentContext() ctx: RequestContext) { return this.transfer.list(ctx); }
+  @Get("transferencias/funcionarios")
+  transferEmployees(@CurrentContext() ctx: RequestContext) { return this.transfer.employees(ctx); }
+  @Get("transferencias/lojas")
+  transferStores(@CurrentContext() ctx: RequestContext) { return this.transfer.stores(ctx); }
+  @Post("transferencias")
+  @RequirePermission("rh.manage")
+  @HttpCode(200)
+  transferCreate(@CurrentContext() ctx: RequestContext, @Body() b: any) { return this.transfer.create(ctx, b ?? {}); }
+  @Post("transferencias/:id/cancelar")
+  @RequirePermission("rh.manage")
+  @HttpCode(200)
+  transferCancel(@CurrentContext() ctx: RequestContext, @Param("id") id: string) { return this.transfer.cancel(ctx, id); }
 
   // ----- Extras (diarista / hora extra avulsa fora da escala oficial) -----
   // A batida do extra vive em tabela SEPARADA e nunca entra no AFD/eSocial —

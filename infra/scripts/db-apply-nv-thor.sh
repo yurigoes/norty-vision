@@ -232,7 +232,10 @@ confere_coluna() {
 
 for t in ponto_employer ponto_leave ponto_allocation ponto_shift_swap \
          ponto_schedule_override ponto_assiduidade ponto_bank_request \
-         ponto_homologated_machine; do confere_tabela "$t"; done
+         ponto_homologated_machine \
+         ponto_schedule_plan ponto_schedule_import ponto_schedule_settings \
+         ponto_extra_shift ponto_extra_punch \
+         ponto_store_transfer; do confere_tabela "$t"; done
 confere_coluna ponto_employee employer_id
 confere_coluna ponto_employee allowed_device_ids
 confere_coluna ponto_punch    employer_id
@@ -243,6 +246,11 @@ confere_coluna ponto_config   assid_bonus_cents
 confere_coluna ponto_config   show_bank_to_employee
 confere_coluna employees      leader_id
 confere_coluna employees      employer_id
+# as tres vindas do port do RH (migrations 215/216/217). Sem elas o codigo novo
+# sobe e estoura na primeira tela de escala/extra/transferencia.
+confere_coluna ponto_schedule_plan  rank
+confere_coluna ponto_extra_shift    daily_value_cents
+confere_coluna ponto_store_transfer to_store_id
 
 if [[ "$FALTOU" == "1" ]]; then
   morre "o banco NÃO tem tudo que o código novo espera. NÃO suba o código ainda

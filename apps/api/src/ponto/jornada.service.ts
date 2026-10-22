@@ -15,6 +15,9 @@ import type { RequestContext } from "../auth/session.middleware";
 
 type Seg = [number, number]; // [entrada, saida] em minutos do dia (saida pode passar de 1440)
 
+/** Uma linha de escala subida por planilha, já resolvida para um funcionário. */
+export type SchedulePlan = { from: string; to: string | null; pattern: Record<string, [string, string][]>; seq: number; rank: number };
+
 /**
  * Motor de jornada (Fase 1): a partir das marcações imutáveis + escala, DERIVA
  * (sem nunca alterar a marcação) horas normais/extras, atraso, saída antecipada,
@@ -140,6 +143,112 @@ export class JornadaService {
     return this.rawPattern(schedule, dayIso, wd).map((s) => this.seg(s));
   }
   /** Segmentos CRUS (["HH:MM","HH:MM"]) esperados pela escala num dia — sem feriado/override. */
+  /**
+   * Jornada PREVISTA dia a dia de vários funcionários — alimenta a grade
+   * "Escala planejada" e a conferência da planilha. Mesma ordem do espelho:
+   * afastamento > troca > planilha(1 dia) > feriado > planilha > escala base.
+   *
+   * Uma diferença consciente em relação ao espelho: a grade NÃO olha
+   * justificativa aprovada (folga premium / facultativo). A grade é PLANEJAMENTO
+   * — mostra o que a escala manda —, e a justificativa é um fato que acontece
+   * depois, no espelho. Misturar os dois faria a grade mudar sozinha conforme
+   * o RH aprova pedidos, e aí ela deixa de servir pra planejar.
+   */
+  async plannedGrid(ctx: RequestContext, emps: Array<{ id: string; scheduleCode: string | null; storeId: string | null }>, fromIso: string, toIso: string) {
+    const rls = this.rls(ctx);
+    const ids = emps.map((e) => e.id);
+    const fromD = new Date(fromIso + "T00:00:00Z"); const toD = new Date(toIso + "T00:00:00Z");
+    const out: Record<string, Array<{ day: string; wd: number; segs: [string, string][]; origin: string; holidayName: string | null }>> = {};
+    if (!ids.length) return out;
+    const schedules = await this.prisma.runWithContext(rls, (tx) => tx.pontoSchedule.findMany({ where: {} }));
+    const schedByCode = new Map(schedules.map((x: any) => [x.code, x] as const));
+    const ovRows = await this.prisma.runWithContext(rls, (tx) => tx.pontoScheduleOverride.findMany({ where: { employeeId: { in: ids }, day: { gte: fromD, lte: toD } }, select: { employeeId: true, day: true, kind: true, segments: true } })).catch(() => [] as any[]);
+    const ovBy = new Map<string, any>(ovRows.map((o: any) => [`${o.employeeId}|${new Date(o.day).toISOString().slice(0, 10)}`, o] as const));
+    const plansByEmp = await this.loadPlans(rls, ids, fromIso, toIso);
+    const leaveRows = await this.prisma.runWithContext(rls, (tx) => tx.pontoLeave.findMany({ where: { employeeId: { in: ids }, startDate: { lte: toD }, OR: [{ endDate: null }, { endDate: { gte: fromD } }] }, select: { employeeId: true, startDate: true, endDate: true } })).catch(() => [] as any[]);
+    const holidayRows = await this.prisma.runWithContext(rls, (tx) => tx.pontoHoliday.findMany({ where: {}, select: { day: true, name: true, recurring: true, storeId: true } })).catch(() => [] as any[]);
+    const national = new Map<string, string>();
+    for (let yy = fromD.getUTCFullYear(); yy <= toD.getUTCFullYear(); yy++) for (const mv of this.movableNational(yy)) national.set(mv.iso, mv.name);
+    for (const e of emps) {
+      const schedule: any = e.scheduleCode ? schedByCode.get(e.scheduleCode) ?? null : null;
+      const plans = plansByEmp.get(e.id);
+      const myLeaves = leaveRows.filter((l: any) => l.employeeId === e.id);
+      const myHol = holidayRows.filter((h: any) => !h.storeId || h.storeId === e.storeId);
+      const days: Array<{ day: string; wd: number; segs: [string, string][]; origin: string; holidayName: string | null }> = [];
+      for (let t = fromD.getTime(); t <= toD.getTime(); t += 86400000) {
+        const d = new Date(t); const dayIso = d.toISOString().slice(0, 10); const wd = d.getUTCDay();
+        const h = myHol.find((x: any) => { const iso = new Date(x.day).toISOString().slice(0, 10); return x.recurring ? iso.slice(5) === dayIso.slice(5) : iso === dayIso; });
+        const holidayName: string | null = h?.name ?? national.get(dayIso) ?? JornadaService.FIXED_NATIONAL[dayIso.slice(5)] ?? null;
+        const onLeave = myLeaves.some((l: any) => new Date(l.startDate).getTime() <= t && (!l.endDate || new Date(l.endDate).getTime() >= t));
+        const ov = ovBy.get(`${e.id}|${dayIso}`); const plan = this.planFor(plans, dayIso, wd);
+        let segs: [string, string][] = []; let origin = "escala";
+        if (onLeave) origin = "afastamento";
+        else if (ov) { segs = ov.kind === "folga" ? [] : ((ov.segments ?? []) as [string, string][]); origin = "troca"; }
+        else if (plan?.single) { segs = plan.segs; origin = "planilha"; }
+        else if (holidayName) {
+          const pol = schedule?.holidayPolicy ?? "folga";
+          const works = pol === "trabalha" || (pol === "alterna" && Math.floor(Date.parse(dayIso + "T00:00:00Z") / 604800000) % 2 === 0);
+          segs = works ? (plan ? plan.segs : this.rawPattern(schedule, dayIso, wd)) : []; origin = works && plan ? "planilha" : "feriado";
+        } else if (plan) { segs = plan.segs; origin = "planilha"; }
+        else { segs = this.rawPattern(schedule, dayIso, wd); if (!schedule) origin = "sem_escala"; }
+        days.push({ day: dayIso, wd, segs, origin, holidayName });
+      }
+      out[e.id] = days;
+    }
+    return out;
+  }
+
+  /** Turnos esperados (escala) de um ponto-employee num período — usado pelo portal do funcionário. */
+  // ----- ESCALA POR PLANILHA (vigência por data) -----
+  /**
+   * Linhas de escala subidas por planilha que tocam o período, por funcionário.
+   * Cada linha vale de `from` até `to` (null = sem fim) e define SÓ os dias da
+   * semana que trouxe — o que ela não fala continua vindo da escala base.
+   *
+   * O `.catch(() => [])` não é desleixo: a tabela `ponto_schedule_plan` existe
+   * só na central. Na réplica local do terminal a consulta falha, devolve vazio,
+   * e lá vale a escala base — que é o comportamento certo pra um relógio de
+   * parede que precisa funcionar sem rede.
+   */
+  async loadPlans(rls: any, employeeIds: string[], fromIso: string, toIso: string): Promise<Map<string, SchedulePlan[]>> {
+    const out = new Map<string, SchedulePlan[]>();
+    if (!employeeIds.length) return out;
+    const rows = await this.prisma.runWithContext(rls, (tx) => tx.$queryRawUnsafe<Array<{ employee_id: string; f: string; t: string | null; pattern: any; seq: bigint | number; rank: number }>>(
+      `SELECT employee_id::text AS employee_id, to_char(from_day, 'YYYY-MM-DD') AS f, to_char(to_day, 'YYYY-MM-DD') AS t, pattern, seq, rank
+         FROM ponto_schedule_plan
+        WHERE employee_id = ANY(string_to_array($1, ',')::uuid[]) AND from_day <= $3::date AND (to_day IS NULL OR to_day >= $2::date)`,
+      employeeIds.join(","), fromIso, toIso)).catch(() => [] as any[]);
+    for (const r of rows) {
+      const a = out.get(r.employee_id) ?? [];
+      a.push({ from: r.f, to: r.t, pattern: (r.pattern ?? {}) as any, seq: Number(r.seq), rank: Number(r.rank) || 0 });
+      out.set(r.employee_id, a);
+    }
+    return out;
+  }
+
+  /**
+   * O que a planilha manda num dia, entre as linhas em vigor que definem aquele
+   * dia da semana:
+   *   1º linha de UM DIA SÓ (ordem expressa pra aquela data — vale até em feriado);
+   *   2º a mais ESPECÍFICA (rank: CPF > cargo+loja > cargo > loja > todos) — a
+   *      exceção de uma pessoa não é atropelada por uma escala geral subida depois;
+   *   3º a de início mais recente; empate = a subida por último (`seq`).
+   * null = a planilha não fala desse dia (vale a escala base).
+   */
+  planFor(plans: SchedulePlan[] | undefined, dayIso: string, wd: number): { segs: [string, string][]; single: boolean } | null {
+    if (!plans?.length) return null;
+    let best: SchedulePlan | null = null;
+    for (const pl of plans) {
+      if (pl.from > dayIso || (pl.to && pl.to < dayIso)) continue;
+      if (!Array.isArray(pl.pattern?.[String(wd)])) continue;
+      if (!best || JornadaService.planKey(pl) > JornadaService.planKey(best)) best = pl;
+    }
+    return best ? { segs: best.pattern[String(wd)] as [string, string][], single: best.to === best.from } : null;
+  }
+  private static planKey(pl: SchedulePlan): string {
+    return `${pl.to === pl.from ? 1 : 0}|${pl.rank}|${pl.from}|${String(pl.seq).padStart(15, "0")}`;
+  }
+
   private rawPattern(schedule: any, dayIso: string, wd: number): [string, string][] {
     const p = (schedule?.pattern ?? {}) as any;
     const kind = schedule?.kind;
@@ -323,6 +432,9 @@ export class JornadaService {
         leaveByDay.set(new Date(tt).toISOString().slice(0, 10), lv.type);
       }
     }
+    // escala subida por planilha que toca o período (vigência por data).
+    // Vazio = a planilha não fala deste funcionário/período e vale a escala base.
+    const plans = (await this.loadPlans(rls, [opts.employeeId], opts.from, opts.to)).get(opts.employeeId);
     // feriados (aplicáveis: gerais OU da loja do funcionário). Recorrentes batem por dia/mês.
     const holidayRows = await this.prisma.runWithContext(rls, (tx) =>
       tx.pontoHoliday.findMany({ where: { OR: [{ storeId: null }, ...(emp.storeId ? [{ storeId: emp.storeId } as any] : [])] }, select: { day: true, name: true, kind: true, recurring: true } }),
@@ -368,6 +480,19 @@ export class JornadaService {
       const specialJust = dayJusts.find((j) => j.status === "approved" && SPECIAL_KINDS.includes(j.kind));
       const specialOff = !!specialJust;
       // troca aplicada / ajuste manual: a exceção da escala SOBREPÕE feriado e pattern
+      //
+      // ORDEM, e a escolha que divergiu do RH:
+      //   afastamento > troca > ESPECIAL > planilha de 1 dia > feriado > planilha > escala
+      //
+      // No RH a linha de planilha de UM DIA SÓ vem antes de tudo que não é
+      // troca, porque é ordem expressa pra aquela data. Aqui ela cede para o
+      // `specialOff` (folga premium / facultativo / feriado lançado e APROVADO),
+      // porque esses são decisão individual já tomada e deferida para a pessoa,
+      // enquanto a planilha é planejamento em massa. Deixar a planilha ganhar
+      // significaria que subir a escala do mês CANCELA uma folga que o RH já
+      // concedeu — e ninguém ia perceber, porque o espelho não diz "sua folga
+      // foi desfeita por uma planilha".
+      const plan = this.planFor(plans, dayIso, wd);
       let segs: Seg[];
       if (leaveType) {
         segs = []; // afastado: sem jornada esperada
@@ -377,13 +502,18 @@ export class JornadaService {
         // folga premium / ponto facultativo / feriado lançado e aprovado:
         // esperado vira 0 — não é falta, não desconta, e o que bater vira extra.
         segs = [];
+      } else if (plan?.single) {
+        // linha subida só pra ESTA data: ordem expressa, vale mesmo em feriado
+        segs = plan.segs.map((s) => this.seg(s));
       } else if (holidayName) {
         // feriado: aplica a política da escala (folga | trabalha | alterna 1 sim/1 não)
         // sem `as any`: a coluna existe no schema agora, então o tsc confere.
         // Era esse cast que escondia a ausência da coluna (migration 214).
         const pol = schedule?.holidayPolicy ?? "folga";
         const worksHoliday = pol === "trabalha" || (pol === "alterna" && Math.floor(Date.parse(dayIso + "T00:00:00Z") / 604800000) % 2 === 0);
-        segs = worksHoliday ? this.expectedSegments(schedule, dayIso, wd) : [];
+        segs = worksHoliday ? (plan ? plan.segs.map((s) => this.seg(s)) : this.expectedSegments(schedule, dayIso, wd)) : [];
+      } else if (plan) {
+        segs = plan.segs.map((s) => this.seg(s));
       } else {
         segs = this.expectedSegments(schedule, dayIso, wd);
       }
@@ -393,8 +523,15 @@ export class JornadaService {
       // cadastro ou descanso. "sem_escala" também é o que faz a fila de
       // inconsistências NÃO acusar extra: quem não tem escala tem todo minuto
       // trabalhado contado como extra, e isso é cadastro faltando, não erro de ponto.
+      // "planilha" entra aqui porque a grade de ajuste mostra a origem no tooltip
+      // da coluna "Previsto": sem isso, um horário que veio da planilha e um que
+      // veio da escala base ficam idênticos na tela, e quem confere não sabe se
+      // precisa mexer na escala ou refazer a planilha.
       const scheduleOrigin = leaveType ? "afastamento" : ov ? "troca" : specialOff ? "especial"
-        : holidayName ? "feriado" : !schedule ? "sem_escala" : "escala";
+        : plan?.single ? "planilha"
+        : holidayName ? (plan && segs.length ? "planilha" : "feriado")
+        : plan ? "planilha"
+        : !schedule ? "sem_escala" : "escala";
       const flexH = holidayName && segs.length === 0 ? 0 : this.flexTarget(schedule, wd);
       // TOLERÂNCIA PRÓPRIA DO SÁBADO na escala administrativa de sábado
       // alternado: é meio turno, e quem vem num sábado que não é o seu normal

@@ -13,6 +13,7 @@ import { ReportsService } from "./reports.service";
 import { AllocationService } from "./allocation.service";
 import { AssiduidadeService } from "./assiduidade.service";
 import { InconsistenciasService } from "./inconsistencias.service";
+import { EscalaPlanilhaService } from "./escala-planilha.service";
 
 /**
  * PERMISSÕES DO PONTO — o piso é da CLASSE, a exceção é da rota.
@@ -45,7 +46,7 @@ import { InconsistenciasService } from "./inconsistencias.service";
 @Controller("ponto")
 @RequirePermission("ponto.view")
 export class PontoController {
-  constructor(private readonly svc: PontoService, private readonly jornada: JornadaService, private readonly sign: PontoSignService, private readonly folha: FolhaService, private readonly aej: AejService, private readonly swap: ShiftSwapService, private readonly employers: EmployerService, private readonly reports: ReportsService, private readonly alloc: AllocationService, private readonly assid: AssiduidadeService, private readonly inc: InconsistenciasService) {}
+  constructor(private readonly svc: PontoService, private readonly jornada: JornadaService, private readonly sign: PontoSignService, private readonly folha: FolhaService, private readonly aej: AejService, private readonly swap: ShiftSwapService, private readonly employers: EmployerService, private readonly reports: ReportsService, private readonly alloc: AllocationService, private readonly assid: AssiduidadeService, private readonly inc: InconsistenciasService, private readonly escala: EscalaPlanilhaService) {}
 
   // ----- Fila de pontos inconsistentes -----
   /** Funcionários com dia ainda sem decisão: batida incompleta, falta, atraso, saída antecipada, extra. */
@@ -53,6 +54,45 @@ export class PontoController {
   inconsistencias(@CurrentContext() ctx: RequestContext, @Query() q: { from?: string; to?: string; storeId?: string }) {
     return this.inc.list(ctx, q ?? {});
   }
+
+  // ----- Escala em massa por planilha (vigência por data) -----
+  //
+  // NÃO VIERAM NUM CONTROLLER NOVO, DE PROPÓSITO.
+  // No RH estas rotas moram num `PontoGestaoController` que é `@Controller("ponto")`
+  // e declara TAMBÉM `@Get("inconsistencias")` — rota que este controller já tem.
+  // Dois `@Controller("ponto")` com a mesma rota não dão ambiguidade: dão API que
+  // NÃO SOBE, porque o Fastify recusa no boot com FST_ERR_DUPLICATED_ROUTE, e
+  // `tsc`/`nest build` passam os dois. Foi assim que a produção caiu em laço de
+  // reinício. Aqui as rotas entram no controller que já existe, e de graça herdam
+  // o piso `@RequirePermission("ponto.view")` da classe.
+  //
+  // As literais vêm ANTES de `:id/desfazer` — convenção desta base.
+  @Get("escala-planilha/config")
+  escalaConfig(@CurrentContext() ctx: RequestContext) { return this.escala.config(ctx); }
+  @Post("escala-planilha/config")
+  @RequirePermission("ponto.adjust")
+  @HttpCode(200)
+  escalaSaveConfig(@CurrentContext() ctx: RequestContext, @Body() b: any) { return this.escala.saveConfig(ctx, b ?? {}); }
+  /** Empresas/lojas, cargos e funcionários — pra montar o modelo já preenchido. */
+  @Get("escala-planilha/referencias")
+  escalaReferencias(@CurrentContext() ctx: RequestContext) { return this.escala.referencias(ctx); }
+  /** Confere a planilha SEM gravar: o que cada linha faz, o que está errado, os alertas. */
+  @Post("escala-planilha/conferir")
+  @HttpCode(200)
+  escalaConferir(@CurrentContext() ctx: RequestContext, @Body() b: any) { return this.escala.preview(ctx, b ?? {}); }
+  @Post("escala-planilha/aplicar")
+  @RequirePermission("ponto.adjust")
+  @HttpCode(200)
+  escalaAplicar(@CurrentContext() ctx: RequestContext, @Body() b: any) { return this.escala.aplicar(ctx, b ?? {}); }
+  @Get("escala-planilha/historico")
+  escalaHistorico(@CurrentContext() ctx: RequestContext) { return this.escala.historico(ctx); }
+  @Post("escala-planilha/:id/desfazer")
+  @RequirePermission("ponto.adjust")
+  @HttpCode(200)
+  escalaDesfazer(@CurrentContext() ctx: RequestContext, @Param("id") id: string) { return this.escala.desfazer(ctx, id); }
+  /** Jornada prevista dia a dia (escala base + planilha + troca + feriado + afastamento). */
+  @Get("escala-planejada")
+  escalaPlanejada(@CurrentContext() ctx: RequestContext, @Query() q: any) { return this.escala.planejada(ctx, q ?? {}); }
 
   // ----- Assiduidade (bônus) -----
   @RequirePermission("rh.manage")

@@ -156,17 +156,18 @@ fi
 
 # --- 2c. e nenhuma tabela pode ter ficado sem o yugo_app --------------------
 SEM_GRANT=$(psql_run "$POSTGRES_USER" "$POSTGRES_PASSWORD" -tAc "
-SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
- WHERE n.nspname = 'public' AND c.relkind = 'r'
-   AND NOT has_table_privilege('yugo_app', c.oid, 'UPDATE');" | tr -d '[:space:]')
+SELECT count(*) FROM (
+   SELECT c.oid FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public' AND c.relkind = 'r' OFFSET 0) t
+ WHERE NOT has_table_privilege('yugo_app', t.oid, 'UPDATE');" | tr -d '[:space:]')
 if [[ "$SEM_GRANT" == "0" ]]; then
   ok "yugo_app escreve em todas as tabelas de public."
 else
   psql_run "$POSTGRES_USER" "$POSTGRES_PASSWORD" -c "
-SELECT c.relname AS tabela_sem_permissao
-  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
- WHERE n.nspname = 'public' AND c.relkind = 'r'
-   AND NOT has_table_privilege('yugo_app', c.oid, 'UPDATE') ORDER BY 1;"
+SELECT t.relname AS tabela_sem_permissao
+  FROM (SELECT c.oid, c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+         WHERE n.nspname = 'public' AND c.relkind = 'r' OFFSET 0) t
+ WHERE NOT has_table_privilege('yugo_app', t.oid, 'UPDATE') ORDER BY 1;"
   die "$SEM_GRANT tabela(s) sem permissao pro yugo_app (listadas acima). A API responde 42501 nelas."
 fi
 

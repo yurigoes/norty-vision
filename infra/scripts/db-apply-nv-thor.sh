@@ -183,7 +183,14 @@ if [[ -f "$GRANTS" ]]; then
       psql -U postgres -d $BANCO -v ON_ERROR_STOP=1 -q -f /tmp/grants.sql" 2>&1 | sed 's/^/      /'; then
     ok "GRANTs reaplicados"
   else
-    morre "falhou ao reaplicar os GRANTs. A API responde 42501 (permission denied)."
+    morre "falhou ao reaplicar os GRANTs — NAO suba o codigo.
+
+  As migrations ACIMA ja foram aplicadas. Nao ha o que desfazer: elas sao
+  idempotentes, e o banco com tabela nova sem GRANT nao quebra o codigo VELHO
+  que esta no ar (ele nem conhece essas tabelas). O que nao pode e subir o
+  codigo novo neste estado: ai a API responde 42501 (permission denied).
+
+  Corrija o 019_grants_refresh.sql e rode este script de novo."
   fi
   pct exec "$CT" -- rm -f /tmp/grants.sql 2>/dev/null || true
   pct exec "$CT" -- bash -c "docker exec $CONTAINER rm -f /tmp/grants.sql" 2>/dev/null || true
@@ -199,15 +206,40 @@ TEM_APP=$(psql_ct -tAc "\"select count(*) from pg_roles where rolname='yugo_app'
 if [[ "$TEM_APP" != "1" ]]; then
   aviso "papel yugo_app nao existe neste banco — pulei a conferencia de permissao"
 else
-  SEM_GRANT=$(psql_ct -tAc "\"select count(*) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not has_table_privilege('yugo_app', c.oid, 'UPDATE')\"" | tr -d '[:space:]')
+  # `offset 0` nao e enfeite: ele cerca a subconsulta e forca o filtro de
+  # relkind a rodar ANTES do has_*_privilege. Sem isso o planejador pode
+  # avaliar a funcao em linhas que ainda nao passaram pelo filtro e a consulta
+  # morre com `"memberships_pkey" is not a sequence` — foi o que aconteceu aqui
+  # ao conferir as sequencias. Numa consulta que DECIDE se o deploy sobe, erro
+  # por ordem de avaliacao e inaceitavel.
+  SEM_GRANT=$(psql_ct -tAc "\"select count(*) from (select c.oid, c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' offset 0) t where not has_table_privilege('yugo_app', t.oid, 'UPDATE')\"" | tr -d '[:space:]')
   if [[ "$SEM_GRANT" == "0" ]]; then
     ok "yugo_app escreve em todas as tabelas de public"
   elif [[ -z "$SEM_GRANT" ]]; then
     aviso "nao consegui conferir as permissoes do yugo_app (o psql nao respondeu)"
   else
     aviso "$SEM_GRANT tabela(s) SEM permissao pro yugo_app — a API responde 42501 nelas:"
-    psql_ct -tAc "\"select c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' and not has_table_privilege('yugo_app', c.oid, 'UPDATE') order by 1\"" | sed 's/^/      /'
+    psql_ct -tAc "\"select t.relname from (select c.oid, c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r' offset 0) t where not has_table_privilege('yugo_app', t.oid, 'UPDATE') order by 1\"" | sed 's/^/      /'
     morre "GRANT faltando depois de reaplicar — nao suba o deploy assim: o ponto nao bate."
+  fi
+fi
+
+# --- e nenhuma SEQUENCIA pode ter ficado sem o yugo_app ---------------------
+# Faltava esta, e e a mesma classe de erro com outra cara: tabela `bigserial`
+# com GRANT na tabela e sem GRANT na sequencia aceita SELECT e recusa INSERT.
+# O `ponto_punch` e o `ponto_extra_punch` sao exatamente assim — ou seja, o
+# sintoma seria de novo "ninguem consegue bater ponto", com a tabela
+# aparentemente liberada.
+if [[ "$TEM_APP" == "1" ]]; then
+  SEM_SEQ=$(psql_ct -tAc "\"select count(*) from (select c.oid from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='S' offset 0) s where not has_sequence_privilege('yugo_app', s.oid, 'USAGE')\"" | tr -d '[:space:]')
+  if [[ "$SEM_SEQ" == "0" ]]; then
+    ok "yugo_app usa todas as sequencias de public"
+  elif [[ -z "$SEM_SEQ" ]]; then
+    aviso "nao consegui conferir as sequencias (o psql nao respondeu)"
+  else
+    aviso "$SEM_SEQ sequencia(s) SEM permissao pro yugo_app — o INSERT falha nas tabelas delas:"
+    psql_ct -tAc "\"select s.relname from (select c.oid, c.relname from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='S' offset 0) s where not has_sequence_privilege('yugo_app', s.oid, 'USAGE') order by 1\"" | sed 's/^/      /'
+    morre "GRANT de sequencia faltando — nao suba o deploy assim: o INSERT do ponto falha."
   fi
 fi
 

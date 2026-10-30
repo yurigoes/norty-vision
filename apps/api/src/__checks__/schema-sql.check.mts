@@ -205,6 +205,53 @@ for (const papel of ["yugo_migrator", "postgres"] as const) {
   }
 }
 
+// ----------------------------------------------------------------------------
+// E NENHUM GRANT PODE REFERENCIAR UM PAPEL SEM CONFERIR SE ELE EXISTE.
+//
+// A primeira linha do arquivo era:
+//
+//     GRANT USAGE ON SCHEMA public, app TO yugo_app, yugo_migrator;
+//
+// e na thor isso morre, porque lá `yugo_migrator` nunca foi criado — as
+// migrations todas rodam como `postgres`:
+//
+//     psql:/tmp/grants.sql:19: ERROR:  role "yugo_migrator" does not exist
+//
+// Com `ON_ERROR_STOP=1`, nada depois da linha 19 roda: as migrations entram e
+// o reparo de GRANTs — a ÚNICA coisa que cobre tabela nova — não acontece.
+// Banco com tabela nova sem permissão é o estado que derrubou o ponto.
+//
+// A regra, então: fora do bloco `DO`, o arquivo não pode nem mencionar
+// `yugo_migrator`. Dentro dele, cada GRANT depende de `tem_migrator`.
+// ----------------------------------------------------------------------------
+const corpoDo = grantsSql.match(/DO \$grants\$[\s\S]*\$grants\$/);
+if (!corpoDo) {
+  problemas.push(
+    "019_grants_refresh.sql não está mais dentro de um bloco `DO $grants$` — " +
+      "sem ele não há como pular um papel que não existe, e o arquivo morre na primeira linha",
+  );
+} else {
+  const foraDoBloco = grantsSql.replace(corpoDo[0], "");
+  if (/yugo_migrator/.test(foraDoBloco)) {
+    problemas.push(
+      "019_grants_refresh.sql menciona `yugo_migrator` FORA do bloco `DO` — em banco onde esse " +
+        "papel não existe (a produção da thor) o arquivo estoura e NENHUM grant é reaplicado",
+    );
+  }
+  if (!/tem_migrator\s+boolean\s*:=\s*exists\s*\(select 1 from pg_roles where rolname = 'yugo_migrator'\)/.test(corpoDo[0])) {
+    problemas.push(
+      "019_grants_refresh.sql não confere mais se `yugo_migrator` existe antes de usá-lo",
+    );
+  }
+  // e a ausência do yugo_app NÃO pode passar calada: é o papel da API
+  if (!/RAISE EXCEPTION[^;]*yugo_app/.test(corpoDo[0])) {
+    problemas.push(
+      "019_grants_refresh.sql deixou de estourar quando `yugo_app` não existe — " +
+        "seguir calado esconde um banco em que a API não autentica",
+    );
+  }
+}
+
 /**
  * COMENTÁRIO FORA ANTES DE PROCURAR — a quarta vez nesta base.
  *
@@ -220,6 +267,19 @@ for (const papel of ["yugo_migrator", "postgres"] as const) {
  */
 const semComentarioSh = (s: string) =>
   s.split("\n").map((l) => (/^\s*#/.test(l) ? "" : l)).join("\n");
+
+// o aplicador da produção também confere SEQUENCIA, não só tabela: `bigserial`
+// com grant na tabela e sem grant na sequência aceita SELECT e recusa INSERT —
+// "ninguém consegue bater ponto" de novo, com a tabela aparentemente liberada.
+{
+  const s = semComentarioSh(readFileSync(join(infra, "db-apply-nv-thor.sh"), "utf8"));
+  if (!/has_sequence_privilege/.test(s)) {
+    problemas.push(
+      "db-apply-nv-thor.sh não confere mais os GRANTs das SEQUÊNCIAS — " +
+        "tabela bigserial libera o SELECT e recusa o INSERT, e o deploy sobe assim",
+    );
+  }
+}
 
 // os dois aplicadores têm que reaplicar o refresh DEPOIS do laço das migrations
 for (const script of ["db-apply.sh", "db-apply-nv-thor.sh"] as const) {

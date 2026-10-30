@@ -61,6 +61,25 @@ if (i < 0) {
   }
 }
 
+// (D) O PERÍODO ERA LIDO EM UTC, e quem digita "setembro" quer setembro aqui.
+// `new Date("2026-09-30" + "T23:59:59.999Z")` termina o período às 20h59 do dia
+// 30 no horário de São Paulo, e começa às 21h de 31/ago. Ótica de shopping
+// fecha às 22h: as vendas das últimas três horas do último dia caíam fora e as
+// da véspera entravam. Medido: o fim do período saía em 2026-09-30T23:59:59Z,
+// e com o fuso sai em 2026-10-01T02:59:59Z — três horas de venda.
+if (i >= 0) {
+  const corpo = svc.slice(i, i + 800);
+  if (/T00:00:00\.000Z|T23:59:59\.999Z/.test(corpo)) {
+    falhas.push(
+      "o período do relatório voltou a ser lido em UTC — \"setembro\" passa a terminar às 20h59 " +
+        "do dia 30 e a começar às 21h do dia 31/ago, no horário da loja",
+    );
+  }
+  if (!/instanteLocal\(/.test(corpo)) {
+    falhas.push("o relatório não converte mais a data digitada para o fuso da loja (`instanteLocal`)");
+  }
+}
+
 // --- tela -------------------------------------------------------------------
 const tela = readFileSync(join(web, "app", "app", "relatorios", "ReportsClient.tsx"), "utf8");
 const telaSem = semCom(tela);

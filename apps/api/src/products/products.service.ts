@@ -572,8 +572,8 @@ export class ProductsService {
    * deixar a coluna honesta e rotulada.
    */
   async bestSellersReport(ctx: RequestContext, opts?: { from?: string; to?: string }) {
-    const from = opts?.from ? new Date(opts.from + "T00:00:00.000Z") : new Date(Date.now() - 30 * 86400_000);
-    const to = opts?.to ? new Date(opts.to + "T23:59:59.999Z") : new Date();
+    const from = opts?.from ? instanteLocal(opts.from, "inicio") : new Date(Date.now() - 30 * 86400_000);
+    const to = opts?.to ? instanteLocal(opts.to, "fim") : new Date();
     const rls = this.rls(ctx);
 
     // (B) soma no banco, por produto. Sem `take`: `groupBy` não traz linhas.
@@ -637,6 +637,31 @@ export class ProductsService {
       byGroup: [...byGroup.values()].sort((a, b) => b.qty - a.qty),
     };
   }
+}
+
+const FUSO_DA_LOJA = "America/Sao_Paulo";
+
+/**
+ * `2026-09-30` + `"fim"` vira o instante UTC em que aquele dia acaba AQUI.
+ *
+ * O relatório lia as datas como UTC puro (`T00:00:00.000Z`), e quem digita
+ * "setembro" quer setembro no horário da loja. Em São Paulo (UTC-3) isso dava
+ * um período deslocado em três horas: começava às 21h de 31/ago e terminava às
+ * 20h59 de 30/set. Ótica de shopping fecha às 22h — ou seja, as vendas das
+ * últimas três horas do último dia caíam fora, e as da véspera entravam.
+ *
+ * O deslocamento sai do próprio fuso na data pedida, em vez de um `-03:00`
+ * cravado: o Brasil não tem mais horário de verão, mas já teve (em 2018 o mesmo
+ * dia responde GMT-02:00), e um dia pode voltar a ter.
+ */
+function instanteLocal(dia: string, borda: "inicio" | "fim"): Date {
+  const sonda = new Date(`${dia}T12:00:00Z`);
+  const nome = new Intl.DateTimeFormat("en-US", { timeZone: FUSO_DA_LOJA, timeZoneName: "longOffset" })
+    .formatToParts(sonda)
+    .find((p) => p.type === "timeZoneName")?.value;
+  const deslocamento = nome?.replace("GMT", "") || "-03:00";
+  const hora = borda === "fim" ? "23:59:59.999" : "00:00:00.000";
+  return new Date(`${dia}T${hora}${deslocamento}`);
 }
 
 /**

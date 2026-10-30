@@ -533,41 +533,107 @@ export class ProductsService {
   }
 
   /**
-   * Giro / mais vendidos no período (qtd e faturamento), por produto e por grupo.
-   * Lê os itens de venda (sale_items) das vendas concluídas.
+   * GIRO / MAIS VENDIDOS NO PERÍODO — quantidade e faturamento, por produto e
+   * por categoria.
+   *
+   * DUAS CORREÇÕES, e as duas mudavam o número que alguém ia mostrar pra outra
+   * pessoa:
+   *
+   * (A) ARMAÇÃO DE PEDIDO DE LENTE NÃO ERA CONTADA. Numa ótica, a armação sai
+   *     por dois caminhos: o PDV (vira `sale_item`) e o PEDIDO DE LENTE sem
+   *     venda vinculada, que baixa o estoque direto e grava um
+   *     `stock_movement` com `referenceType: "lens_order"` (ver
+   *     `optical.service.ts`). O relatório lia só `sale_items` — então
+   *     "quantas armações vendemos" vinha SEMPRE abaixo do real, e o caminho
+   *     que faltava não é caso de borda: é como metade das armações de ótica
+   *     sai da prateleira.
+   *
+   *     Somar o movimento é o certo, e não o pedido: o movimento é o livro do
+   *     que REALMENTE saiu da prateleira. Pedido de lente não tem status
+   *     cancelado (o CHECK em `038_lens_orders.sql` só aceita
+   *     medido/solicitado/chegou/avisado/entregue) e não tem exclusão, então
+   *     cada movimento corresponde a uma armação que saiu de verdade. Trocar a
+   *     armação de um pedido depois NÃO mexe no estoque — e justamente por isso
+   *     o movimento continua sendo a verdade sobre o que saiu, não o pedido.
+   *
+   * (B) O TETO DE 5.000 ITENS, CALADO. Era `take: 5000` num `findMany`: período
+   *     com mais itens que isso vinha truncado e a resposta não dizia nada.
+   *     Esta base tem um helper cujo comentário diz "truncar acontece; truncar
+   *     calado é que não pode" — e aqui estava truncando calado. Trocado por
+   *     `groupBy`, que soma no banco: sem teto, sem trazer linha nenhuma pra
+   *     memória, e mais rápido.
+   *
+   * O QUE MUDOU NA RESPOSTA: `qty` passou a ser o TOTAL de unidades que saíram
+   * (PDV + pedido de lente), porque é esse o número que responde "quantas
+   * vendemos". O detalhe vem ao lado, em `qtyPdv` e `qtyLens`, pra que nada
+   * fique escondido numa soma. `revenueCents` continua sendo só do PDV: a
+   * armação do pedido de lente não tem preço próprio registrado ali (o valor
+   * está no pedido inteiro, com as lentes), e inventar um rateio seria pior que
+   * deixar a coluna honesta e rotulada.
    */
   async bestSellersReport(ctx: RequestContext, opts?: { from?: string; to?: string }) {
     const from = opts?.from ? new Date(opts.from + "T00:00:00.000Z") : new Date(Date.now() - 30 * 86400_000);
     const to = opts?.to ? new Date(opts.to + "T23:59:59.999Z") : new Date();
-    const items = await this.prisma.runWithContext(this.rls(ctx), (tx) =>
-      tx.saleItem.findMany({
-        where: { sale: { status: "completed", createdAt: { gte: from, lte: to } } },
-        select: { productId: true, productName: true, qty: true, lineTotalCents: true },
-        take: 5000,
-      }),
-    );
-    // mapa de categoria por produto (pra agrupar)
-    const pidList = [...new Set(items.map((i) => i.productId).filter(Boolean) as string[])];
-    const prods = pidList.length
-      ? await this.prisma.runWithContext(this.rls(ctx), (tx) => tx.product.findMany({ where: { id: { in: pidList } }, select: { id: true, category: true } }))
+    const rls = this.rls(ctx);
+
+    // (B) soma no banco, por produto. Sem `take`: `groupBy` não traz linhas.
+    const vendidos = await this.prisma.runWithContext(rls, (tx) => tx.saleItem.groupBy({
+      by: ["productId", "productName"],
+      where: { sale: { status: "completed", createdAt: { gte: from, lte: to } } },
+      _sum: { qty: true, lineTotalCents: true },
+    }));
+
+    // (A) armações que saíram por pedido de lente. `qty` é negativo (saída).
+    const porPedido = await this.prisma.runWithContext(rls, (tx) => tx.stockMovement.groupBy({
+      by: ["productId"],
+      where: { referenceType: "lens_order", createdAt: { gte: from, lte: to } },
+      _sum: { qty: true },
+    })).catch(() => [] as Array<{ productId: string; _sum: { qty: number | null } }>);
+
+    // nome e categoria dos produtos dos dois lados
+    const pids = [...new Set([
+      ...vendidos.map((v) => v.productId).filter(Boolean) as string[],
+      ...porPedido.map((m) => m.productId),
+    ])];
+    const prods = pids.length
+      ? await this.prisma.runWithContext(rls, (tx) => tx.product.findMany({ where: { id: { in: pids } }, select: { id: true, name: true, category: true } }))
       : [];
     const catOf = new Map(prods.map((p) => [p.id, (p.category ?? "Sem categoria").trim() || "Sem categoria"]));
+    const nameOf = new Map(prods.map((p) => [p.id, p.name]));
 
-    const byProd = new Map<string, { name: string; qty: number; revenueCents: number }>();
-    const byGroup = new Map<string, { group: string; qty: number; revenueCents: number }>();
-    for (const it of items) {
-      const key = it.productId ?? `nome:${it.productName}`;
-      const pe = byProd.get(key) ?? { name: it.productName, qty: 0, revenueCents: 0 };
-      pe.qty += it.qty ?? 0; pe.revenueCents += Number(it.lineTotalCents ?? 0n);
-      byProd.set(key, pe);
-      const g = (it.productId ? catOf.get(it.productId) : null) ?? "Sem categoria";
-      const ge = byGroup.get(g) ?? { group: g, qty: 0, revenueCents: 0 };
-      ge.qty += it.qty ?? 0; ge.revenueCents += Number(it.lineTotalCents ?? 0n);
+    type Linha = { name: string; qty: number; qtyPdv: number; qtyLens: number; revenueCents: number };
+    const byProd = new Map<string, Linha>();
+    const pega = (chave: string, nome: string): Linha => {
+      const e = byProd.get(chave) ?? { name: nome, qty: 0, qtyPdv: 0, qtyLens: 0, revenueCents: 0 };
+      byProd.set(chave, e);
+      return e;
+    };
+    for (const v of vendidos) {
+      const chave = v.productId ?? `nome:${v.productName}`;
+      const e = pega(chave, v.productName);
+      const q = v._sum.qty ?? 0;
+      e.qtyPdv += q; e.qty += q;
+      e.revenueCents += Number(v._sum.lineTotalCents ?? 0n);
+    }
+    for (const m of porPedido) {
+      // saída é negativa; devolução (se houver) é positiva e abate sozinha
+      const q = -(m._sum.qty ?? 0);
+      if (q <= 0) continue;
+      const e = pega(m.productId, nameOf.get(m.productId) ?? "Produto removido");
+      e.qtyLens += q; e.qty += q;
+    }
+
+    const byGroup = new Map<string, { group: string; qty: number; qtyPdv: number; qtyLens: number; revenueCents: number }>();
+    for (const [chave, e] of byProd) {
+      const g = (chave.startsWith("nome:") ? null : catOf.get(chave)) ?? "Sem categoria";
+      const ge = byGroup.get(g) ?? { group: g, qty: 0, qtyPdv: 0, qtyLens: 0, revenueCents: 0 };
+      ge.qty += e.qty; ge.qtyPdv += e.qtyPdv; ge.qtyLens += e.qtyLens; ge.revenueCents += e.revenueCents;
       byGroup.set(g, ge);
     }
+
     return {
       from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10),
-      products: [...byProd.values()].sort((a, b) => b.qty - a.qty).slice(0, 50),
+      products: [...byProd.values()].sort((a, b) => b.qty - a.qty).slice(0, 200),
       byGroup: [...byGroup.values()].sort((a, b) => b.qty - a.qty),
     };
   }

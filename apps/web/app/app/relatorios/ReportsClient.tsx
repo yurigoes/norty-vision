@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 function brl(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -32,15 +32,89 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
       .finally(() => setLoading(false));
   }, [tab, bucket]);
 
+  // PERÍODO DO "MAIS VENDIDOS".
+  // A tela chamava `best-sellers` SEM `from`/`to`, e a API cai no padrão de 30
+  // dias — então não havia como perguntar "quantas armações vendemos em
+  // setembro". A rota já aceitava o período; faltava a tela oferecer.
+  const brDia = (iso: string) => (iso ? `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}` : "");
+
+  /**
+   * CSV do que está na tela, com o período no nome do arquivo.
+   *
+   * Monta no cliente de propósito: o CSV do servidor (`reports/inventory.csv`,
+   * `kind=sellers`) chama o relatório SEM período, então baixá-lo daria um
+   * arquivo de 30 dias enquanto a tela mostra outro mês — número errado numa
+   * planilha, que é onde ele vira decisão.
+   */
+  function baixaCsv() {
+    const rows = (sellers?.byGroup ?? []) as any[];
+    if (!rows.length) return;
+    const esc = (v: unknown) => {
+      const s = String(v ?? "");
+      return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const num = (c: number) => ((Number(c) || 0) / 100).toFixed(2).replace(".", ",");
+    const linhas = [
+      ["Categoria", "Total", "PDV", "Pedido de lente", "Faturado PDV (R$)"].join(";"),
+      ...rows.map((g) => [esc(g.group), g.qty, g.qtyPdv ?? g.qty, g.qtyLens ?? 0, num(g.revenueCents)].join(";")),
+    ];
+    const p = periodoCarregado;
+    // BOM: sem ele o Excel em pt-BR abre "Armações" como "ArmaÃ§Ãµes"
+    const blob = new Blob(["\uFEFF" + linhas.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `mais-vendidos-${p?.from ?? de}_a_${p?.to ?? ate}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  const hojeIso = () => new Date().toISOString().slice(0, 10);
+  const menosDias = (n: number) => new Date(Date.now() - n * 86400_000).toISOString().slice(0, 10);
+  const [de, setDe] = useState(menosDias(30));
+  const [ate, setAte] = useState(hojeIso());
+  /** o período efetivamente carregado — pra não dizer "setembro" mostrando outro mês */
+  const [periodoCarregado, setPeriodoCarregado] = useState<{ from: string; to: string } | null>(null);
+
+  function atalho(qual: "30d" | "mes" | "mesPassado" | "ano") {
+    const h = new Date();
+    if (qual === "30d") { setDe(menosDias(30)); setAte(hojeIso()); return; }
+    if (qual === "mes") {
+      setDe(new Date(h.getFullYear(), h.getMonth(), 1).toISOString().slice(0, 10));
+      setAte(hojeIso()); return;
+    }
+    if (qual === "mesPassado") {
+      setDe(new Date(h.getFullYear(), h.getMonth() - 1, 1).toISOString().slice(0, 10));
+      setAte(new Date(h.getFullYear(), h.getMonth(), 0).toISOString().slice(0, 10)); return;
+    }
+    setDe(`${h.getFullYear()}-01-01`); setAte(hojeIso());
+  }
+
+  /** Só o mais vendidos depende do período; os outros três não. */
+  const carregaSellers = useCallback((from: string, to: string) => {
+    setLoading(true);
+    fetch(`/api/products/reports/best-sellers?from=${from}&to=${to}`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((bs) => { if (bs) { setSellers(bs); setPeriodoCarregado({ from: bs.from, to: bs.to }); } })
+      .finally(() => setLoading(false));
+  }, []);
+
   useEffect(() => {
     if (tab !== "estoque" || (lowStock && sellers && analytics && byStore)) return;
     setLoading(true);
     Promise.all([
       fetch("/api/products/reports/low-stock", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/products/reports/best-sellers", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/products/reports/best-sellers?from=${de}&to=${ate}`, { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
       fetch("/api/products/reports/inventory-analytics", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
       fetch("/api/products/reports/by-store", { credentials: "include" }).then((r) => (r.ok ? r.json() : null)),
-    ]).then(([ls, bs, an, bst]) => { if (ls) setLowStock(ls); if (bs) setSellers(bs); if (an) setAnalytics(an); if (bst) setByStore(bst.items ?? []); }).finally(() => setLoading(false));
+    ]).then(([ls, bs, an, bst]) => {
+      if (ls) setLowStock(ls);
+      if (bs) { setSellers(bs); setPeriodoCarregado({ from: bs.from, to: bs.to }); }
+      if (an) setAnalytics(an);
+      if (bst) setByStore(bst.items ?? []);
+    }).finally(() => setLoading(false));
+    // `de`/`ate` de propósito fora das deps: mudar o período recarrega pelo
+    // botão Aplicar, não a cada tecla digitada na data.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, lowStock, sellers, analytics, byStore]);
 
   const inst = summary?.installments ?? {};
@@ -239,17 +313,77 @@ export function ReportsClient({ summary, collections }: { summary: any; collecti
                 )}
               </section>
               <section className="card p-5">
-                <h2 className="mb-1 text-sm font-semibold uppercase tracking-wider text-muted">Mais vendidos — grupo</h2>
-                <p className="mb-3 text-[11px] text-muted">qual categoria sai mais</p>
-                {(sellers?.byGroup ?? []).length === 0 ? <p className="text-sm text-muted">Sem vendas no período.</p> : (
+                <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-semibold uppercase tracking-wider text-muted">Mais vendidos — categoria</h2>
+                    <p className="text-[11px] text-muted">
+                      quantas unidades saíram por categoria
+                      {periodoCarregado && <> · <b>{brDia(periodoCarregado.from)} a {brDia(periodoCarregado.to)}</b></>}
+                    </p>
+                  </div>
+                  {/* O CSV sai do que está NA TELA, com o mesmo período: baixar um
+                      arquivo de outro período do que se está olhando é o jeito
+                      mais fácil de levar número errado pra uma reunião. */}
+                  <button
+                    type="button"
+                    onClick={() => baixaCsv()}
+                    disabled={!sellers?.byGroup?.length}
+                    className="btn-soft px-3 py-1.5 text-xs disabled:opacity-40"
+                  >
+                    Baixar CSV
+                  </button>
+                </div>
+
+                {/* PERÍODO — a tela não tinha, e a API sempre respondia 30 dias */}
+                <div className="mb-4 flex flex-wrap items-end gap-2 rounded-lg border border-line bg-surface-2/40 p-2.5">
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">De</span>
+                    <input type="date" value={de} max={ate} onChange={(e) => setDe(e.target.value)} className="input-base py-1 text-xs" />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-[10px] uppercase tracking-wider text-muted">Até</span>
+                    <input type="date" value={ate} min={de} onChange={(e) => setAte(e.target.value)} className="input-base py-1 text-xs" />
+                  </label>
+                  <button type="button" onClick={() => carregaSellers(de, ate)} className="btn-grad px-4 py-1.5 text-xs">Aplicar</button>
+                  <span className="mx-1 h-5 w-px bg-line" />
+                  {([["30d", "30 dias"], ["mes", "este mês"], ["mesPassado", "mês passado"], ["ano", "este ano"]] as const).map(([k, rot]) => (
+                    <button key={k} type="button" onClick={() => { atalho(k); }} className="btn-soft px-2.5 py-1 text-[11px]">{rot}</button>
+                  ))}
+                  <span className="text-[10px] text-muted">os atalhos preenchem as datas; clique em Aplicar</span>
+                </div>
+
+                {(sellers?.byGroup ?? []).length === 0 ? <p className="text-sm text-muted">Nada saiu neste período.</p> : (
                   <table className="w-full text-sm table-cards">
-                    <thead><tr className="text-left text-[10px] uppercase tracking-wider text-muted"><th className="py-1">Grupo</th><th className="py-1 text-right">Qtd</th><th className="py-1 text-right">Faturado</th></tr></thead>
+                    <thead>
+                      <tr className="text-left text-[10px] uppercase tracking-wider text-muted">
+                        <th className="py-1">Categoria</th>
+                        <th className="py-1 text-right">Total</th>
+                        <th className="py-1 text-right">PDV</th>
+                        <th className="py-1 text-right">Pedido de lente</th>
+                        <th className="py-1 text-right">Faturado (PDV)</th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {sellers.byGroup.map((g: any, i: number) => (
-                        <tr key={i} className="border-t border-line/50"><td className="py-1.5">{g.group}</td><td className="py-1.5 text-right font-semibold">{g.qty}</td><td className="py-1.5 text-right text-muted">{brl(g.revenueCents)}</td></tr>
+                        <tr key={i} className="border-t border-line/50">
+                          <td className="py-1.5">{g.group}</td>
+                          <td className="py-1.5 text-right font-semibold">{g.qty}</td>
+                          <td className="py-1.5 text-right text-muted">{g.qtyPdv ?? g.qty}</td>
+                          <td className="py-1.5 text-right text-muted">{g.qtyLens ?? 0}</td>
+                          <td className="py-1.5 text-right text-muted">{brl(g.revenueCents)}</td>
+                        </tr>
                       ))}
                     </tbody>
                   </table>
+                )}
+                {/* A coluna "Faturado" é só do PDV, e dizer isso é o que evita
+                    alguém dividir faturado por total e achar o preço médio errado:
+                    a armação que sai em pedido de lente não tem preço próprio ali. */}
+                {(sellers?.byGroup ?? []).some((g: any) => (g.qtyLens ?? 0) > 0) && (
+                  <p className="mt-3 text-[11px] text-muted">
+                    <b>Pedido de lente</b> = armação que saiu junto com um pedido, sem venda no PDV. Conta na
+                    quantidade, mas não no faturado: o valor dela está no pedido inteiro, junto com as lentes.
+                  </p>
                 )}
               </section>
             </div>

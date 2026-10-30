@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# subir-vision.sh — sobe o Norty Vision na thor na ORDEM CERTA: banco primeiro,
-# código depois. Roda NA THOR, como root.
+# subir-vision.sh — sobe o Norty Vision na ORDEM CERTA: banco primeiro, código
+# depois. Roda na **tyr**, como root — a thor é o FAILOVER da tyr, e os dois
+# scripts que este chama barram a execução na máquina errada (lib-maquina.sh).
+# Depois de um failover de verdade, a produção É a thor, e aí:
+#
+#     MAQUINA_PRODUCAO=thor bash /root/subir-vision.sh
 #
 # Faz nesta ordem, e para no primeiro problema:
 #

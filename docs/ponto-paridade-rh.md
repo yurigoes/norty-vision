@@ -100,7 +100,9 @@ Todas corrigidas. `tsc --noEmit` limpo, `npm run check` verde e `nest build` +
 ## Como subir: as migrations primeiro
 
 `infra/scripts/db-apply-nv-thor.sh` aplica as migrations no Postgres
-compartilhado da thor (CT 102, banco `norty_vision`). O `db-apply.sh` do
+compartilhado da **tyr** (CT 102, banco `norty_vision`) — a thor é o failover
+da tyr, e o nome `-nv-thor` dos scripts ficou de quando a máquina era outra. O
+`db-apply.sh` do
 projeto não serve: ele aponta pro Postgres do compose e pro `.env.production`,
 e nenhum dos dois existe nesta instalação.
 

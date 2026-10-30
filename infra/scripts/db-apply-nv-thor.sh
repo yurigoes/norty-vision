@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # db-apply-nv-thor.sh — aplica as migrations do Norty Vision no Postgres
-# compartilhado da thor (CT 102 · Yggdrasil, banco `norty_vision`).
+# compartilhado da tyr (CT 102 · Yggdrasil, banco `norty_vision`).
 #
-# RODA NA THOR, como root. Não confundir com:
+# RODA NA TYR, como root.
+#
+# O NOME DO ARQUIVO MENTE: a produção roda na **tyr**. A thor é o FAILOVER da
+# tyr. O nome "-nv-thor" ficou de quando a máquina era outra, e renomear no meio
+# de um deploy é pior que conviver com ele — por enquanto, a `lib-maquina.sh`
+# confere o nome da máquina e barra a execução na errada.
+#
+# Não confundir com:
 #
 #   infra/scripts/db-apply.sh         ← aponta pro Postgres DO COMPOSE e pro
 #                                       .env.production. Nenhum dos dois existe
@@ -61,6 +68,13 @@ ok()    { printf '%s[OK]%s %s\n' "$C_OK" "$C_0" "$*"; }
 aviso() { printf '%s[!]%s %s\n' "$C_AV" "$C_0" "$*" >&2; }
 morre() { printf '%s[ERRO]%s %s\n' "$C_ER" "$C_0" "$*" >&2; exit 1; }
 
+[[ $EUID -eq 0 ]] || morre "precisa ser root (pct pede root)"
+command -v pct >/dev/null || morre "sem \`pct\` — este script roda no HOST Proxmox, não dentro do CT"
+# e NO HOST CERTO: a produção é a tyr; a thor é o failover dela, e um
+# failover passa por todas as outras conferências daqui. Veja lib-maquina.sh.
+. "$(dirname "${BASH_SOURCE[0]}")/lib-maquina.sh"
+confere_maquina
+
 # --- onde o código mora NESTE host ------------------------------------------
 # O caminho já mudou uma vez: era /srv/apps-fase3 e virou /mnt/ssd/apps-fase3
 # quando o armazenamento dos containers foi movido. Cravar isso de novo só
@@ -79,8 +93,6 @@ BACKUPS=${BACKUPS:-${BASE:+$BASE/.norty-vision-backups}}
 [[ -n "$FONTE" ]] || morre "não descobri o caminho do código neste host.
   Passe explicitamente:  FONTE=/caminho/.norty-vision-src bash $0"
 
-[[ $EUID -eq 0 ]] || morre "precisa ser root (pct pede root)"
-command -v pct >/dev/null || morre "sem \`pct\` — este script roda NA THOR, não dentro do CT"
 
 SQL_DIR="$FONTE/packages/db/sql"
 [[ -d "$SQL_DIR" ]] || morre "não achei $SQL_DIR. O clone está em $FONTE? (git clone do repositório)"

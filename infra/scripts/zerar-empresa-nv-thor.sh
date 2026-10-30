@@ -3,7 +3,12 @@
 # zerar-empresa-nv-thor.sh — zera estoque, pedidos e vendas de UMA empresa no
 # Norty Vision em produção (CT 102 · Yggdrasil, banco `norty_vision`).
 #
-# RODA NA THOR, como root. As outras empresas não são tocadas.
+# RODA NA TYR, como root. As outras empresas não são tocadas.
+#
+# O NOME DO ARQUIVO MENTE: a produção roda na **tyr**. A thor é o FAILOVER da
+# tyr. O nome "-nv-thor" ficou de quando a máquina era outra, e renomear no meio
+# de um deploy é pior que conviver com ele — por enquanto, a `lib-maquina.sh`
+# confere o nome da máquina e barra a execução na errada.
 #
 # ------------------------------------------------------------------------------
 # POR QUE ESTE SCRIPT EXISTE, SE JÁ EXISTE O /api/production/wipe-data
@@ -179,7 +184,11 @@ q() { psql_ct -tAc "\"$1\"" | tr -d '[:space:]'; }
 
 exige_thor() {
   [[ $EUID -eq 0 ]] || morre "precisa ser root (pct pede root)"
-  command -v pct >/dev/null || morre "sem \`pct\` — este script roda NA THOR, não dentro do CT"
+  command -v pct >/dev/null || morre "sem \`pct\` — este script roda no HOST Proxmox, não dentro do CT"
+  # e NO HOST CERTO: a produção é a tyr; a thor é o failover dela, e um
+  # failover passa por todas as outras conferências daqui. Veja lib-maquina.sh.
+  . "$(dirname "${BASH_SOURCE[0]}")/lib-maquina.sh"
+  confere_maquina
   local vivo
   vivo=$(q 'select 1' 2>/dev/null) || true
   [[ "$vivo" == "1" ]] || morre "não consegui falar com o banco $BANCO no $CONTAINER (CT $CT)."

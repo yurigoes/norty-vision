@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# deploy-nv-thor.sh — sobe o Norty Vision na thor (CT 105 · Asgard)
+# deploy-nv-thor.sh — sobe o Norty Vision na tyr (CT 105 · Asgard)
 #
-# RODA NA THOR, como root. Não confundir com:
+# RODA NA TYR, como root.
+#
+# O NOME DO ARQUIVO MENTE: a produção roda na **tyr**. A thor é o FAILOVER da
+# tyr. O nome "-nv-thor" ficou de quando a máquina era outra, e renomear no meio
+# de um deploy é pior que conviver com ele — por enquanto, a `lib-maquina.sh`
+# confere o nome da máquina e barra a execução na errada.
+#
+# Não confundir com:
 #
 #   /root/deploy-norty-vision.sh   ← NÃO É DEPLOY. É a migração única de 3/jul,
 #                                     que faz `pg_restore --clean --if-exists`
@@ -63,6 +70,13 @@ ok()   { printf '%s[OK]%s %s\n' "$C_OK" "$C_0" "$*"; }
 aviso(){ printf '%s[!]%s %s\n' "$C_AV" "$C_0" "$*" >&2; }
 morre(){ printf '%s[ERRO]%s %s\n' "$C_ER" "$C_0" "$*" >&2; exit 1; }
 
+[[ $EUID -eq 0 ]] || morre "precisa ser root (pct e docker do CT pedem root)"
+command -v pct >/dev/null || morre "sem \`pct\` — este script roda no HOST Proxmox, não dentro do CT"
+# e NO HOST CERTO: a produção é a tyr; a thor é o failover dela, e um
+# failover passa por todas as outras conferências daqui. Veja lib-maquina.sh.
+. "$(dirname "${BASH_SOURCE[0]}")/lib-maquina.sh"
+confere_maquina
+
 # --- onde o código mora NESTE host ------------------------------------------
 # O caminho já mudou uma vez: era /srv/apps-fase3 e virou /mnt/ssd/apps-fase3
 # quando o armazenamento dos containers foi movido. Cravar isso de novo só
@@ -84,8 +98,6 @@ DESTINO="$BASE/norty-vision"
 FONTE="$BASE/.norty-vision-src"
 BACKUPS="$BASE/.norty-vision-backups"
 
-[[ $EUID -eq 0 ]] || morre "precisa ser root (pct e docker do CT pedem root)"
-command -v pct >/dev/null || morre "sem \`pct\` — este script roda NA THOR, não dentro do CT"
 [[ -d "$DESTINO" ]] || morre "$DESTINO não existe. Esta não é a máquina certa."
 
 # --- 1. o que a produção tem e o repositório não ----------------------------

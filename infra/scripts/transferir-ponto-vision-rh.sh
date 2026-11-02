@@ -265,12 +265,15 @@ if [[ "${CFG_VI:-0}" != "0" && "${CFG_RH:-0}" != "0" ]]; then
   aviso "o espelho — se divergirem, o espelho no RH não vai dar igual ao do Vision."
 fi
 
-CONFERIR=(ponto_employee ponto_employer ponto_device ponto_punch ponto_schedule work_shifts
+CONFERIR=(stores ponto_employee ponto_employer ponto_device ponto_punch ponto_schedule work_shifts
           ponto_holiday ponto_closing ponto_bank_movement ponto_bank_request
           ponto_justification ponto_espelho_signature ponto_leave ponto_vacation
           ponto_extra_shift ponto_extra_punch ponto_assiduidade ponto_schedule_override)
 
 declare -A ANTES=()
+# o alvo de cada tabela: quantas linhas DEVEM chegar. Normalmente é o que saiu;
+# onde o filtro de funcionário corta, é o que sobra depois do filtro.
+declare -A ESPERADO=()
 for t in "${CONFERIR[@]}"; do
   existe=$(um_valor "$RH" "select count(*) from information_schema.columns where table_schema='public' and table_name='$t' and column_name='organization_id'")
   [[ "$existe" == "1" ]] || continue
@@ -452,6 +455,10 @@ END {
     sel = trab "/sel_" t ".sql"
     printf "copy (select %s from public.%s where %s%s) to stdout;\n", exprs, t, filtro, so_casados > sel
     close(sel)
+    # o filtro vai pra um arquivo à parte: e assim se consegue MEDIR, antes de
+    # escrever, quantas linhas o filtro deixa de fora. Sem isso o usuario
+    # descobre no fim, na coluna FALTOU, e ja escreveu.
+    printf "%s|%s%s\n", t, filtro, so_casados >> (trab "/filtros.txt")
 
     printf "\\echo >>> %s\n", t                                                            >> carga
     printf "create temp table _st_%s as select %s from public.%s limit 0;\n", t, lista, t   >> carga
@@ -534,6 +541,27 @@ update ponto_employer emp
 commit;
 SQL
 
+# --- quantas linhas o filtro de funcionário deixa de fora? ------------------
+# `work_shifts` e `ponto_shift_swap` apontam pra ficha de RH (employees), e só
+# viajam as linhas cujo funcionário casou por CPF. Quando falta ficha no
+# destino, isso NÃO é zero — e descobrir no fim, pela coluna FALTOU, é tarde.
+if [[ -f "$TRAB/filtros.txt" ]]; then
+  PERDE=0
+  while IFS='|' read -r t filtro; do
+    case "$filtro" in *" in ("*) ;; *) continue ;; esac   # só as com filtro de funcionário
+    todas=$(um_valor "$VISION" "select count(*) from $t where organization_id = '$ORG_VI'")
+    vao=$(um_valor "$VISION" "select count(*) from $t where $filtro")
+    [[ "${todas:-0}" == "${vao:-0}" ]] && continue
+    ESPERADO[$t]=$vao
+    PERDE=1
+    aviso "\`$t\`: $vao de $todas linha(s) vão — as outras $(( ${todas:-0} - ${vao:-0} )) são de funcionário SEM ficha no RH"
+  done < "$TRAB/filtros.txt"
+  if [[ "$PERDE" == "1" ]]; then
+    aviso "para levar essas também: cadastre a ficha (employees) desses CPFs no RH e rode de novo."
+    aviso "o script é idempotente — a segunda passada só acrescenta o que faltou."
+  fi
+fi
+
 if [[ $ENSAIO -eq 1 ]]; then
   log "--ensaio: nada foi escrito. O plano está acima."
   echo "  (sem --ensaio, o script faz dump do $RH e aplica tudo numa transação só)"
@@ -611,10 +639,13 @@ for t in "${CONFERIR[@]}"; do
   fi
   a=$(um_valor "$VISION" "select count(*) from $t where organization_id = '$ORG_VI'")
   d=$(um_valor "$RH"     "select count(*) from $t where organization_id = '$ORG_RH'")
+  # o alvo não é sempre "o que saiu": onde o filtro de funcionário corta, o
+  # alvo é o que sobra depois dele — e isso foi anunciado antes de escrever.
+  # Chamar de FALTOU um corte que o próprio script avisou é falso alarme.
+  alvo=${ESPERADO[$t]:-$a}
   marca=""
-  # só é problema se chegou MENOS que o que saiu. Mais que isso está
-  # explicado pela coluna "RH antes".
-  if [[ "${d:-0}" -lt "${a:-0}" ]]; then marca="  <-- FALTOU"; FALTOU=1
+  if [[ "${d:-0}" -lt "${alvo:-0}" ]]; then marca="  <-- FALTOU"; FALTOU=1
+  elif [[ -n "${ESPERADO[$t]:-}" ]]; then marca="  (filtrado: $(( ${a:-0} - ${alvo:-0} )) sem ficha no RH)"
   elif [[ "${d:-0}" -gt "${a:-0}" ]]; then marca="  (o RH já tinha ${ANTES[$t]:-0})"; fi
   printf '  %-28s %8s %8s %8s%s\n' "$t" "${a:-?}" "${ANTES[$t]:-0}" "${d:-?}" "$marca"
 done

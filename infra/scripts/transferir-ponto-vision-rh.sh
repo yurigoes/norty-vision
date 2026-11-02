@@ -101,15 +101,43 @@ um_valor() { # um_valor <banco> <sql>
   roda_sql "$banco" "$arq" -tAq 2>/dev/null | tr -d '\r' | head -1
 }
 
+# ============================================================================
+# QUAL BANCO É O DESTINO: isto NÃO se adivinha.
+#
+# No Postgres da tyr existem TRÊS bancos com `ponto_punch`: `yugoplatform`
+# (esquema antigo, sem nem a coluna `employer_id`), `yugoponto` (o Norty RH de
+# hoje) e `yugoponto_training`. E a empresa `zito-oticas` existe em mais de um
+# deles. A primeira versão disto escolhia o primeiro candidato que achava — e
+# teria mirado no `yugoplatform`, que é um banco antigo com uma Zito suspensa
+# dentro.
+#
+# Então: se houver mais de um candidato, o script PARA e lista. Escolher por
+# ordem alfabética não é descoberta, é sorte.
+# ============================================================================
 if [[ -z "$RH" ]]; then
-  log "procurando o banco do Norty RH"
+  log "procurando o banco de destino"
+  CANDIDATOS=""
   for b in $(um_valor postgres "select string_agg(datname,' ') from pg_database where not datistemplate and datallowconn"); do
     [[ "$b" == "$VISION" ]] && continue
-    tem=$(um_valor "$b" "select count(*) from information_schema.tables where table_schema='public' and table_name='ponto_punch'")
+    tem=$(um_valor "$b" "select count(*) from information_schema.columns where table_schema='public' and table_name='ponto_punch' and column_name='employer_id'")
     [[ "$tem" == "1" ]] || continue
-    tem_rh=$(um_valor "$b" "select count(*) from information_schema.tables where table_schema='public' and table_name='payroll_tax_table'")
-    if [[ "$tem_rh" == "1" ]]; then RH="$b"; ok "é o $b (tem payroll_tax_table, que só o RH tem)"; break; fi
+    temorg=$(um_valor "$b" "select count(*) from organizations where slug = '$EMPRESA'")
+    [[ "$temorg" == "1" ]] || continue
+    CANDIDATOS="$CANDIDATOS $b"
+    printf '  candidato: %s\n' "$b"
   done
+  n=$(echo "$CANDIDATOS" | wc -w)
+  if [[ "$n" == "1" ]]; then
+    RH=${CANDIDATOS// /}
+    ok "só um candidato: $RH"
+  elif [[ "$n" == "0" ]]; then
+    morre "nenhum banco com ponto novo (ponto_punch.employer_id) e a empresa \`$EMPRESA\`.
+  Passe explicitamente: BANCO_RH=nome bash $0"
+  else
+    morre "mais de um banco serve como destino:$CANDIDATOS
+  Não vou escolher por você — um deles é esquema antigo ou base de treino.
+  Diga qual:  BANCO_RH=yugoponto bash $0"
+  fi
 fi
 [[ -n "$RH" ]] || morre "não achei o banco do RH. Passe explicitamente: BANCO_RH=nome bash $0"
 [[ "$RH" != "$VISION" ]] || morre "origem e destino são o mesmo banco ($RH)"
@@ -138,6 +166,37 @@ NO_VISION=$(um_valor "$VISION" "select count(*) from ponto_punch where organizat
 ok "batidas no Vision: $NO_VISION"
 [[ "${JA_NO_RH:-0}" == "0" ]] && ok "o RH ainda não tem nenhuma dessas" || aviso "o RH já tem $JA_NO_RH batida(s) deste empregador — reexecução, não vai duplicar"
 [[ "${OUTRAS_NO_RH:-0}" == "0" ]] || aviso "o RH tem $OUTRAS_NO_RH batida(s) de OUTRO empregador nessa empresa — não colidem, mas confira se era esperado"
+
+# --- a cadeia de hash, do mesmo jeito que a API confere ---------------------
+# Refaz sha256( prev | nsr | employee_id | punched_at ISO | source ) por
+# empregador, na ordem do NSR. Serve pros DOIS bancos: antes de transferir
+# precisa-se saber se ela JÁ fecha na origem — se não fecha, a transferência
+# leva o problema como está, e isso não pode ser lido como "o script quebrou".
+confere_cadeia() { # confere_cadeia <banco> <employer_id> -> "batidas|hash_fora|elo_fora|primeiro_ruim"
+  local banco=$1 emp=$2
+  cat > "$TRAB/cadeia.sql" <<SQL
+with recursive ord as (
+  select nsr, employee_id, punched_at, source, prev_hash, hash,
+         row_number() over (order by nsr) as rn
+    from ponto_punch where employer_id = '$emp'
+), ch as (
+  select o.rn, o.nsr, o.hash, o.prev_hash is null as elo_ok,
+         encode(sha256(('' || '|' || o.nsr || '|' || o.employee_id || '|' ||
+           to_char(o.punched_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '|' || o.source)::bytea),'hex') as esperado
+    from ord o where o.rn = 1
+  union all
+  select o.rn, o.nsr, o.hash, o.prev_hash = c.hash,
+         encode(sha256((c.hash || '|' || o.nsr || '|' || o.employee_id || '|' ||
+           to_char(o.punched_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '|' || o.source)::bytea),'hex')
+    from ch c join ord o on o.rn = c.rn + 1
+)
+select count(*) || '|' || count(*) filter (where hash <> esperado)
+    || '|' || count(*) filter (where not elo_ok)
+    || '|' || coalesce(min(nsr) filter (where hash <> esperado or not elo_ok)::text, '-')
+  from ch;
+SQL
+  roda_sql "$banco" "$TRAB/cadeia.sql" -tAq 2>/dev/null | tr -d '\r' | head -1
+}
 
 # --- os funcionários, casados por CPF ---------------------------------------
 # O CPF é a única chave que atravessa os dois bancos. Sem CPF dos dois lados
@@ -176,6 +235,61 @@ if [[ -n "${FALTAM// /}" ]]; then
   aviso "o cadastro de ponto entra do mesmo jeito, só fica sem vínculo com a ficha (hr_employee_id nulo)"
 fi
 
+# --- o que o destino já tem, e que a transferência não resolve --------------
+log "o que o RH já tem dessa empresa"
+
+FICHAS_VI=$(um_valor "$VISION" "select count(*) from employees where organization_id = '$ORG_VI'")
+FICHAS_RH=$(um_valor "$RH"     "select count(*) from employees where organization_id = '$ORG_RH'")
+printf '  fichas de RH (employees): Vision %s | RH %s\n' "${FICHAS_VI:-?}" "${FICHAS_RH:-?}"
+if [[ "${FICHAS_RH:-0}" == "0" ]]; then
+  aviso "o RH não tem NENHUMA ficha (employees) dessa empresa."
+  aviso "Sem ficha não há como casar por CPF, e as tabelas que apontam pra ela — a"
+  aviso "ESCALA (work_shifts) entre elas — vão ser PULADAS. Cadastre as fichas no RH"
+  aviso "antes, ou aceite transferir sem a escala."
+fi
+
+EMPREGADORES_RH=$(um_valor "$RH" "select count(*) from ponto_employer where organization_id = '$ORG_RH'")
+if [[ "${EMPREGADORES_RH:-0}" != "0" ]]; then
+  aviso "o RH já tem $EMPREGADORES_RH empregador(es) nessa empresa, e o do Vision entra por cima"
+  aviso "(com o UUID de lá, porque a cadeia de hash é por empregador). Depois o RH fica com"
+  aviso "os dois: as batidas transferidas ficam no do Vision, e cada funcionário aponta pro dele."
+  aviso "Veja em Empregadores se o antigo deve ser desativado."
+fi
+
+CFG_VI=$(um_valor "$VISION" "select count(*) from ponto_config where organization_id = '$ORG_VI'")
+CFG_RH=$(um_valor "$RH"     "select count(*) from ponto_config where organization_id = '$ORG_RH'")
+if [[ "${CFG_VI:-0}" != "0" && "${CFG_RH:-0}" != "0" ]]; then
+  aviso "as DUAS bases têm config de ponto dessa empresa, e a config NÃO viaja"
+  aviso "(organization_id é UNIQUE nela). A do RH continua valendo. Compare na tela:"
+  aviso "tolerância, horário noturno, CNPJ do empregador e política de feriado mudam"
+  aviso "o espelho — se divergirem, o espelho no RH não vai dar igual ao do Vision."
+fi
+
+CONFERIR=(ponto_employee ponto_employer ponto_device ponto_punch ponto_schedule work_shifts
+          ponto_holiday ponto_closing ponto_bank_movement ponto_bank_request
+          ponto_justification ponto_espelho_signature ponto_leave ponto_vacation
+          ponto_extra_shift ponto_extra_punch ponto_assiduidade ponto_schedule_override)
+
+declare -A ANTES=()
+for t in "${CONFERIR[@]}"; do
+  existe=$(um_valor "$RH" "select count(*) from information_schema.columns where table_schema='public' and table_name='$t' and column_name='organization_id'")
+  [[ "$existe" == "1" ]] || continue
+  ANTES[$t]=$(um_valor "$RH" "select count(*) from $t where organization_id = '$ORG_RH'")
+done
+
+# --- a cadeia JÁ fecha na origem? -------------------------------------------
+log "conferindo a cadeia de hash NO VISION, antes de mexer em nada"
+CADEIA_VI=$(confere_cadeia "$VISION" "$EMPREGADOR_VI")
+IFS='|' read -r CV_N CV_H CV_E CV_P <<< "$CADEIA_VI"
+printf '  %s batida(s) | %s hash fora | %s elo fora | primeiro problema no NSR %s\n' "${CV_N:-?}" "${CV_H:-?}" "${CV_E:-?}" "${CV_P:-?}"
+if [[ "${CV_H:-1}" == "0" && "${CV_E:-1}" == "0" ]]; then
+  ok "a cadeia fecha no Vision — se fechar no RH depois, a transferência preservou tudo"
+else
+  aviso "A CADEIA JÁ NÃO FECHA NO VISION. A transferência leva as batidas como estão,"
+  aviso "então ela vai aparecer igualmente quebrada no RH — não será o script."
+  aviso "Guarde este número ($CV_H hash fora, $CV_E elo fora, a partir do NSR $CV_P) pra comparar depois."
+fi
+
 # --- o que viaja, em ordem de dependência -----------------------------------
 # `stores` entra porque `schedule_templates.store_id` e `schedule_slots.store_id`
 # são NOT NULL e apontam pra lá: sem as lojas, as duas tabelas de escala — que
@@ -193,7 +307,12 @@ TABELAS=(
   # parecido.
   ponto_schedule work_shifts
   ponto_schedule_plan ponto_schedule_import ponto_schedule_settings
-  ponto_schedule_override ponto_holiday ponto_config
+  ponto_schedule_override ponto_holiday
+  # `ponto_config` NÃO viaja. `organization_id` é UNIQUE nela, e o RH já tem a
+  # própria config dessa empresa — então `on conflict do nothing` deixaria a
+  # do RH valendo e a do Vision de fora, calado. Config decide tolerância,
+  # noturno, CNPJ do empregador e como o espelho é calculado: isso é decisão
+  # de tela, não de script. O aviso no fim manda comparar as duas.
   ponto_punch
   ponto_closing ponto_bank_movement ponto_bank_request
   ponto_justification ponto_espelho_signature
@@ -468,67 +587,45 @@ fi
 # Se as batidas chegaram íntegras, isto fecha. Se não fecha, a transferência
 # não serve, e é melhor saber agora que no dia da fiscalização.
 log "reconferindo a cadeia de hash no RH"
-cat > "$TRAB/cadeia.sql" <<SQL
-\\pset footer off
-with recursive ord as (
-  select nsr, employee_id, punched_at, source, prev_hash, hash,
-         row_number() over (order by nsr) as rn
-    from ponto_punch where employer_id = '$EMPREGADOR_VI'
-), ch as (
-  select o.rn, o.nsr, o.hash, o.prev_hash is null as elo_ok,
-         encode(sha256(('' || '|' || o.nsr || '|' || o.employee_id || '|' ||
-           to_char(o.punched_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '|' || o.source)::bytea),'hex') as esperado
-    from ord o where o.rn = 1
-  union all
-  select o.rn, o.nsr, o.hash, o.prev_hash = c.hash,
-         encode(sha256((c.hash || '|' || o.nsr || '|' || o.employee_id || '|' ||
-           to_char(o.punched_at at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') || '|' || o.source)::bytea),'hex')
-    from ch c join ord o on o.rn = c.rn + 1
-)
-select count(*) as batidas,
-       count(*) filter (where hash <> esperado) as hash_fora,
-       count(*) filter (where not elo_ok)       as elo_fora,
-       coalesce(min(nsr) filter (where hash <> esperado or not elo_ok)::text, '-') as primeiro_nsr_ruim
-  from ch;
-SQL
-roda_sql "$RH" "$TRAB/cadeia.sql"
-
-RUINS=$(um_valor "$RH" "with recursive ord as (
-  select nsr, employee_id, punched_at, source, prev_hash, hash, row_number() over (order by nsr) as rn
-    from ponto_punch where employer_id = '$EMPREGADOR_VI'
-), ch as (
-  select o.rn, o.hash, o.prev_hash is null as elo_ok,
-         encode(sha256(('' || '|' || o.nsr || '|' || o.employee_id || '|' || to_char(o.punched_at at time zone 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') || '|' || o.source)::bytea),'hex') as esperado
-    from ord o where o.rn = 1
-  union all
-  select o.rn, o.hash, o.prev_hash = c.hash,
-         encode(sha256((c.hash || '|' || o.nsr || '|' || o.employee_id || '|' || to_char(o.punched_at at time zone 'UTC','YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"') || '|' || o.source)::bytea),'hex')
-    from ch c join ord o on o.rn = c.rn + 1
-) select count(*) from ch where hash <> esperado or not elo_ok")
+CADEIA_RH=$(confere_cadeia "$RH" "$EMPREGADOR_VI")
+IFS='|' read -r CR_N CR_H CR_E CR_P <<< "$CADEIA_RH"
+printf '  Vision: %s batidas, %s hash fora, %s elo fora (NSR %s)\n' "${CV_N:-?}" "${CV_H:-?}" "${CV_E:-?}" "${CV_P:-?}"
+printf '  RH:     %s batidas, %s hash fora, %s elo fora (NSR %s)\n' "${CR_N:-?}" "${CR_H:-?}" "${CR_E:-?}" "${CR_P:-?}"
+RUINS=${CR_H:-1}
+[[ "${CR_E:-1}" == "0" ]] || RUINS=$((RUINS + CR_E))
+if [[ "$CADEIA_RH" == "$CADEIA_VI" ]]; then
+  ok "o RH ficou IDÊNTICO ao Vision: mesma contagem, mesmo estado de cadeia"
+else
+  aviso "o estado da cadeia no RH não é igual ao do Vision — compare as duas linhas acima"
+fi
 
 # --- contagens lado a lado --------------------------------------------------
 log "o que saiu e o que chegou"
-printf '  %-28s %8s %8s\n' "tabela" "Vision" "RH"
-DIVERGIU=0
-for t in ponto_employee ponto_employer ponto_punch ponto_schedule schedule_templates schedule_slots work_shifts \
-         ponto_closing ponto_bank_movement ponto_bank_request ponto_justification ponto_espelho_signature \
-         ponto_leave ponto_vacation ponto_extra_shift ponto_extra_punch ponto_assiduidade ponto_schedule_override; do
+printf '  %-28s %8s %8s %8s\n' "tabela" "Vision" "RH antes" "RH depois"
+FALTOU=0
+for t in "${CONFERIR[@]}"; do
   existe_vi=$(um_valor "$VISION" "select count(*) from information_schema.columns where table_schema='public' and table_name='$t' and column_name='organization_id'")
   existe_rh=$(um_valor "$RH"     "select count(*) from information_schema.columns where table_schema='public' and table_name='$t' and column_name='organization_id'")
-  [[ "$existe_vi" == "1" && "$existe_rh" == "1" ]] || { printf '  %-28s %8s %8s\n' "$t" "-" "(nao existe)"; continue; }
+  if [[ "$existe_vi" != "1" || "$existe_rh" != "1" ]]; then
+    printf '  %-28s %8s %8s %8s\n' "$t" "-" "-" "(não existe)"; continue
+  fi
   a=$(um_valor "$VISION" "select count(*) from $t where organization_id = '$ORG_VI'")
-  b=$(um_valor "$RH"     "select count(*) from $t where organization_id = '$ORG_RH'")
+  d=$(um_valor "$RH"     "select count(*) from $t where organization_id = '$ORG_RH'")
   marca=""
-  if [[ "${a:-0}" != "${b:-0}" ]]; then marca="  <-- diferente"; DIVERGIU=1; fi
-  printf '  %-28s %8s %8s%s\n' "$t" "${a:-?}" "${b:-?}" "$marca"
+  # só é problema se chegou MENOS que o que saiu. Mais que isso está
+  # explicado pela coluna "RH antes".
+  if [[ "${d:-0}" -lt "${a:-0}" ]]; then marca="  <-- FALTOU"; FALTOU=1
+  elif [[ "${d:-0}" -gt "${a:-0}" ]]; then marca="  (o RH já tinha ${ANTES[$t]:-0})"; fi
+  printf '  %-28s %8s %8s %8s%s\n' "$t" "${a:-?}" "${ANTES[$t]:-0}" "${d:-?}" "$marca"
 done
+DIVERGIU=$FALTOU
 
 echo
 if [[ "${RUINS:-1}" == "0" && "$DIVERGIU" == "0" ]]; then
-  printf '%s[PRONTO]%s a cadeia de hash fecha no RH e as contagens batem em todas as tabelas.\n' "$C_OK" "$C_0"
+  printf '%s[PRONTO]%s a cadeia de hash fecha no RH e nada ficou pra tras.\n' "$C_OK" "$C_0"
 else
   [[ "${RUINS:-1}" == "0" ]] || aviso "a cadeia NÃO fecha ($RUINS batida(s) fora) — veja a tabela acima"
-  [[ "$DIVERGIU" == "0" ]]   || aviso "alguma contagem divergiu — veja as linhas marcadas"
+  [[ "$FALTOU" == "0" ]]     || aviso "alguma tabela chegou com MENOS linhas do que saiu — veja as marcadas FALTOU"
   aviso "o dump de antes está guardado; não aponte o terminal pro RH até isto fechar"
 fi
 

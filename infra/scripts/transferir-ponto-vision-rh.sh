@@ -446,24 +446,49 @@ roda_sql "$VISION" "$TRAB/emp-vi.sql" -tAq > "$TRAB/emp-vi.txt"
 roda_sql "$RH"     "$TRAB/emp-rh.sql" -tAq > "$TRAB/emp-rh.txt" || : > "$TRAB/emp-rh.txt"
 
 : > "$TRAB/mapa-employer.txt"
-while IFS='|' read -r vid vcnpj vdef vnome; do
-  [[ -n "$vid" ]] || continue
-  par=""; pcnpj=""; pnome=""
+echo "  empregador(es) no RH:"
+if [[ -s "$TRAB/emp-rh.txt" ]]; then
   while IFS='|' read -r rid rcnpj rdef rnome; do
     [[ -n "$rid" ]] || continue
-    if [[ "$vcnpj" != "-" && "$vcnpj" == "$rcnpj" ]]; then par=$rid; pcnpj=$rcnpj; pnome=$rnome; break; fi
-    if [[ -z "$par" && "$vdef" == "t" && "$rdef" == "t" ]]; then par=$rid; pcnpj=$rcnpj; pnome=$rnome; fi
+    printf '    "%s"  CNPJ %s  default=%s\n' "$rnome" "$rcnpj" "$rdef"
+  done < "$TRAB/emp-rh.txt"
+else
+  echo "    (nenhum)"
+fi
+
+# O empregador so casa com CNPJ IGUAL. Antes havia um desempate "default com
+# default" que (a) nunca funcionou — `is_default` concatenado em SQL vira
+# `true`, nao `t`, e a comparacao era com `t` — e (b) estava errado de todo
+# jeito: juntar empregadores de CNPJ DIFERENTE moveria 986 batidas para debaixo
+# de outro CNPJ, e e esse que sai no AFD. As batidas ficam com quem as
+# registrou.
+RH_TEM_DEFAULT=0
+while IFS='|' read -r _ _ rdef _; do [[ "$rdef" == "true" ]] && RH_TEM_DEFAULT=1; done < "$TRAB/emp-rh.txt"
+
+while IFS='|' read -r vid vcnpj vdef vnome; do
+  [[ -n "$vid" ]] || continue
+  par=""; pnome=""
+  while IFS='|' read -r rid rcnpj _ rnome; do
+    [[ -n "$rid" ]] || continue
+    if [[ "$vcnpj" != "-" && "$vcnpj" == "$rcnpj" ]]; then par=$rid; pnome=$rnome; break; fi
   done < "$TRAB/emp-rh.txt"
   if [[ -n "$par" ]]; then
     printf '%s|%s\n' "$vid" "$par" >> "$TRAB/mapa-employer.txt"
-    printf '  empregador: "%s" (CNPJ %s) -> "%s" (CNPJ %s) do RH\n' "$vnome" "$vcnpj" "$pnome" "$pcnpj"
-    if [[ "$vcnpj" != "$pcnpj" ]]; then
-      aviso "os CNPJs NÃO são iguais ($vcnpj no Vision, $pcnpj no RH)."
-      aviso "As batidas transferidas passam a pertencer ao empregador do RH, e é o CNPJ"
-      aviso "DELE que sai no AFD. Se isso estiver errado, pare e acerte o cadastro antes."
+    # casar consigo mesmo nao e casamento: e reexecucao. O id ja esta no RH
+    # porque uma passada anterior o levou. Dizer "casada" aqui confunde.
+    if [[ "$par" == "$vid" ]]; then
+      printf '  empregador: "%s" (CNPJ %s) já está no RH — passada anterior\n' "$vnome" "$vcnpj"
+    else
+      printf '  empregador: "%s" (CNPJ %s) -> "%s" do RH, mesmo CNPJ\n' "$vnome" "$vcnpj" "$pnome"
     fi
   else
-    printf '  empregador: "%s" (CNPJ %s) entra novo no RH, com o id do Vision\n' "$vnome" "$vcnpj"
+    printf '  empregador: "%s" (CNPJ %s) entra NOVO no RH, com o id do Vision\n' "$vnome" "$vcnpj"
+    if [[ "$RH_TEM_DEFAULT" == "1" && "$vdef" == "true" ]]; then
+      aviso "o RH já tem um empregador default e esse unico e por empresa"
+      aviso "(indice parcial \`(organization_id) WHERE is_default\`). O do Vision entra como"
+      aviso "NÃO-default pra nao bater nele — e foi esse conflito que derrubou a carga antes."
+      aviso "Decida na tela do RH qual dos dois deve ser o default."
+    fi
   fi
 done < "$TRAB/emp-vi.txt"
 
@@ -484,7 +509,11 @@ while IFS='|' read -r vid vslug vnome; do
   rid=$(awk -F'|' -v s="$vslug" '$2 == s { print $1; exit }' "$TRAB/loja-rh.txt" || true)
   if [[ -n "$rid" ]]; then
     printf '%s|%s\n' "$vid" "$rid" >> "$TRAB/mapa-store.txt"
-    printf '  loja: "%s" (%s) -> a que já existe no RH com o mesmo slug\n' "$vnome" "$vslug"
+    if [[ "$rid" == "$vid" ]]; then
+      printf '  loja: "%s" (%s) já está no RH — passada anterior\n' "$vnome" "$vslug"
+    else
+      printf '  loja: "%s" (%s) -> a que já existe no RH com o mesmo slug\n' "$vnome" "$vslug"
+    fi
   else
     printf '  loja: "%s" (%s) entra nova no RH, com o id do Vision\n' "$vnome" "$vslug"
   fi
@@ -546,7 +575,8 @@ fi
 # Em awk de propósito: está num host Proxmox, e awk existe em qualquer lugar.
 # A regra é a mesma pra toda tabela, e sai dos catálogos — nada cravado.
 log "montando a carga"
-awk -v org_vi="$ORG_VI" -v org_rh="$ORG_RH" -v ordem="${TABELAS[*]}" -v trab="$TRAB" '
+awk -v org_vi="$ORG_VI" -v org_rh="$ORG_RH" -v ordem="${TABELAS[*]}" -v trab="$TRAB" \
+    -v rh_tem_default="${RH_TEM_DEFAULT:-0}" '
 function literal(v) { return "\x27" v "\x27" }
 # o CASE de uma tabela casada por chave natural: o que foi casado vira o id do
 # RH, o resto vai como esta (essas linhas entram com o id do Vision).
@@ -613,6 +643,11 @@ END {
         continue
       }
       e = c
+      # o unico parcial `(organization_id) WHERE is_default` so aceita UM
+      # default por empresa. Se o RH ja tem um, o do Vision entra como
+      # nao-default: sem isto o `on conflict do nothing` descarta a linha em
+      # silencio e a FK de quem a referencia estoura tres tabelas depois.
+      if (t == "ponto_employer" && c == "is_default" && rh_tem_default == 1) e = "false"
       # `hr_employee_id` nao tem chave estrangeira, entao a regra geral o
       # deixaria passar com o id do VISION — um ponteiro pra lugar nenhum.
       # Entra nulo e o destino preenche casando por CPF.
@@ -660,6 +695,11 @@ END {
     printf "\\copy _st_%s (%s) from program '"'"'@@PSQL@@ -f /tmp/sel_%s.sql'"'"'\n", t, lista, t >> carga
     printf "@@CONF_%s@@\n", t >> carga
     printf "insert into public.%s (%s) select %s from _st_%s on conflict do nothing;\n", t, lista, lista, t >> carga
+    # e DEPOIS do insert: toda linha que estava na tabela de passagem tem que
+    # estar na tabela de verdade. `on conflict do nothing` descarta em silencio
+    # quem bate num unico que NAO e o id (is_default do empregador, slug da
+    # loja) — e o sintoma aparecia tres tabelas depois, como erro de FK.
+    printf "do $$ declare v int; w int; begin select count(*) into v from _st_%s; select count(*) into w from public.%s d where exists (select 1 from _st_%s s where s.id = d.id); if v <> w then raise exception %c de %% linha(s) de %s so %% entraram: alguma bateu num indice unico que nao e o id, e o on conflict descartou em silencio.%c, v, w; end if; end $$;\n", t, t, t, 39, t, 39 >> carga
     printf "drop table _st_%s;\n", t                                                       >> carga
     print "COPIA " t " : " ncol[t] " colunas no RH, " split(lista, _tmp, ",") " em comum" (anuladas == "" ? "" : "  | anuladas:" anuladas) >> plano
   }
@@ -746,7 +786,7 @@ if [[ -f "$TRAB/filtros.txt" ]]; then
   while IFS='|' read -r t filtro; do
     case "$filtro" in
       *"is null or "*)  motivo="funcionário SEM ficha no RH" ;;
-      *"id not in ("*)  motivo="casada com a que já existe no RH" ;;
+      *"id not in ("*)  motivo="já no RH: casada ou de passada anterior" ;;
       *) continue ;;
     esac
     todas=$(um_valor "$VISION" "select count(*) from $t where organization_id = '$ORG_VI'")

@@ -135,11 +135,28 @@ if [[ "${SEM_BACKUP:-0}" != "1" ]]; then
   DUMP="$BACKUPS/norty_vision-$CARIMBO.dump"
   mkdir -p "$BACKUPS"
   log "dump do banco antes de mexer (pode demorar)"
+  # O `pg_dump` roda com `docker exec`: o `-f /tmp/...` escreve DENTRO DO
+  # CONTAINER, nao no /tmp do CT. A versao anterior fazia `pct pull` do /tmp do
+  # CT — que so acha o arquivo se os dois /tmp forem o mesmo. Num script irmao,
+  # com exatamente este codigo, a execucao de verdade morreu assim:
+  #
+  #   mv: cannot stat '/tmp/rh-pre-transferencia.dump': No such file or directory
+  #
+  # `docker cp` tira o arquivo de dentro do container, explicitamente, e nao
+  # depende de /tmp compartilhado. E o tamanho e conferido: dump de zero byte
+  # nao e backup, e aplicar DDL confiando num backup que nao existe e o pior
+  # caminho possivel.
   pct exec "$CT" -- bash -c "cd $INFRA && set -a && . ./.env && set +a && \
     docker exec -e PGPASSWORD=\"\$POSTGRES_PASSWORD\" $CONTAINER \
     pg_dump -U postgres -d $BANCO -Fc -f /tmp/nv-pre-migration.dump"
+  pct exec "$CT" -- bash -c "docker cp $CONTAINER:/tmp/nv-pre-migration.dump /tmp/nv-pre-migration.dump && \
+    docker exec $CONTAINER rm -f /tmp/nv-pre-migration.dump"
   pct pull "$CT" /tmp/nv-pre-migration.dump "$DUMP"
   pct exec "$CT" -- rm -f /tmp/nv-pre-migration.dump
+  TAM=$(stat -c %s "$DUMP" 2>/dev/null || echo 0)
+  [[ "${TAM:-0}" -gt 1000 ]] || morre "o dump saiu vazio ou pequeno ($TAM bytes) em $DUMP.
+  Nao vou aplicar migration em producao sem backup. Rode de novo, ou
+  SEM_BACKUP=1 se souber o que esta fazendo."
   ok "backup em $DUMP ($(du -h "$DUMP" | cut -f1))"
   echo "     restaurar:  pg_restore -U postgres -d $BANCO --clean --if-exists $DUMP"
 else

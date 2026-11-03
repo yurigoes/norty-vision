@@ -647,12 +647,29 @@ fi
 if [[ "${SEM_BACKUP:-0}" != "1" ]]; then
   log "dump do $RH antes de mexer"
   if [[ "$MODO" == "producao" ]]; then
+    # ERRO QUE ESTAVA AQUI, e que derrubou a primeira execucao de verdade:
+    #
+    #   mv: cannot stat '/tmp/rh-pre-transferencia.dump': No such file or directory
+    #
+    # O `pg_dump` roda com `docker exec`, entao o `-f /tmp/...` escreve DENTRO
+    # DO CONTAINER. O `mv` rodava dentro do CT, onde o arquivo nao existe. Sao
+    # dois /tmp diferentes, e a mensagem de erro nao diz isso.
+    #
+    # `docker cp` nao depende de nenhum /tmp ser compartilhado: tira o arquivo
+    # de dentro do container, explicitamente. E o tamanho e conferido — dump de
+    # zero byte nao e backup, e seguir com ele seria pior que nao ter.
     CARIMBO=$(date +%Y%m%d-%H%M%S)
+    DUMP_CT="/root/dumps/$RH-$CARIMBO.dump"
     pct exec "$CT" -- bash -c "cd $INFRA && set -a && . ./.env && set +a && \
       docker exec -e PGPASSWORD=\"\$POSTGRES_PASSWORD\" $CONTAINER \
       pg_dump -U postgres -d $RH -Fc -f /tmp/rh-pre-transferencia.dump"
-    pct exec "$CT" -- bash -c "mkdir -p /root/dumps && mv /tmp/rh-pre-transferencia.dump /root/dumps/$RH-$CARIMBO.dump"
-    ok "dentro do CT $CT: /root/dumps/$RH-$CARIMBO.dump"
+    pct exec "$CT" -- bash -c "mkdir -p /root/dumps && \
+      docker cp $CONTAINER:/tmp/rh-pre-transferencia.dump $DUMP_CT && \
+      docker exec $CONTAINER rm -f /tmp/rh-pre-transferencia.dump"
+    TAM=$(pct exec "$CT" -- bash -c "stat -c %s $DUMP_CT 2>/dev/null || echo 0" | tr -d '[:space:]')
+    [[ "${TAM:-0}" -gt 1000 ]] || morre "o dump saiu vazio ou pequeno ($TAM bytes) em $DUMP_CT.
+  Dump de zero byte nao e backup — nao vou escrever no $RH sem um."
+    ok "dentro do CT $CT: $DUMP_CT ($TAM bytes)"
   else
     # $TRAB é do root; o pg_dump roda como postgres e não escreveria lá.
     DUMP_LOCAL="/tmp/$RH-$(date +%Y%m%d-%H%M%S).dump"

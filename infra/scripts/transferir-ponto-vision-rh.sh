@@ -98,7 +98,9 @@ roda_sql() { # roda_sql <banco> <arquivo> [args extra do psql...]
 um_valor() { # um_valor <banco> <sql>
   local banco=$1 sql=$2 arq="$TRAB/q.sql"
   printf '%s\n' "$sql" > "$arq"
-  roda_sql "$banco" "$arq" -tAq 2>/dev/null | tr -d '\r' | head -1
+  # `|| true`: com `pipefail`, consulta que falha derrubaria o script na
+  # atribuicao `x=$(um_valor ...)`. Quem chama trata vazio; morrer calado, não.
+  roda_sql "$banco" "$arq" -tAq 2>/dev/null | tr -d '\r' | head -1 || true
 }
 
 # ============================================================================
@@ -151,6 +153,19 @@ ORG_RH=$(um_valor "$RH"     "select id from organizations where slug = '$EMPRESA
 [[ -n "$ORG_RH" ]] || morre "a empresa \`$EMPRESA\` não existe em $RH — crie lá primeiro"
 ok "Vision: $ORG_VI"
 ok "RH:     $ORG_RH"
+
+# --- o destino parece mesmo o Norty RH? -------------------------------------
+# Vale mesmo com BANCO_RH passado na mão: `yugoplatform` tem `ponto_punch` mas
+# nao a coluna `employer_id`, e apontar pra lá morreria no meio com um erro
+# cru de psql. Melhor dizer na primeira linha.
+for exigido in "ponto_punch.employer_id" "ponto_employee.cpf" "ponto_employer.last_nsr" "employees.cpf"; do
+  tab=${exigido%%.*}; col=${exigido##*.}
+  tem=$(um_valor "$RH" "select count(*) from information_schema.columns where table_schema='public' and table_name='$tab' and column_name='$col'")
+  [[ "$tem" == "1" ]] || morre "o banco \`$RH\` não tem \`$tab.$col\` — não parece o Norty RH.
+  (o \`yugoplatform\`, por exemplo, tem ponto antigo sem \`employer_id\`.)
+  Confira com:  BANCO_RH=yugoponto bash $0 --ensaio"
+done
+ok "o destino tem o esquema de ponto novo"
 
 # --- as batidas que já existem no destino -----------------------------------
 # Reexecutar é seguro: os ids são preservados e a inserção é
@@ -348,7 +363,14 @@ select table_name || '|' || column_name from information_schema.columns
  order by table_name, ordinal_position;
 SQL
 roda_sql "$VISION" "$TRAB/cat-origem.sql" -tAq > "$TRAB/origem.txt"
-ok "destino: $(grep -c . "$TRAB/destino.txt") colunas | origem: $(grep -c . "$TRAB/origem.txt") colunas"
+# `grep -c .` devolve 1 quando a contagem é ZERO, e com `pipefail`+`errexit`
+# isso encerraria o script sem dizer nada — justo no caso em que o catálogo
+# veio vazio, que é o caso que mais precisa de mensagem.
+N_DESTINO=$(grep -c . "$TRAB/destino.txt" || true)
+N_ORIGEM=$(grep -c . "$TRAB/origem.txt" || true)
+[[ "${N_DESTINO:-0}" -gt 0 ]] || morre "não li coluna nenhuma do $RH. O psql respondeu? Veja $TRAB/destino.txt"
+[[ "${N_ORIGEM:-0}" -gt 0 ]] || morre "não li coluna nenhuma do $VISION. O psql respondeu? Veja $TRAB/origem.txt"
+ok "destino: $N_DESTINO colunas | origem: $N_ORIGEM colunas"
 
 # --- o mapa de fichas de RH (employees), por CPF -----------------------------
 # Só a `ponto_shift_swap` aponta pra `employees`, e precisa do id DE LÁ.
@@ -360,11 +382,62 @@ SQL
 roda_sql "$RH" "$TRAB/mapa-rh.sql" -tAq > "$TRAB/mapa-rh.txt"
 
 cat > "$TRAB/mapa-vi.sql" <<SQL
-select regexp_replace(coalesce(cpf,''),'\\D','','g') || '|' || id
-  from employees where organization_id = '$ORG_VI'
-   and coalesce(nullif(regexp_replace(coalesce(cpf,''),'\\D','','g'),''),'') <> '';
+with da_ficha as (
+  select regexp_replace(coalesce(cpf,''),'\\D','','g') as cpf, id
+    from employees where organization_id = '$ORG_VI'
+     and coalesce(nullif(regexp_replace(coalesce(cpf,''),'\\D','','g'),''),'') <> ''
+),
+do_ponto as (
+  select regexp_replace(coalesce(pe.cpf,''),'\\D','','g') as cpf, pe.hr_employee_id as id
+    from ponto_employee pe
+   where pe.organization_id = '$ORG_VI' and pe.hr_employee_id is not null
+     and coalesce(nullif(regexp_replace(coalesce(pe.cpf,''),'\\D','','g'),''),'') <> ''
+     and not exists (select 1 from da_ficha f where f.id = pe.hr_employee_id)
+)
+select cpf || '|' || id from da_ficha
+union all
+select cpf || '|' || id from do_ponto;
 SQL
 roda_sql "$VISION" "$TRAB/mapa-vi.sql" -tAq > "$TRAB/mapa-vi.txt" || : > "$TRAB/mapa-vi.txt"
+
+# --- quem tem turno de escala no Vision, e se a ficha casa no RH ------------
+# A escala (`work_shifts`) aponta pra FICHA (`employees`), não pro cadastro de
+# ponto — e a ficha de quem tem turno pode nem ter cadastro de ponto. Então o
+# casamento por CPF de ponto, acima, não responde quem fica de fora da escala.
+# Esta lista responde, e é ela que explica um "0 de 26".
+log "quem tem turno de escala no Vision"
+cat > "$TRAB/turnos.sql" <<SQL
+select coalesce(e.name,'(ficha removida)') || '|'
+       || coalesce(nullif(regexp_replace(coalesce(e.cpf,''),'\\D','','g'),''),'(sem cpf)') || '|'
+       || count(*) || '|' || coalesce(e.id::text,'-')
+  from work_shifts ws
+  left join employees e on e.id = ws.employee_id
+ where ws.organization_id = '$ORG_VI'
+ group by e.name, e.cpf, e.id
+ order by count(*) desc;
+SQL
+roda_sql "$VISION" "$TRAB/turnos.sql" -tAq > "$TRAB/turnos.txt" || : > "$TRAB/turnos.txt"
+if [[ -s "$TRAB/turnos.txt" ]]; then
+  printf '  %-32s %-22s %7s  %s\n' "ficha com turno" "cpf usado na ponte" "turnos" "casa no RH?"
+  while IFS='|' read -r nome cpf n id; do
+    [[ -n "$nome" ]] || continue
+    # o CPF que vale é o que o MAPA usou, não o da ficha: quando a ficha está
+    # sem CPF, a ponte pega o do cadastro de ponto que aponta pra ela. Ler só
+    # `employees.cpf` aqui mostraria "fora" alguém que de fato viaja.
+    do_mapa=$(grep "|$id\$" "$TRAB/mapa-vi.txt" 2>/dev/null | head -1 | cut -d'|' -f1 || true)
+    if [[ -z "$do_mapa" ]]; then
+      mostra="$cpf"; casa="NÃO — sem CPF na ficha nem no cadastro de ponto"
+    else
+      [[ "$cpf" == "$do_mapa" ]] && mostra="$do_mapa" || mostra="$do_mapa (do ponto)"
+      if grep -q "^$do_mapa|" "$TRAB/mapa-rh.txt" 2>/dev/null; then casa="sim"
+      else casa="NÃO — sem ficha com esse CPF no RH"; fi
+    fi
+    printf '  %-32s %-22s %7s  %s\n' "${nome:0:32}" "$mostra" "$n" "$casa"
+  done < "$TRAB/turnos.txt"
+else
+  echo "  (nenhum turno de escala nessa empresa)"
+fi
+
 
 # --- monta o SQL dos dois lados ---------------------------------------------
 # Em awk de propósito: está num host Proxmox, e awk existe em qualquer lugar.
@@ -557,7 +630,9 @@ if [[ -f "$TRAB/filtros.txt" ]]; then
     aviso "\`$t\`: $vao de $todas linha(s) vão — as outras $(( ${todas:-0} - ${vao:-0} )) são de funcionário SEM ficha no RH"
   done < "$TRAB/filtros.txt"
   if [[ "$PERDE" == "1" ]]; then
-    aviso "para levar essas também: cadastre a ficha (employees) desses CPFs no RH e rode de novo."
+    aviso "para levar essas também, veja a lista \"quem tem turno\" acima: sem ficha com esse"
+    aviso "CPF no RH -> cadastre a ficha lá; sem CPF em lugar nenhum -> preencha o CPF da"
+    aviso "ficha no Vision primeiro. Depois rode de novo."
     aviso "o script é idempotente — a segunda passada só acrescenta o que faltou."
   fi
 fi

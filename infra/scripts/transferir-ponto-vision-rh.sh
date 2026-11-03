@@ -264,12 +264,7 @@ if [[ "${FICHAS_RH:-0}" == "0" ]]; then
 fi
 
 EMPREGADORES_RH=$(um_valor "$RH" "select count(*) from ponto_employer where organization_id = '$ORG_RH'")
-if [[ "${EMPREGADORES_RH:-0}" != "0" ]]; then
-  aviso "o RH já tem $EMPREGADORES_RH empregador(es) nessa empresa, e o do Vision entra por cima"
-  aviso "(com o UUID de lá, porque a cadeia de hash é por empregador). Depois o RH fica com"
-  aviso "os dois: as batidas transferidas ficam no do Vision, e cada funcionário aponta pro dele."
-  aviso "Veja em Empregadores se o antigo deve ser desativado."
-fi
+[[ "${EMPREGADORES_RH:-0}" == "0" ]] || printf '  empregadores no RH: %s (o casamento aparece logo abaixo)\n' "$EMPREGADORES_RH"
 
 CFG_VI=$(um_valor "$VISION" "select count(*) from ponto_config where organization_id = '$ORG_VI'")
 CFG_RH=$(um_valor "$RH"     "select count(*) from ponto_config where organization_id = '$ORG_RH'")
@@ -289,6 +284,10 @@ declare -A ANTES=()
 # o alvo de cada tabela: quantas linhas DEVEM chegar. Normalmente é o que saiu;
 # onde o filtro de funcionário corta, é o que sobra depois do filtro.
 declare -A ESPERADO=()
+# e POR QUE o alvo e menor: ou o funcionario nao tem ficha no RH, ou a linha foi
+# casada com uma que ja existia la. Sao coisas diferentes e o relatorio final
+# precisa dizer qual — rotulo errado e o que faz ninguem mais ler a tabela.
+declare -A MOTIVO=()
 for t in "${CONFERIR[@]}"; do
   existe=$(um_valor "$RH" "select count(*) from information_schema.columns where table_schema='public' and table_name='$t' and column_name='organization_id'")
   [[ "$existe" == "1" ]] || continue
@@ -400,6 +399,110 @@ select cpf || '|' || id from do_ponto;
 SQL
 roda_sql "$VISION" "$TRAB/mapa-vi.sql" -tAq > "$TRAB/mapa-vi.txt" || : > "$TRAB/mapa-vi.txt"
 
+# ============================================================================
+# CASAMENTO POR CHAVE NATURAL: empregador e loja
+#
+# Foi aqui que a primeira carga de verdade caiu:
+#
+#   >>> ponto_employer
+#   COPY 1
+#   INSERT 0 0                 <- engolido!
+#   >>> ponto_employee
+#   ERROR: ponto_employee_employer_id_fkey
+#     Key (employer_id)=(71060793-...) is not present in table "ponto_employer"
+#
+# `ponto_employer` tem indice unico PARCIAL — `(organization_id) WHERE
+# is_default` — e `stores` tem unico em `(organization_id, slug)`. O RH ja tinha
+# um empregador default e uma loja com o mesmo slug, entao o
+# `on conflict do nothing` descartou as linhas do Vision em silencio (o
+# `INSERT 0 0` acima), e as tabelas que apontam pra elas POR ID bateram no FK.
+#
+# A saida nao e inserir a forca: e CASAR. Empregador e loja do Vision passam a
+# apontar pros que ja existem no RH, e todas as colunas que os referenciam sao
+# remapeadas.
+#
+# Para as BATIDAS isso e seguro, e por um motivo preciso: o hash da cadeia e
+# sha(prev | nsr | employee_id | punched_at | source) — NAO inclui o
+# employer_id. Trocar o empregador nao mexe em nenhum hash. E a ORDEM dentro da
+# cadeia tambem nao muda, porque o empregador do RH nao tem batida nenhuma.
+#
+# De quebra, isto resolve o "o RH fica com dois empregadores" que o script
+# avisava antes: agora fica com um.
+# ============================================================================
+log "casando empregador e loja com os que já existem no RH"
+
+# --- empregador: casa pelo CNPJ (idt_empregador) e, na falta dele, o default
+cat > "$TRAB/emp-vi.sql" <<SQL
+select id || '|' || coalesce(nullif(regexp_replace(coalesce(idt_empregador,''),'\\D','','g'),''),'-')
+       || '|' || is_default || '|' || coalesce(name,'')
+  from ponto_employer where organization_id = '$ORG_VI' order by is_default desc, created_at;
+SQL
+cat > "$TRAB/emp-rh.sql" <<SQL
+select id || '|' || coalesce(nullif(regexp_replace(coalesce(idt_empregador,''),'\\D','','g'),''),'-')
+       || '|' || is_default || '|' || coalesce(name,'')
+  from ponto_employer where organization_id = '$ORG_RH' order by is_default desc, created_at;
+SQL
+roda_sql "$VISION" "$TRAB/emp-vi.sql" -tAq > "$TRAB/emp-vi.txt"
+roda_sql "$RH"     "$TRAB/emp-rh.sql" -tAq > "$TRAB/emp-rh.txt" || : > "$TRAB/emp-rh.txt"
+
+: > "$TRAB/mapa-employer.txt"
+while IFS='|' read -r vid vcnpj vdef vnome; do
+  [[ -n "$vid" ]] || continue
+  par=""; pcnpj=""; pnome=""
+  while IFS='|' read -r rid rcnpj rdef rnome; do
+    [[ -n "$rid" ]] || continue
+    if [[ "$vcnpj" != "-" && "$vcnpj" == "$rcnpj" ]]; then par=$rid; pcnpj=$rcnpj; pnome=$rnome; break; fi
+    if [[ -z "$par" && "$vdef" == "t" && "$rdef" == "t" ]]; then par=$rid; pcnpj=$rcnpj; pnome=$rnome; fi
+  done < "$TRAB/emp-rh.txt"
+  if [[ -n "$par" ]]; then
+    printf '%s|%s\n' "$vid" "$par" >> "$TRAB/mapa-employer.txt"
+    printf '  empregador: "%s" (CNPJ %s) -> "%s" (CNPJ %s) do RH\n' "$vnome" "$vcnpj" "$pnome" "$pcnpj"
+    if [[ "$vcnpj" != "$pcnpj" ]]; then
+      aviso "os CNPJs NÃO são iguais ($vcnpj no Vision, $pcnpj no RH)."
+      aviso "As batidas transferidas passam a pertencer ao empregador do RH, e é o CNPJ"
+      aviso "DELE que sai no AFD. Se isso estiver errado, pare e acerte o cadastro antes."
+    fi
+  else
+    printf '  empregador: "%s" (CNPJ %s) entra novo no RH, com o id do Vision\n' "$vnome" "$vcnpj"
+  fi
+done < "$TRAB/emp-vi.txt"
+
+# --- loja: casa pelo slug
+cat > "$TRAB/loja-vi.sql" <<SQL
+select id || '|' || lower(coalesce(slug,'')) || '|' || coalesce(name,'')
+  from stores where organization_id = '$ORG_VI';
+SQL
+cat > "$TRAB/loja-rh.sql" <<SQL
+select id || '|' || lower(coalesce(slug,''))
+  from stores where organization_id = '$ORG_RH';
+SQL
+roda_sql "$VISION" "$TRAB/loja-vi.sql" -tAq > "$TRAB/loja-vi.txt" || : > "$TRAB/loja-vi.txt"
+roda_sql "$RH"     "$TRAB/loja-rh.sql" -tAq > "$TRAB/loja-rh.txt" || : > "$TRAB/loja-rh.txt"
+: > "$TRAB/mapa-store.txt"
+while IFS='|' read -r vid vslug vnome; do
+  [[ -n "$vid" ]] || continue
+  rid=$(awk -F'|' -v s="$vslug" '$2 == s { print $1; exit }' "$TRAB/loja-rh.txt" || true)
+  if [[ -n "$rid" ]]; then
+    printf '%s|%s\n' "$vid" "$rid" >> "$TRAB/mapa-store.txt"
+    printf '  loja: "%s" (%s) -> a que já existe no RH com o mesmo slug\n' "$vnome" "$vslug"
+  else
+    printf '  loja: "%s" (%s) entra nova no RH, com o id do Vision\n' "$vnome" "$vslug"
+  fi
+done < "$TRAB/loja-vi.txt"
+
+# o empregador que vai CARREGAR as batidas no RH (mapeado, ou o próprio do Vision)
+EMPREGADOR_RH=$(awk -F'|' -v v="$EMPREGADOR_VI" '$1 == v { print $2; exit }' "$TRAB/mapa-employer.txt" || true)
+[[ -n "$EMPREGADOR_RH" ]] || EMPREGADOR_RH=$EMPREGADOR_VI
+ok "no RH as batidas ficam no empregador $EMPREGADOR_RH"
+# a contagem do começo usou o id do Vision; agora que se sabe qual empregador
+# do RH vai carregar as batidas, vale recontar — é esse o número que importa.
+JA_NO_RH=$(um_valor "$RH" "select count(*) from ponto_punch where employer_id = '$EMPREGADOR_RH'")
+if [[ "${JA_NO_RH:-0}" != "0" ]]; then
+  aviso "esse empregador do RH já tem $JA_NO_RH batida(s)."
+  aviso "Se forem de uma passada anterior deste script, tudo bem (nada duplica)."
+  aviso "Se forem batidas PRÓPRIAS do RH, pare: o NSR colide e a cadeia é outra."
+fi
+
 # --- quem tem turno de escala no Vision, e se a ficha casa no RH ------------
 # A escala (`work_shifts`) aponta pra FICHA (`employees`), não pro cadastro de
 # ponto — e a ficha de quem tem turno pode nem ter cadastro de ponto. Então o
@@ -445,6 +548,17 @@ fi
 log "montando a carga"
 awk -v org_vi="$ORG_VI" -v org_rh="$ORG_RH" -v ordem="${TABELAS[*]}" -v trab="$TRAB" '
 function literal(v) { return "\x27" v "\x27" }
+# o CASE de uma tabela casada por chave natural: o que foi casado vira o id do
+# RH, o resto vai como esta (essas linhas entram com o id do Vision).
+function caso(tab, col,   k, e, n) {
+  e = "case " col; n = 0
+  for (k in mapa) if (index(k, tab "|") == 1) { e = e " when " literal(substr(k, length(tab) + 2)) "::uuid then " literal(mapa[k]) "::uuid"; n++ }
+  # `case x else x end` NAO e SQL: CASE sem WHEN nenhum e erro de sintaxe. E foi
+  # assim que o destino SEM loja e SEM empregador (nada a casar) gerou
+  # `case store_id else store_id end` e a carga chegou com ZERO linha.
+  if (n == 0) return col
+  return e " else " col " end"
+}
 # Defesa em profundidade: qualquer ruido que chegue nestes arquivos NAO pode
 # virar uuid. Foi assim que o eco do pset (a linha que diz que o formato de
 # saida mudou) virou um CPF presente nos DOIS mapas: o casamento por CPF achou
@@ -454,6 +568,8 @@ function uuid_ok(v) { return v ~ /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 function so_digitos(v) { return v ~ /^[0-9]+$/ }
 FILENAME ~ /mapa-vi\.txt$/ { if (split($0, a, "|") == 2 && so_digitos(a[1]) && uuid_ok(a[2])) vi_cpf[a[1]] = a[2]; next }
 FILENAME ~ /mapa-rh\.txt$/ { if (split($0, a, "|") == 2 && so_digitos(a[1]) && uuid_ok(a[2])) rh_cpf[a[1]] = a[2]; next }
+FILENAME ~ /mapa-employer\.txt$/ { if (split($0, a, "|") == 2 && uuid_ok(a[1]) && uuid_ok(a[2])) { mapa["ponto_employer|" a[1]] = a[2]; casados["ponto_employer"] = casados["ponto_employer"] (casados["ponto_employer"] == "" ? "" : ", ") "\x27" a[1] "\x27" }; next }
+FILENAME ~ /mapa-store\.txt$/    { if (split($0, a, "|") == 2 && uuid_ok(a[1]) && uuid_ok(a[2])) { mapa["stores|" a[1]] = a[2]; casados["stores"] = casados["stores"] (casados["stores"] == "" ? "" : ", ") "\x27" a[1] "\x27" }; next }
 FILENAME ~ /origem\.txt$/  { if (split($0, a, "|") == 2) orig[a[1] "|" a[2]] = 1; next }
 FILENAME ~ /destino\.txt$/ {
   if (split($0, a, "|") != 5) next
@@ -480,8 +596,13 @@ END {
 
     # como recortar a empresa nesta tabela
     if (tem_org[t])        filtro = "organization_id = " literal(org_vi)
+    # a linha que foi CASADA com uma do RH nao viaja: quem a referenciava ja
+    # aponta pro id de lá. Trazer a do Vision bateria no unico (is_default do
+    # empregador, slug da loja) e seria descartada em silencio — que foi
+    # exatamente como a primeira carga falhou.
     else if (tem_owner[t]) filtro = "owner_org_id = " literal(org_vi) " and borrower_org_id = " literal(org_vi)
     else                   { print "PULADA " t " : nao sei como recortar a empresa (sem organization_id)" >> plano; continue }
+    if (t in casados && casados[t] != "") filtro = filtro " and id not in (" casados[t] ")"
 
     lista = ""; exprs = ""; anuladas = ""; pula = ""; so_casados = ""
     for (k = 1; k <= ncol[t]; k++) {
@@ -496,6 +617,7 @@ END {
       # deixaria passar com o id do VISION — um ponteiro pra lugar nenhum.
       # Entra nulo e o destino preenche casando por CPF.
       if (c == "hr_employee_id") { e = "null::uuid"; anuladas = anuladas " hr_employee_id(preenchido por CPF no destino)" }
+      else if (alvo[t, c] == "ponto_employer" || alvo[t, c] == "stores") e = caso(alvo[t, c], c)
       else if (alvo[t, c] == "organizations") e = literal(org_rh) "::uuid"
       else if (alvo[t, c] == "employees") {
         e = "case " c
@@ -536,13 +658,14 @@ END {
     printf "\\echo >>> %s\n", t                                                            >> carga
     printf "create temp table _st_%s as select %s from public.%s limit 0;\n", t, lista, t   >> carga
     printf "\\copy _st_%s (%s) from program '"'"'@@PSQL@@ -f /tmp/sel_%s.sql'"'"'\n", t, lista, t >> carga
+    printf "@@CONF_%s@@\n", t >> carga
     printf "insert into public.%s (%s) select %s from _st_%s on conflict do nothing;\n", t, lista, lista, t >> carga
     printf "drop table _st_%s;\n", t                                                       >> carga
     print "COPIA " t " : " ncol[t] " colunas no RH, " split(lista, _tmp, ",") " em comum" (anuladas == "" ? "" : "  | anuladas:" anuladas) >> plano
   }
   close(carga); close(plano)
 }
-' "$TRAB/mapa-vi.txt" "$TRAB/mapa-rh.txt" "$TRAB/origem.txt" "$TRAB/destino.txt"
+' "$TRAB/mapa-vi.txt" "$TRAB/mapa-rh.txt" "$TRAB/mapa-employer.txt" "$TRAB/mapa-store.txt" "$TRAB/origem.txt" "$TRAB/destino.txt"
 
 sed 's/^/  /' "$TRAB/plano.txt"
 
@@ -609,7 +732,7 @@ update ponto_employee pe
 \\echo >>> o NSR do empregador continua de onde parou
 update ponto_employer emp
    set last_nsr = greatest(emp.last_nsr, coalesce((select max(p.nsr) from ponto_punch p where p.employer_id = emp.id), 0))
- where emp.id = '$EMPREGADOR_VI';
+ where emp.id = '$EMPREGADOR_RH';
 
 commit;
 SQL
@@ -621,13 +744,22 @@ SQL
 if [[ -f "$TRAB/filtros.txt" ]]; then
   PERDE=0
   while IFS='|' read -r t filtro; do
-    case "$filtro" in *" in ("*) ;; *) continue ;; esac   # só as com filtro de funcionário
+    case "$filtro" in
+      *"is null or "*)  motivo="funcionário SEM ficha no RH" ;;
+      *"id not in ("*)  motivo="casada com a que já existe no RH" ;;
+      *) continue ;;
+    esac
     todas=$(um_valor "$VISION" "select count(*) from $t where organization_id = '$ORG_VI'")
     vao=$(um_valor "$VISION" "select count(*) from $t where $filtro")
     [[ "${todas:-0}" == "${vao:-0}" ]] && continue
     ESPERADO[$t]=$vao
-    PERDE=1
-    aviso "\`$t\`: $vao de $todas linha(s) vão — as outras $(( ${todas:-0} - ${vao:-0} )) são de funcionário SEM ficha no RH"
+    MOTIVO[$t]=$motivo
+    if [[ "$motivo" == "casada com a que já existe no RH" ]]; then
+      printf '  %s: %s de %s linha(s) entram novas; %s %s\n' "$t" "$vao" "$todas" "$(( ${todas:-0} - ${vao:-0} ))" "$motivo"
+    else
+      PERDE=1
+      aviso "\`$t\`: $vao de $todas linha(s) vão — as outras $(( ${todas:-0} - ${vao:-0} )) são de $motivo"
+    fi
   done < "$TRAB/filtros.txt"
   if [[ "$PERDE" == "1" ]]; then
     aviso "para levar essas também, veja a lista \"quem tem turno\" acima: sem ficha com esse"
@@ -680,9 +812,45 @@ else
 fi
 
 # --- a carga, numa transação só ---------------------------------------------
-PSQL_INTERNO="psql -X -q -U postgres -d $VISION"
+# sobrescritivel pra TESTAR a conferencia de contagem: com um comando que
+# falha, o `\copy from program` traz zero linha e a conferencia tem que
+# derrubar a transacao em vez de seguir.
+# `-v ON_ERROR_STOP=1` no psql DE DENTRO nao e detalhe: sem ele, o psql sai com
+# status ZERO mesmo tendo falhado no SQL (medido: exit 0 sem a flag, exit 3 com
+# ela). O `\copy ... from program` entao ve um fluxo vazio e limpo, diz
+# `COPY 0`, e a transacao segue inserindo nada. Foi exatamente assim que um
+# `case ... else` invalido fez a carga "passar" com zero batida.
+PSQL_INTERNO=${PSQL_INTERNO:-"psql -X -q -v ON_ERROR_STOP=1 -U postgres -d $VISION"}
 SEL_DIR=$([[ "$MODO" == "producao" ]] && echo "/tmp" || echo "$TRAB")
-sed -e "s|@@PSQL@@|$PSQL_INTERNO|g" -e "s|/tmp/sel_|$SEL_DIR/sel_|g" "$TRAB/corpo.sql" > "$TRAB/corpo.pronto.sql"
+# --- a conferencia de contagem, DENTRO da transacao -------------------------
+# `\copy ... from program` NAO falha quando o programa falha: o psql de dentro
+# morre, o \copy diz COPY 0 e a transacao segue inserindo nada. Transferencia
+# "bem-sucedida" com zero linha e o pior resultado possivel — foi assim que um
+# erro de sintaxe no SELECT gerado passou batido ate a tabela final.
+# Entao cada tabela confere, no banco, se o que chegou na tabela de passagem e
+# o que a origem tem. Divergencia levanta excecao e derruba a transacao toda.
+declare -A ESP_LINHAS=()
+while IFS='|' read -r t filtro; do
+  [[ -n "$t" ]] || continue
+  n=$(um_valor "$VISION" "select count(*) from $t where $filtro")
+  ESP_LINHAS[$t]=${n:-0}
+done < "$TRAB/filtros.txt"
+
+: > "$TRAB/corpo.conf.sql"
+while IFS= read -r linha; do
+  case "$linha" in
+    @@CONF_*@@)
+      t=${linha#@@CONF_}; t=${t%@@}
+      if [[ -n "${ESP_LINHAS[$t]:-}" ]]; then
+        printf 'do $$ declare v int; begin select count(*) into v from _st_%s; if v <> %s then raise exception %s a tabela %s devia trazer %s linha(s) e trouxe %%. A copia falhou: o psql de dentro do copy pode ter morrido sem avisar.%s, v; end if; end $$;\n' \
+          "$t" "${ESP_LINHAS[$t]}" "'" "$t" "${ESP_LINHAS[$t]}" "'" >> "$TRAB/corpo.conf.sql"
+      fi
+      ;;
+    *) printf '%s\n' "$linha" >> "$TRAB/corpo.conf.sql" ;;
+  esac
+done < "$TRAB/corpo.sql"
+
+sed -e "s|@@PSQL@@|$PSQL_INTERNO|g" -e "s|/tmp/sel_|$SEL_DIR/sel_|g" "$TRAB/corpo.conf.sql" > "$TRAB/corpo.pronto.sql"
 cat "$TRAB/pre.sql" "$TRAB/corpo.pronto.sql" "$TRAB/pos.sql" > "$TRAB/carga.sql"
 
 if [[ "$MODO" == "producao" ]]; then
@@ -707,7 +875,7 @@ fi
 # Se as batidas chegaram íntegras, isto fecha. Se não fecha, a transferência
 # não serve, e é melhor saber agora que no dia da fiscalização.
 log "reconferindo a cadeia de hash no RH"
-CADEIA_RH=$(confere_cadeia "$RH" "$EMPREGADOR_VI")
+CADEIA_RH=$(confere_cadeia "$RH" "$EMPREGADOR_RH")
 IFS='|' read -r CR_N CR_H CR_E CR_P <<< "$CADEIA_RH"
 printf '  Vision: %s batidas, %s hash fora, %s elo fora (NSR %s)\n' "${CV_N:-?}" "${CV_H:-?}" "${CV_E:-?}" "${CV_P:-?}"
 printf '  RH:     %s batidas, %s hash fora, %s elo fora (NSR %s)\n' "${CR_N:-?}" "${CR_H:-?}" "${CR_E:-?}" "${CR_P:-?}"
@@ -737,7 +905,7 @@ for t in "${CONFERIR[@]}"; do
   alvo=${ESPERADO[$t]:-$a}
   marca=""
   if [[ "${d:-0}" -lt "${alvo:-0}" ]]; then marca="  <-- FALTOU"; FALTOU=1
-  elif [[ -n "${ESPERADO[$t]:-}" ]]; then marca="  (filtrado: $(( ${a:-0} - ${alvo:-0} )) sem ficha no RH)"
+  elif [[ -n "${ESPERADO[$t]:-}" ]]; then marca="  ($(( ${a:-0} - ${alvo:-0} )): ${MOTIVO[$t]:-filtrada})"
   elif [[ "${d:-0}" -gt "${a:-0}" ]]; then marca="  (o RH já tinha ${ANTES[$t]:-0})"; fi
   printf '  %-28s %8s %8s %8s%s\n' "$t" "${a:-?}" "${ANTES[$t]:-0}" "${d:-?}" "$marca"
 done
@@ -762,6 +930,8 @@ FALTA O QUE NÃO É BANCO:
      cadeia do Vision continuaria sendo a de lá.
   2. o dispositivo veio com o id original, mas pareamento/túnel do terminal é
      configuração do RH: confira em Dispositivos antes de confiar.
+     O empregador e a loja NÃO foram duplicados: as batidas e os cadastros
+     passaram a apontar pros que já existiam no RH (veja o casamento no início).
   3. confira na tela do RH: Espelho de uma funcionária no mês transferido. O
      espelho é CALCULADO das batidas + escala, então se as duas chegaram ele
      sai igual ao do Vision. É a melhor conferência que existe.
